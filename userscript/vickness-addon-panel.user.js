@@ -1,3 +1,4 @@
+// ==UserScript==
 // @updateURL    https://vickness-auth.wikibuch1.workers.dev/vickness-addon-panel.user.js
 // @downloadURL  https://vickness-auth.wikibuch1.workers.dev/vickness-addon-panel.user.js
 // @name         Vickness Addon Panel - Standalone
