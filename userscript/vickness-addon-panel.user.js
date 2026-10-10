@@ -1,7 +1,8 @@
-// ==UserScript==
+// @updateURL    https://vickness-auth.wikibuch1.workers.dev/vickness-addon-panel.user.js
+// @downloadURL  https://vickness-auth.wikibuch1.workers.dev/vickness-addon-panel.user.js
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.10
+// @version      1.1.12
 // @description  Panel Vickness: Loot Glow, DC Wykrywacz i belka Lootlog 4.4.7
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
