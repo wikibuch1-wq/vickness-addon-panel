@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.0
-// @description  Panel Vickness: Loot Glow, DC Wykrywacz i belka Lootlog
+// @version      1.1.10
+// @description  Panel Vickness: Loot Glow, DC Wykrywacz i belka Lootlog 4.4.7
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -14,97 +14,9 @@
 // @connect      api.lootlog.pl
 // @connect      lootlog.pl
 // @connect      www.margonem.pl
-// @connect      vickness-auth.wikibuch1.workers.dev
 // @run-at       document-idle
 // @noframes
 // ==/UserScript==
-
-(async function vicknessDiscordGate() {
-  'use strict';
-
-  const AUTH_BASE = 'https://vickness-auth.wikibuch1.workers.dev';
-  const TOKEN_KEY = 'vickness_discord_session_v1';
-
-  function authScreen(message) {
-    return new Promise((resolve) => {
-      const old = document.getElementById('vicknessAuthGate');
-      if (old) old.remove();
-
-      const root = document.createElement('div');
-      root.id = 'vicknessAuthGate';
-      root.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;font:14px Arial,sans-serif;color:#fff;';
-      root.innerHTML = `
-        <div style="width:min(420px,calc(100vw - 32px));box-sizing:border-box;background:#171717;border:2px solid #d4af37;border-radius:12px;padding:22px;box-shadow:0 12px 50px #000;">
-          <h2 style="margin:0 0 10px;color:#d4af37">Vickness — weryfikacja Discord</h2>
-          <p id="vicknessAuthMessage" style="line-height:1.5;color:#ddd">${String(message || 'Zaloguj się, aby uruchomić dodatek.').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</p>
-          <button id="vicknessAuthLogin" style="width:100%;padding:10px;margin:6px 0;background:#5865F2;color:white;border:0;border-radius:6px;font-weight:bold;cursor:pointer">1. Zaloguj przez Discord</button>
-          <label for="vicknessAuthCode" style="display:block;margin:12px 0 5px">2. Wklej jednorazowy kod ze strony logowania</label>
-          <input id="vicknessAuthCode" autocomplete="off" spellcheck="false" placeholder="Kod jednorazowy" style="box-sizing:border-box;width:100%;padding:10px;background:#222;color:white;border:1px solid #555;border-radius:6px">
-          <button id="vicknessAuthSubmit" style="width:100%;padding:10px;margin-top:8px;background:#d4af37;color:#111;border:0;border-radius:6px;font-weight:bold;cursor:pointer">Zweryfikuj i uruchom</button>
-          <p style="color:#999;font-size:11px;line-height:1.4;margin-bottom:0">Kod wygasa po 5 minutach. Nie udostępniaj go innym osobom.</p>
-        </div>`;
-      document.documentElement.appendChild(root);
-
-      const msg = root.querySelector('#vicknessAuthMessage');
-      const login = root.querySelector('#vicknessAuthLogin');
-      const codeInput = root.querySelector('#vicknessAuthCode');
-      const submit = root.querySelector('#vicknessAuthSubmit');
-      login.addEventListener('click', () => {
-        window.open(AUTH_BASE + '/login', 'vicknessDiscordLogin', 'width=600,height=800');
-        msg.textContent = 'Zaloguj się w otwartym oknie Discord. Gdy zobaczysz kod, wróć tutaj i wklej go poniżej.';
-      });
-      submit.addEventListener('click', async () => {
-        const code = codeInput.value.trim().toUpperCase();
-        if (!/^[A-F0-9]{32}$/.test(code)) {
-          msg.textContent = 'Wpisz poprawny 32-znakowy kod ze strony logowania.';
-          return;
-        }
-        submit.disabled = true;
-        msg.textContent = 'Sprawdzam kod…';
-        try {
-          const res = await fetch(AUTH_BASE + '/exchange', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ code })
-          });
-          const data = await res.json();
-          if (!res.ok || !data.ok || !data.token) throw new Error(data.error || 'Nie udało się wymienić kodu.');
-          GM_setValue(TOKEN_KEY, { token: data.token, expiresAt: data.expiresAt });
-          root.remove();
-          resolve(true);
-        } catch (e) {
-          msg.textContent = 'Weryfikacja nie powiodła się: ' + (e && e.message ? e.message : 'błąd połączenia') + '. Jeśli kod wygasł, zaloguj się ponownie.';
-          submit.disabled = false;
-        }
-      });
-    });
-  }
-
-  async function sessionValid(saved) {
-    if (!saved || typeof saved.token !== 'string') return false;
-    if (!Number.isFinite(saved.expiresAt) || saved.expiresAt <= Math.floor(Date.now() / 1000)) return false;
-    try {
-      const res = await fetch(AUTH_BASE + '/verify', {
-        method: 'GET',
-        headers: { 'Authorization': 'Bearer ' + saved.token }
-      });
-      if (!res.ok) return false;
-      const data = await res.json();
-      return data.ok === true && data.authorized === true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  let saved = null;
-  try { saved = GM_getValue(TOKEN_KEY, null); } catch (_) {}
-
-  if (!(await sessionValid(saved))) {
-    try { GM_setValue(TOKEN_KEY, null); } catch (_) {}
-    await authScreen('Ta instalacja wymaga autoryzacji przez Discord.');
-  }
-
-  // Uruchomienie właściwego skryptu dopiero po przejściu bramki autoryzacji.
 
 // Wspólny stan przełączników dostępny dla obu wbudowanych dodatków.
 window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true };
@@ -2562,7 +2474,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.9 — integracja Lootlog 4.4.6
+// VICKNESS ADDON PANEL 1.1.10 — integracja Lootlog 4.4.7
 // =============================================================
 (() => {
   'use strict';
@@ -2823,7 +2735,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// BELKA LOOTÓW ZINTEGROWANA Z LOOTLOGIEM — zaktualizowany kod dodatku 4.4.6
+// BELKA LOOTÓW ZINTEGROWANA Z LOOTLOGIEM — kod dodatku 4.4.7 (z załącznika)
 (() => {
   'use strict';
 
@@ -3293,6 +3205,17 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     );
   }
 
+  function hasHero(loot) {
+    const npcs = getNpcs(loot);
+    return npcs.some(npc =>
+      [npc?.type, npc?.rank, npc?.rarity, npc?.kind, npc?.npcType, npc?.npc_type]
+        .some(value => {
+          const text = normalizeText(value);
+          return text === 'HERO' || text === 'HEROS' || text === 'HEROSIC';
+        })
+    );
+  }
+
   function getNpc(loot) {
     const npcs = getNpcs(loot);
     if (!npcs.length) return { name: 'Nieznany NPC', level: '?' };
@@ -3483,9 +3406,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
     const tile = document.createElement('div');
     tile.className = `vl-item ${entry.rarity}`;
-    tile.title = entry.rarity === 'legendary'
-      ? 'Kliknij, aby otworzyć legendarne zdobycze w Lootlogu'
-      : 'Kliknij, aby otworzyć Lootlog TheCrew';
+    // Bez natywnego title — przeglądarka nie wyświetla już dymka zasłaniającego łup.
 
     const tipSource = document.createElement('div');
     tipSource.className = 'vl-tip-source';
@@ -3667,7 +3588,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
             seenLegendary.add(itemKey);
             legendary.push({ loot, item, rarity });
           }
-        } else if (hasElite2(loot) && !seenHeroic.has(itemKey)) {
+        } else if ((hasElite2(loot) || hasHero(loot)) && !seenHeroic.has(itemKey)) {
           seenHeroic.add(itemKey);
           heroic.push({ loot, item, rarity });
         }
@@ -3681,7 +3602,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       '[Loot Bar] wpisy API:', loots.length,
       '| wpisy Elity II:', sorted.filter(hasElite2).length,
       '| legendarne ze wszystkich źródeł:', legendary.length,
-      '| heroiczne Elity II:', heroic.length
+      '| heroiczne z Elity II/herosów:', heroic.length
     );
 
     itemsBox.replaceChildren();
@@ -3769,5 +3690,3 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
   window.addEventListener('scroll', hideTooltip, true);
 })();
-
-})(); // koniec bramki autoryzacji
