@@ -1,9 +1,7 @@
 // ==UserScript==
-// @name         Vickness Addon Panel - Standalone
+// @name         testdodana1dychaVickness Addon Panel - Standalone
 // @namespace    Vickness
 // @version      1.1.12
-// @updateURL    https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js
-// @downloadURL  https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js
 // @description  Panel Vickness: Loot Glow, DC Wykrywacz, Lootlog 4.4.7 i Titan Tracker Gold
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
@@ -2532,7 +2530,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     .vxStandaloneRow { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:4px 0; padding:6px; border:1px solid #5f4b20; border-radius:5px; background:#141414; }
     .vxStandaloneName { color:#e0bd53; font-weight:bold; }
     .vxStandaloneDesc { display:block; margin-top:4px; color:#999; font-size:10px; }
-    .vxStandaloneState { margin-top:4px; color:#aaa; font-size:9px; }
+    .vxStandaloneState { margin-top:4px; color:#aaa; font-size:9px; background:transparent!important; border:0!important; box-shadow:none!important; }
     .vxOpenSettings,.vxNavBtn { margin-top:7px; padding:5px 8px; border:1px solid #806321; border-radius:4px; background:#17140c; color:#dfb943; font-size:10px; cursor:pointer; }
     .vxOpenSettings:hover,.vxNavBtn:hover { background:#30250b; border-color:#d4af37; color:#ffe28a; }
     .vxToggle { position:relative; width:42px; height:23px; flex:0 0 42px; }
@@ -3748,7 +3746,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         players: new Map(),
         titan: null,
         titanKey: '',
-        collapsed: false,
+        collapsed: true,
         settingsOpen: false,
         webhook: localStorage.getItem(STORAGE_WEBHOOK) || '',
         hookedManager: null,
@@ -4217,6 +4215,12 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         document.body.appendChild(panel);
         loadPosition(panel);
         bindPanel(panel);
+
+        // Heros/Titan Tracker startuje zwinięty po każdym odświeżeniu gry.
+        $('#rtt-body', panel).style.display = 'none';
+        $('#rtt-settings-panel', panel).style.display = 'none';
+        $('#rtt-collapse', panel).textContent = '+';
+
         updateTable();
     }
 
@@ -4424,3 +4428,135 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
     start();
 })();
+
+
+/* =========================================================
+   VICKNESS UNIFIED BLACK & GOLD THEME
+   Styluje panele dodatków oraz typowe okna interfejsu gry.
+   Zmiany są wyłącznie wizualne; nie zmieniają mechaniki gry.
+   ========================================================= */
+(() => {
+    if (document.getElementById('vicknessUnifiedTheme')) return;
+
+    const style = document.createElement('style');
+    style.id = 'vicknessUnifiedTheme';
+    style.textContent = `
+        :root {
+            --vx-bg: #0b0b0b;
+            --vx-bg-soft: #151515;
+            --vx-bg-row: #111111;
+            --vx-bg-hover: #29220e;
+            --vx-gold: #d4af37;
+            --vx-gold-light: #f5d778;
+            --vx-text: #f4e8bd;
+            --vx-muted: #c5b57e;
+        }
+
+        /* Dodatki Vickness */
+        #vxStandalonePanel, #margDc221Panel, #margDc221Mini,
+        #rtt-panel, #rtt-settings-panel, #tmLootPanel,
+        #vickness-lootbar, #vxLootlogPanel, #lootlog-panel,
+        .vxLootlogPanel, .vxLootlogWindow,
+        [id*="lootlog" i], [class*="lootlog" i] {
+            background-color: var(--vx-bg) !important;
+            color: var(--vx-text) !important;
+            border-color: var(--vx-gold) !important;
+        }
+
+        #vxStandaloneHeader, #margDc221Header, #rtt-head,
+        #tmLootHeader, #vxLootlogHeader,
+        [id*="lootlog" i] [class*="header" i],
+        [class*="lootlog" i] [class*="header" i] {
+            background: var(--vx-bg-soft) !important;
+            color: var(--vx-gold-light) !important;
+            border-color: var(--vx-gold) !important;
+        }
+
+        #margDc221Body, #margDc221Status, #rtt-body,
+        #tmLootBody, #tmTabLoot, #vxSettingsToolbar,
+        .vxLootlogInfo, #tmLootPanel .tmRarityRow,
+        #tmLootPanel .tmSettingLine {
+            background-color: var(--vx-bg-row) !important;
+            color: var(--vx-text) !important;
+            border-color: #5f4b20 !important;
+        }
+
+        #vxStandalonePanel button, #margDc221Panel button,
+        #rtt-panel button, #rtt-settings-panel button,
+        #tmLootPanel button, #vxSettingsToolbar button,
+        .vxLootlogActions button, #vickness-lootbar button,
+        [id*="lootlog" i] button, [class*="lootlog" i] button {
+            background: #17140c !important;
+            color: var(--vx-gold-light) !important;
+            border: 1px solid #806321 !important;
+        }
+
+        #vxStandalonePanel button:hover, #margDc221Panel button:hover,
+        #rtt-panel button:hover, #rtt-settings-panel button:hover,
+        #tmLootPanel button:hover, #vxSettingsToolbar button:hover,
+        .vxLootlogActions button:hover, #vickness-lootbar button:hover,
+        [id*="lootlog" i] button:hover, [class*="lootlog" i] button:hover {
+            background: var(--vx-bg-hover) !important;
+            color: #fff0b3 !important;
+            border-color: var(--vx-gold) !important;
+        }
+
+        #vxStandalonePanel input:not([type="checkbox"]):not([type="range"]):not([type="color"]),
+        #vxStandalonePanel select, #margDc221Panel input,
+        #rtt-panel input, #rtt-settings-panel input,
+        #tmLootPanel select,
+        #tmLootPanel input:not([type="checkbox"]):not([type="range"]):not([type="color"]),
+        [id*="lootlog" i] input, [id*="lootlog" i] select,
+        [class*="lootlog" i] input, [class*="lootlog" i] select {
+            background: #101010 !important;
+            color: var(--vx-text) !important;
+            border-color: #6d5a20 !important;
+        }
+
+        #rtt-panel table, #rtt-panel thead, #rtt-panel tbody,
+        #rtt-panel tr, #rtt-panel th, #rtt-panel td {
+            background-color: var(--vx-bg) !important;
+            color: var(--vx-text) !important;
+            border-color: #806321 !important;
+        }
+        #rtt-panel th { background: #211b0b !important; color: var(--vx-gold-light) !important; }
+        #rtt-panel tbody tr:nth-child(even) td { background: #18150d !important; }
+
+        #vxLootlogState {
+            display: block !important;
+            width: auto !important;
+            min-height: 0 !important;
+            height: auto !important;
+            padding: 0 !important;
+            margin: 4px 0 0 !important;
+            background: transparent !important;
+            background-color: transparent !important;
+            border: 0 !important;
+            outline: 0 !important;
+            box-shadow: none !important;
+        }
+        #vxStandalonePanel .vxStandaloneRow:has(#vxLootlogState) {
+            background: #141414 !important;
+        }
+
+        /* Celowo nie stylujemy okien samej gry Margonem:
+           czat, mapa, grupa, ekwipunek i pozostałe okna zachowują oryginalny wygląd. */
+
+        /* Złote etykiety Vickness */
+        #vxStandaloneBrand, #vxCurrentSetting,
+        .vxStandaloneName, .vxOpenSettings, .vxNavBtn,
+        #margDc221Title, #tmLootPanel .tmBrandText,
+        #tmLootPanel .tmRarityName {
+            color: var(--vx-gold-light) !important;
+        }
+
+        #margDc221Status.good { color: #8fdb8f !important; }
+        #margDc221Status.bad { color: #ff8f8f !important; }
+        #margDc221Status.gold { color: var(--vx-gold-light) !important; }
+
+        .vxToggle span { background: #211b0b !important; border-color: #806321 !important; }
+        .vxToggle input:checked + span { background: #6b5415 !important; border-color: var(--vx-gold) !important; }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+})();
+
