@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.12
+// @version      1.1.13
 // @description  Panel Vickness: Loot Glow, DC Wykrywacz, Lootlog 4.4.7 i Titan Tracker Gold
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
@@ -3713,15 +3713,14 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// TITAN TRACKER GOLD 5.0.0 — zintegrowany jako czwarty dodatek Vickness
-// =============================================================
+// TITAN TRACKER GOLD 5.0.1 — podmieniony tracker, zintegrowany z panelem Vickness
 (() => {
     'use strict';
 
     const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
     const MAX_PLAYERS = 15;
     const STORAGE_WEBHOOK = 'rtt_webhook_v2';
-    const STORAGE_POSITION = 'rtt_position_v3';
+    const STORAGE_POSITION = 'rtt_position_v2';
 
     // Tracker działa wyłącznie na tych mapach.
     const ALLOWED_MAPS = new Set([
@@ -3735,7 +3734,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         7849, // Nora Jaszczurzych Koszmarów - źródło
         5710, // Teotihuacan
         3313, // Sala Zrujnowanej Świątyni
-        2758  // Sala Tronowa
+        2758, // Sala Tronowa
     ]);
 
     const GOLD = '#d4af37';
@@ -3746,7 +3745,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         players: new Map(),
         titan: null,
         titanKey: '',
-        collapsed: false,
+        collapsed: true,
         settingsOpen: false,
         webhook: localStorage.getItem(STORAGE_WEBHOOK) || '',
         hookedManager: null,
@@ -3995,7 +3994,6 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
             manager.updateData = function (data) {
                 const result = original.apply(this, arguments);
-                if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.titan) return result;
 
                 try {
                     for (const id of Object.keys(data || {})) {
@@ -4065,7 +4063,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         style.id = 'rtt-styles';
         style.textContent = `
             #rtt-panel {
-                position:fixed;z-index:2147483647;top:100px;left:min(300px, calc(100vw - 290px));
+                position:fixed;z-index:2147483647;top:100px;left:15px;
                 width:280px;min-width:280px;max-width:280px;
                 height:auto;min-height:0;max-height:calc(100vh - 8px);
                 box-sizing:border-box;background:${BLACK};color:#f4e8bd;
@@ -4215,6 +4213,13 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         document.body.appendChild(panel);
         loadPosition(panel);
         bindPanel(panel);
+
+        // Po każdym odświeżeniu gry tracker startuje zwinięty.
+        $('#rtt-body', panel).style.display = state.collapsed ? 'none' : 'block';
+        $('#rtt-settings-panel', panel).style.display =
+            !state.collapsed && state.settingsOpen ? 'block' : 'none';
+        $('#rtt-collapse', panel).textContent = state.collapsed ? '+' : '−';
+
         updateTable();
     }
 
@@ -4397,6 +4402,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
             if (panel) panel.style.setProperty('display', 'none', 'important');
             return;
         }
+        const panel = $('#rtt-panel');
+        if (panel) panel.style.removeProperty('display');
         checkMap();
         hookPlayers();
 
