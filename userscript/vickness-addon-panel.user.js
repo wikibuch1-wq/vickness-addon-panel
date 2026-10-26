@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.12
+// @version      1.1.13
 // @description  Panel Vickness: Loot Glow, DC Wykrywacz, Lootlog 4.4.7 i Titan Tracker Gold
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
