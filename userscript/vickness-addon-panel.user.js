@@ -1,14 +1,13 @@
 // ==UserScript==
-// @updateURL    https://vickness-auth.wikibuch1.workers.dev/vickness-addon-panel.user.js
-// @downloadURL  https://vickness-auth.wikibuch1.workers.dev/vickness-addon-panel.user.js
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
 // @version      1.1.12
-// @description  Panel Vickness: Loot Glow, DC Wykrywacz i belka Lootlog 4.4.7
+// @description  Panel Vickness: Loot Glow, DC Wykrywacz, Lootlog 4.4.7 i Titan Tracker Gold
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        unsafeWindow
 // @grant        GM_xmlhttpRequest
 // @connect      discord.com
 // @connect      discordapp.com
@@ -21,7 +20,7 @@
 // ==/UserScript==
 
 // Wspólny stan przełączników dostępny dla obu wbudowanych dodatków.
-window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true };
+window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true, titan: true };
 
 (function () {
     'use strict';
@@ -2476,7 +2475,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.10 — integracja Lootlog 4.4.7
+// VICKNESS ADDON PANEL 1.1.12 — integracja Lootlog 4.4.7 i Titan Tracker Gold
 // =============================================================
 (() => {
   'use strict';
@@ -2486,15 +2485,18 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
   const KEY = 'vickness_addon_panel_layout_v1';
   const FLAGS_KEY = 'vickness_addon_enabled_v1';
-  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true });
+  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true });
   try {
     const saved = JSON.parse(localStorage.getItem(FLAGS_KEY) || '{}');
     if (typeof saved.loot === 'boolean') enabled.loot = saved.loot;
     if (typeof saved.dc === 'boolean') enabled.dc = saved.dc;
     if (typeof saved.lootlog === 'boolean') enabled.lootlog = saved.lootlog;
     else if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true;
-  } catch (_) { if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true; }
+    if (typeof saved.titan === 'boolean') enabled.titan = saved.titan;
+    else if (typeof enabled.titan !== 'boolean') enabled.titan = true;
+  } catch (_) { if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true; if (typeof enabled.titan !== 'boolean') enabled.titan = true; }
   if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true;
+  if (typeof enabled.titan !== 'boolean') enabled.titan = true;
   let layout = {};
   try { layout = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (_) {}
 
@@ -2528,7 +2530,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     .vxStandaloneRow { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:4px 0; padding:6px; border:1px solid #5f4b20; border-radius:5px; background:#141414; }
     .vxStandaloneName { color:#e0bd53; font-weight:bold; }
     .vxStandaloneDesc { display:block; margin-top:4px; color:#999; font-size:10px; }
-    .vxStandaloneState { margin-top:4px; color:#aaa; font-size:9px; }
+    .vxStandaloneState { margin-top:4px; color:#aaa; font-size:9px; background:transparent!important; border:0!important; box-shadow:none!important; }
     .vxOpenSettings,.vxNavBtn { margin-top:7px; padding:5px 8px; border:1px solid #806321; border-radius:4px; background:#17140c; color:#dfb943; font-size:10px; cursor:pointer; }
     .vxOpenSettings:hover,.vxNavBtn:hover { background:#30250b; border-color:#d4af37; color:#ffe28a; }
     .vxToggle { position:relative; width:42px; height:23px; flex:0 0 42px; }
@@ -2567,6 +2569,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Loot Glow</span><span class="vxStandaloneDesc">Podświetlanie lootu • kolor i intensywność</span><div class="vxStandaloneState" id="vxLootState"></div><button type="button" class="vxOpenSettings" id="vxLootOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxLootSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">DC Wykrywacz</span><span class="vxStandaloneDesc">Herosi, tytani, grzybki i Discord</span><div class="vxStandaloneState" id="vxDcState"></div><button type="button" class="vxOpenSettings" id="vxDcOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxDcSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Belka lootów zintegrowana z Lootlogiem</span><span class="vxStandaloneDesc">Ostatnie herosy i legendarne łupy TheCrew</span><div class="vxStandaloneState" id="vxLootlogState"></div><button type="button" class="vxOpenSettings" id="vxLootlogOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxLootlogSwitch" type="checkbox"><span></span></label></div>
+      <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Titan Tracker Gold</span><span class="vxStandaloneDesc">Tytani i lista do 15 graczy na wybranych mapach</span><div class="vxStandaloneState" id="vxTitanState"></div><button type="button" class="vxOpenSettings" id="vxTitanOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxTitanSwitch" type="checkbox"><span></span></label></div>
       <div id="vxStandaloneFooter">BLACK &amp; GOLD • ADDON MANAGER</div>
     </div>
     <div id="vxSettingsView">
@@ -2580,6 +2583,13 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
           <button type="button" id="vxLootlogLayout">↕ ORIENTACJA</button>
           <button type="button" id="vxLootlogScaleDown">− ZMNIEJSZ</button>
           <button type="button" id="vxLootlogScaleUp">+ POWIĘKSZ</button>
+        </div>
+      </div>
+      <div id="vxSettingsTitan" class="vxSettingsSlot" hidden>
+        <div class="vxLootlogInfo">Titan Tracker Gold działa na wybranych mapach. Pokazuje wykrytego tytana i listę graczy, a listę Top 10 może wysłać na Discord przez webhook. Panel trackera pozostaje osobnym oknem na ekranie gry.</div>
+        <div class="vxLootlogActions">
+          <button type="button" id="vxTitanShow">POKAŻ TRACKER</button>
+          <button type="button" id="vxTitanDiscord">USTAWIENIA DISCORDA</button>
         </div>
       </div>
     </div>
@@ -2605,19 +2615,23 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     if (dc && dcSlot.contains(dc)) dc.style.setProperty('display', enabled.dc ? 'block' : 'none', 'important');
     const lootbar = getPanel('vickness-lootbar');
     if (lootbar) lootbar.style.setProperty('display', enabled.lootlog ? 'flex' : 'none', 'important');
+    const titanPanel = getPanel('rtt-panel');
+    if (titanPanel) titanPanel.style.setProperty('display', enabled.titan ? 'block' : 'none', 'important');
     if (!enabled.lootlog) document.querySelectorAll('.vl-tip').forEach(tip => { tip.style.display = 'none'; });
   }
   function applyToggles() {
     root.querySelector('#vxLootSwitch').checked = !!enabled.loot;
     root.querySelector('#vxDcSwitch').checked = !!enabled.dc;
     root.querySelector('#vxLootlogSwitch').checked = !!enabled.lootlog;
+    root.querySelector('#vxTitanSwitch').checked = !!enabled.titan;
+    root.querySelector('#vxTitanState').textContent = enabled.titan ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxLootState').textContent = enabled.loot ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxDcState').textContent = enabled.dc ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxLootlogState').textContent = enabled.lootlog ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     dockWidgets();
   }
   function openSettings(which) {
-    if (!['loot', 'dc', 'lootlog'].includes(which)) which = 'dc';
+    if (!['loot', 'dc', 'lootlog', 'titan'].includes(which)) which = 'dc';
     enabled[which] = true;
     saveFlags();
     root.querySelector('#vxHomeView').style.display = 'none';
@@ -2625,10 +2639,11 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     root.querySelector('#vxSettingsLoot').hidden = which !== 'loot';
     root.querySelector('#vxSettingsDc').hidden = which !== 'dc';
     root.querySelector('#vxSettingsLootlog').hidden = which !== 'lootlog';
-    root.querySelector('#vxCurrentSetting').textContent = which === 'loot' ? 'LOOT GLOW' : which === 'dc' ? 'DC WYKRYWACZ' : 'BELKA LOOTÓW';
-    const order = ['loot', 'dc', 'lootlog'];
+    root.querySelector('#vxSettingsTitan').hidden = which !== 'titan';
+    root.querySelector('#vxCurrentSetting').textContent = which === 'loot' ? 'LOOT GLOW' : which === 'dc' ? 'DC WYKRYWACZ' : which === 'lootlog' ? 'BELKA LOOTÓW' : 'TITAN TRACKER GOLD';
+    const order = ['loot', 'dc', 'lootlog', 'titan'];
     const next = order[(order.indexOf(which) + 1) % order.length];
-    root.querySelector('#vxSwitchAddon').textContent = next === 'loot' ? 'LOOT GLOW →' : next === 'dc' ? 'DC WYKRYWACZ →' : 'BELKA LOOTÓW →';
+    root.querySelector('#vxSwitchAddon').textContent = next === 'loot' ? 'LOOT GLOW →' : next === 'dc' ? 'DC WYKRYWACZ →' : next === 'lootlog' ? 'BELKA LOOTÓW →' : 'TITAN TRACKER →';
     applyToggles();
     setTimeout(dockWidgets, 100);
     setTimeout(dockWidgets, 600);
@@ -2665,13 +2680,17 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       enabled.lootlog = e.target.checked; saveFlags(); applyToggles();
       if (enabled.lootlog) setTimeout(() => getPanel('vickness-lootbar')?.querySelector('.vl-refresh')?.click(), 100);
     });
+    root.querySelector('#vxTitanSwitch').addEventListener('change', e => { enabled.titan = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxLootOpen').addEventListener('click', () => openSettings('loot'));
     root.querySelector('#vxDcOpen').addEventListener('click', () => openSettings('dc'));
     root.querySelector('#vxLootlogOpen').addEventListener('click', () => openSettings('lootlog'));
+    root.querySelector('#vxTitanOpen').addEventListener('click', () => openSettings('titan'));
+    root.querySelector('#vxTitanShow').addEventListener('click', () => { enabled.titan = true; saveFlags(); applyToggles(); const p = getPanel('rtt-panel'); if (p) p.style.setProperty('display', 'block', 'important'); });
+    root.querySelector('#vxTitanDiscord').addEventListener('click', () => { enabled.titan = true; saveFlags(); applyToggles(); const p = getPanel('rtt-panel'); if (p) p.style.setProperty('display', 'block', 'important'); const settings = getPanel('rtt-settings-panel'); if (settings && settings.style.display === 'none') getPanel('rtt-settings')?.click(); });
     root.querySelector('#vxBackHome').addEventListener('click', backHome);
     root.querySelector('#vxSwitchAddon').addEventListener('click', () => {
-      const current = !root.querySelector('#vxSettingsLoot').hidden ? 'loot' : !root.querySelector('#vxSettingsDc').hidden ? 'dc' : 'lootlog';
-      const order = ['loot', 'dc', 'lootlog'];
+      const current = !root.querySelector('#vxSettingsLoot').hidden ? 'loot' : !root.querySelector('#vxSettingsDc').hidden ? 'dc' : !root.querySelector('#vxSettingsLootlog').hidden ? 'lootlog' : 'titan';
+      const order = ['loot', 'dc', 'lootlog', 'titan'];
       openSettings(order[(order.indexOf(current) + 1) % order.length]);
     });
     root.querySelector('#vxLootlogRefresh').addEventListener('click', () => getPanel('vickness-lootbar')?.querySelector('.vl-refresh')?.click());
@@ -3692,3 +3711,837 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
   window.addEventListener('scroll', hideTooltip, true);
 })();
+
+// =============================================================
+// TITAN TRACKER GOLD 5.0.0 — zintegrowany jako czwarty dodatek Vickness
+// =============================================================
+(() => {
+    'use strict';
+
+    const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+    const MAX_PLAYERS = 15;
+    const STORAGE_WEBHOOK = 'rtt_webhook_v2';
+    const STORAGE_POSITION = 'rtt_position_v3';
+
+    // Tracker działa wyłącznie na tych mapach.
+    const ALLOWED_MAPS = new Set([
+        1800, // Migotliwa Pieczara
+        1745, // Grota Caerbannoga - leże bestii
+        6950, // Bandyckie Chowisko - skarbiec
+        7061, // Wulkan Politraki - Piekielne Czeluście
+        7478, // Lokum Złych Goblinów - pracownia
+        6058, // Źródło Wspomnień
+        5947, // Komnata Krwawych Obrzędów
+        7849, // Nora Jaszczurzych Koszmarów - źródło
+        5710, // Teotihuacan
+        3313, // Sala Zrujnowanej Świątyni
+        2758  // Sala Tronowa
+    ]);
+
+    const GOLD = '#d4af37';
+    const GOLD_LIGHT = '#f5d778';
+    const BLACK = '#080808';
+
+    const state = {
+        players: new Map(),
+        titan: null,
+        titanKey: '',
+        collapsed: true,
+        settingsOpen: false,
+        webhook: localStorage.getItem(STORAGE_WEBHOOK) || '',
+        hookedManager: null,
+        seededManager: null,
+        currentMap: null,
+        mapAllowed: false
+    };
+
+    const professions = {
+        w: 'w', m: 'm', b: 'b', t: 't', h: 'h', p: 'p'
+    };
+
+    const $ = (selector, root = document) => root.querySelector(selector);
+
+    function engine() {
+        return W.Engine || window.Engine;
+    }
+
+    function timeNow() {
+        return new Date().toLocaleTimeString('pl-PL', { hour12: false });
+    }
+
+    // Odczytuje identyfikator aktualnej mapy z dostępnych pól silnika.
+    function getCurrentMapId() {
+        const E = engine();
+
+        const candidates = [
+            E?.map?.d?.id,
+            E?.map?.id,
+            E?.map?.d?.map,
+            E?.map?.mapId,
+            W.map?.id,
+            W.g?.world?.map?.id
+        ];
+
+        for (const value of candidates) {
+            if (value !== undefined && value !== null && value !== '') {
+                const id = Number(value);
+                if (Number.isFinite(id)) return id;
+            }
+        }
+
+        return null;
+    }
+
+    function checkMap() {
+        const mapId = getCurrentMapId();
+
+        if (mapId !== state.currentMap) {
+            state.currentMap = mapId;
+            state.mapAllowed = mapId !== null && ALLOWED_MAPS.has(mapId);
+
+            // Zmiana mapy zawsze czyści listę poprzedniej lokacji.
+            state.players.clear();
+            state.titan = null;
+            state.titanKey = '';
+            state.seededManager = null;
+
+            if (state.mapAllowed) {
+                saveHero();
+            }
+
+            updateTable();
+        }
+
+        return state.mapAllowed;
+    }
+
+    // -------------------- TYTAN --------------------
+
+    function findTitan() {
+        const npcs = engine()?.npcs?.getDrawableList?.() || [];
+
+        const candidates = npcs.filter(npc => {
+            const d = npc?.d;
+            if (!d?.nick) return false;
+
+            const icon = String(d.icon || '').toLowerCase();
+            const nick = String(d.nick).toLowerCase();
+
+            return icon.includes('tyt/') ||
+                nick.includes('baulus') ||
+                (Number(d.wt) > 99 && Number(d.type) === 2);
+        });
+
+        candidates.sort((a, b) => {
+            const aTitan = String(a?.d?.icon || '').toLowerCase().includes('tyt/');
+            const bTitan = String(b?.d?.icon || '').toLowerCase().includes('tyt/');
+            return Number(bTitan) - Number(aTitan);
+        });
+
+        const npc = candidates[0];
+        if (!npc?.d) return null;
+
+        return {
+            id: String(npc.d.id ?? npc.d.tpl ?? npc.d.nick),
+            nick: npc.d.nick,
+            level: npc.d.lvl ?? npc.d.wt ?? '?'
+        };
+    }
+
+    function scanTitan() {
+        if (!state.mapAllowed) {
+            state.titan = null;
+            state.titanKey = '';
+            return;
+        }
+
+        const found = findTitan();
+
+        if (!found) {
+            state.titan = null;
+            state.titanKey = '';
+            return;
+        }
+
+        const key = `${found.id}|${found.nick}|${found.level}`;
+
+        if (key !== state.titanKey) {
+            state.titanKey = key;
+            state.titan = { ...found, detectedAt: timeNow() };
+        }
+    }
+
+    // -------------------- GRACZE --------------------
+
+    function getHeroId() {
+        const id = engine()?.hero?.d?.id;
+        return id == null ? '' : String(id);
+    }
+
+    function savePlayer(id, input, character, redraw = true) {
+        if (!state.mapAllowed) return;
+
+        const d = character?.d || {};
+        const source = input?.d || input || {};
+        const nick = d.nick || source.nick;
+
+        if (!nick) return;
+
+        const playerId = String(d.id ?? source.id ?? id ?? '');
+        if (!playerId) return;
+
+        if (playerId === getHeroId()) {
+            if (redraw) updateTable();
+            return;
+        }
+
+        if (character && character.isPlayer !== true) return;
+
+        if (state.players.has(playerId)) {
+            const old = state.players.get(playerId);
+            old.nick = nick;
+            old.level = d.lvl ?? source.lvl ?? old.level;
+            old.prof = professions[d.prof] || d.prof || old.prof || '?';
+            if (redraw) updateTable();
+            return;
+        }
+
+        if (state.players.size >= MAX_PLAYERS) return;
+
+        state.players.set(playerId, {
+            id: playerId,
+            nick,
+            level: d.lvl ?? source.lvl ?? '?',
+            prof: professions[d.prof] || d.prof || '?',
+            time: timeNow(),
+            isHero: false
+        });
+
+        if (redraw) updateTable();
+    }
+
+    function saveHero() {
+        if (!state.mapAllowed) return;
+
+        const d = engine()?.hero?.d;
+        if (!d?.nick || d.id == null) return;
+
+        const id = String(d.id);
+
+        if (state.players.has(id)) {
+            const player = state.players.get(id);
+            player.nick = d.nick;
+            player.level = d.lvl ?? player.level;
+            player.prof = professions[d.prof] || d.prof || player.prof || '?';
+            player.isHero = true;
+            return;
+        }
+
+        if (state.players.size >= MAX_PLAYERS) {
+            const lastOther = [...state.players.entries()]
+                .reverse()
+                .find(([, player]) => !player.isHero);
+
+            if (lastOther) state.players.delete(lastOther[0]);
+            else return;
+        }
+
+        state.players.set(id, {
+            id,
+            nick: d.nick,
+            level: d.lvl ?? '?',
+            prof: professions[d.prof] || d.prof || '?',
+            time: timeNow(),
+            isHero: true
+        });
+    }
+
+    function removePlayer(id) {
+        if (id == null || String(id) === getHeroId()) return;
+        state.players.delete(String(id));
+    }
+
+    function seedExistingPlayers(manager) {
+        if (!state.mapAllowed || state.seededManager === manager) return;
+        state.seededManager = manager;
+
+        try {
+            const known = manager.check?.();
+            const ids = known instanceof Map
+                ? [...known.keys()]
+                : known && typeof known === 'object'
+                    ? Object.keys(known)
+                    : [];
+
+            for (const id of ids) {
+                const character = manager.getById(String(id));
+                if (character?.isPlayer && character.d?.nick) {
+                    savePlayer(id, character.d, character, false);
+                }
+            }
+
+            updateTable();
+        } catch (error) {
+            console.warn('[Titan Tracker] Odczyt graczy:', error);
+        }
+    }
+
+    function hookPlayers() {
+        const manager = engine()?.others;
+        if (!manager || typeof manager.updateData !== 'function') return;
+
+        if (state.hookedManager !== manager) {
+            const original = manager.updateData;
+
+            manager.updateData = function (data) {
+                const result = original.apply(this, arguments);
+                if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.titan) return result;
+
+                try {
+                    for (const id of Object.keys(data || {})) {
+                        const input = data[id];
+                        if (!input) continue;
+
+                        const source = input.d || input;
+                        const playerId = String(source.id ?? input.id ?? id);
+
+                        if (input.del || source.del) {
+                            removePlayer(playerId);
+                            continue;
+                        }
+
+                        if (!state.mapAllowed) continue;
+
+                        const character = this.getById(String(id));
+                        if (character?.isPlayer === true) {
+                            savePlayer(playerId, input, character, false);
+                        }
+                    }
+
+                    updateTable();
+                } catch (error) {
+                    console.error('[Titan Tracker] Błąd odczytu graczy:', error);
+                }
+
+                return result;
+            };
+
+            state.hookedManager = manager;
+        }
+
+        seedExistingPlayers(manager);
+    }
+
+    function cleanMissingPlayers() {
+        if (!state.mapAllowed) {
+            state.players.clear();
+            return;
+        }
+
+        const manager = engine()?.others;
+        if (!manager || typeof manager.getById !== 'function') return;
+
+        for (const [id, player] of state.players) {
+            if (player.isHero || id === getHeroId()) continue;
+
+            try {
+                const character = manager.getById(id);
+
+                if (!character || character.isPlayer !== true) {
+                    state.players.delete(id);
+                }
+            } catch (error) {
+                console.warn('[Titan Tracker] Sprawdzanie gracza:', error);
+            }
+        }
+    }
+
+    // -------------------- WYGLĄD --------------------
+
+    function installStyles() {
+        if ($('#rtt-styles')) return;
+
+        const style = document.createElement('style');
+        style.id = 'rtt-styles';
+        style.textContent = `
+            #rtt-panel {
+                position:fixed;z-index:2147483647;top:100px;left:min(300px, calc(100vw - 290px));
+                width:280px;min-width:280px;max-width:280px;
+                height:auto;min-height:0;max-height:calc(100vh - 8px);
+                box-sizing:border-box;background:${BLACK};color:#f4e8bd;
+                border:1px solid ${GOLD};border-radius:5px;
+                box-shadow:0 0 12px #d4af3738,0 4px 16px #000b;
+                font:11px Arial,sans-serif;resize:none;overflow:auto;
+            }
+            #rtt-head {
+                display:flex;justify-content:space-between;align-items:center;
+                gap:6px;background:#111;padding:4px 7px;cursor:move;
+                border-bottom:1px solid ${GOLD};font-weight:bold;font-size:11px;
+                line-height:16px;user-select:none;position:sticky;top:0;z-index:2;
+            }
+            #rtt-head > span:first-child {color:${GOLD_LIGHT}}
+            #rtt-head button,#rtt-panel button {
+                cursor:pointer;border:1px solid ${GOLD};border-radius:3px;
+                padding:4px 6px;background:#17130a;color:${GOLD_LIGHT};
+                font-size:11px;
+            }
+            #rtt-head button {padding:1px 5px;line-height:15px}
+            #rtt-panel button:hover {background:#30240b;color:#fff0b3}
+            #rtt-body {padding:7px;overflow:auto}
+            .rtt-titan {display:flex;justify-content:space-between;gap:6px;margin-bottom:6px}
+            .rtt-titan b {color:${GOLD_LIGHT};overflow-wrap:anywhere}
+            #rtt-titan-level {color:#e4d29b}
+            .rtt-count {margin-bottom:5px;color:#d2c69c}
+            #rtt-panel table {width:100%;border-collapse:collapse;table-layout:auto}
+            #rtt-panel th {
+                background:#18140a;color:${GOLD_LIGHT};padding:5px 3px;
+                border:1px solid ${GOLD};
+            }
+            #rtt-panel td {
+                padding:4px 3px;border:1px solid #6d5a20;text-align:center;
+            }
+            #rtt-panel td:nth-child(2) {text-align:left;overflow-wrap:anywhere}
+            .rtt-actions {display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
+            .rtt-actions button {flex:1;min-width:120px}
+            #rtt-settings-panel {
+                padding:9px;background:#080808;border-top:1px solid ${GOLD};
+            }
+            #rtt-settings-panel label {display:block;margin-bottom:5px;color:${GOLD_LIGHT}}
+            #rtt-webhook {
+                display:block;box-sizing:border-box;width:100%;margin-bottom:7px;
+                padding:7px;background:#151515;color:#fff0b3;
+                border:1px solid ${GOLD};border-radius:3px;
+                user-select:text;pointer-events:auto;
+            }
+            #rtt-webhook:focus {outline:1px solid ${GOLD_LIGHT}}
+            .rtt-setting-buttons {display:flex;gap:6px;flex-wrap:wrap}
+            #rtt-settings-panel p {color:#c9b979;font-size:10px}
+        `;
+        document.head.appendChild(style);
+    }
+
+    function loadPosition(panel) {
+        try {
+            const pos = JSON.parse(localStorage.getItem(STORAGE_POSITION) || '{}');
+            if (pos.left) panel.style.left = pos.left;
+            if (pos.top) panel.style.top = pos.top;
+        } catch (_) {}
+    }
+
+    function savePosition(panel) {
+        localStorage.setItem(STORAGE_POSITION, JSON.stringify({
+            left: panel.style.left,
+            top: panel.style.top
+        }));
+    }
+
+    function makeDraggable(panel) {
+        const head = $('#rtt-head', panel);
+        if (!head) return;
+
+        head.onpointerdown = event => {
+            if (event.target.closest('button')) return;
+
+            const rect = panel.getBoundingClientRect();
+            const x = event.clientX;
+            const y = event.clientY;
+            const left = rect.left;
+            const top = rect.top;
+
+            function move(e) {
+                panel.style.left = Math.max(
+                    0, Math.min(innerWidth - panel.offsetWidth, left + e.clientX - x)
+                ) + 'px';
+                panel.style.top = Math.max(
+                    0, Math.min(innerHeight - 35, top + e.clientY - y)
+                ) + 'px';
+                panel.style.right = 'auto';
+            }
+
+            function up() {
+                document.removeEventListener('pointermove', move);
+                document.removeEventListener('pointerup', up);
+                savePosition(panel);
+            }
+
+            document.addEventListener('pointermove', move);
+            document.addEventListener('pointerup', up);
+        };
+    }
+
+    function createPanel() {
+        if ($('#rtt-panel')) return;
+
+        installStyles();
+
+        const panel = document.createElement('section');
+        panel.id = 'rtt-panel';
+        panel.innerHTML = `
+            <div id="rtt-head">
+                <span>💎Pierwsza dyszka</span>
+                <span>
+                    <button id="rtt-settings" title="Ustawienia Discord">⚙</button>
+                    <button id="rtt-collapse" title="Zwiń/rozwiń">−</button>
+                </span>
+            </div>
+            <div id="rtt-body">
+                <div class="rtt-titan">
+                    <b id="rtt-titan-name">Wyszukiwanie tytana…</b>
+                    <span id="rtt-titan-level"></span>
+                </div>
+                <div class="rtt-count" id="rtt-count">Gracze: 0/15</div>
+                <table>
+                    <thead><tr>
+                        <th>#</th><th>Nick</th><th>Lvl</th><th>Prof.</th><th>Wejście</th>
+                    </tr></thead>
+                    <tbody id="rtt-rows"></tbody>
+                </table>
+                <div class="rtt-actions">
+                    <button id="rtt-send">Wyślij top 10</button>
+                    <button id="rtt-reset">Wyczyść listę</button>
+                </div>
+            </div>
+            <div id="rtt-settings-panel" style="display:none">
+                <label for="rtt-webhook">Discord webhook URL</label>
+                <input id="rtt-webhook" type="text" autocomplete="off"
+                    spellcheck="false" placeholder="https://discord.com/api/webhooks/…">
+                <div class="rtt-setting-buttons">
+                    <button id="rtt-save-webhook">Zapisz webhook</button>
+                    <button id="rtt-test-webhook">Test</button>
+                </div>
+                <p>Webhook zapisany lokalnie w przeglądarce.</p>
+            </div>`;
+
+        document.body.appendChild(panel);
+        loadPosition(panel);
+        bindPanel(panel);
+
+        // Heros/Titan Tracker startuje zwinięty po każdym odświeżeniu gry.
+        $('#rtt-body', panel).style.display = 'none';
+        $('#rtt-settings-panel', panel).style.display = 'none';
+        $('#rtt-collapse', panel).textContent = '+';
+
+        updateTable();
+    }
+
+    function bindPanel(panel) {
+        $('#rtt-settings', panel).addEventListener('click', event => {
+            event.stopPropagation();
+            state.settingsOpen = !state.settingsOpen;
+            $('#rtt-settings-panel', panel).style.display =
+                state.settingsOpen ? 'block' : 'none';
+
+            if (state.settingsOpen) {
+                $('#rtt-webhook', panel).value = state.webhook;
+            }
+        });
+
+        $('#rtt-collapse', panel).addEventListener('click', event => {
+            event.stopPropagation();
+            state.collapsed = !state.collapsed;
+            $('#rtt-body', panel).style.display = state.collapsed ? 'none' : 'block';
+            $('#rtt-settings-panel', panel).style.display =
+                !state.collapsed && state.settingsOpen ? 'block' : 'none';
+            $('#rtt-collapse', panel).textContent = state.collapsed ? '+' : '−';
+        });
+
+        const input = $('#rtt-webhook', panel);
+        for (const name of ['pointerdown', 'mousedown', 'click', 'keydown']) {
+            input.addEventListener(name, event => event.stopPropagation());
+        }
+
+        $('#rtt-save-webhook', panel).addEventListener('click', event => {
+            event.stopPropagation();
+            state.webhook = input.value.trim();
+            localStorage.setItem(STORAGE_WEBHOOK, state.webhook);
+            alert('Webhook zapisany.');
+        });
+
+        $('#rtt-test-webhook', panel).addEventListener('click', async event => {
+            event.stopPropagation();
+            state.webhook = input.value.trim();
+            localStorage.setItem(STORAGE_WEBHOOK, state.webhook);
+            await sendDiscord(true);
+        });
+
+        $('#rtt-send', panel).addEventListener('click', () => sendDiscord(false));
+
+        $('#rtt-reset', panel).addEventListener('click', () => {
+            if (!confirm('Wyczyścić listę graczy?')) return;
+            state.players.clear();
+            saveHero();
+            updateTable();
+        });
+
+        makeDraggable(panel);
+    }
+
+    function updateTable() {
+        const panel = $('#rtt-panel');
+        if (!panel) return;
+
+        if (!state.mapAllowed) {
+            $('#rtt-titan-name', panel).textContent =
+                'Mapa poza listą';
+            $('#rtt-titan-level', panel).textContent = '';
+            $('#rtt-count', panel).textContent = 'Gracze: 0/15';
+        } else if (state.titan) {
+            $('#rtt-titan-name', panel).textContent = state.titan.nick;
+            $('#rtt-titan-level', panel).textContent =
+                `Poziom ${state.titan.level}`;
+            $('#rtt-count', panel).textContent =
+                `Gracze: ${state.players.size}/${MAX_PLAYERS}`;
+        } else {
+            $('#rtt-titan-name', panel).textContent = 'Nie wykryto tytana';
+            $('#rtt-titan-level', panel).textContent = '';
+            $('#rtt-count', panel).textContent =
+                `Gracze: ${state.players.size}/${MAX_PLAYERS}`;
+        }
+
+        const tbody = $('#rtt-rows', panel);
+        tbody.replaceChildren();
+
+        if (!state.mapAllowed) {
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 5;
+            cell.textContent = 'Tracker działa tylko na wybranych mapach.';
+            row.appendChild(cell);
+            tbody.appendChild(row);
+            return;
+        }
+
+        const players = [...state.players.values()];
+
+        if (!players.length) {
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 5;
+            cell.textContent = 'Oczekiwanie na graczy…';
+            row.appendChild(cell);
+            tbody.appendChild(row);
+            return;
+        }
+
+        players.forEach((p, i) => {
+            const row = document.createElement('tr');
+            row.style.background = i < 10 ? '#164c24' : '#5b1717';
+            row.style.color = i < 10 ? '#d9ffdf' : '#ffe1e1';
+
+            if (p.isHero) row.style.outline = '1px solid #f5d778';
+
+            for (const value of [i + 1, p.nick, p.level, p.prof, p.time]) {
+                const cell = document.createElement('td');
+                cell.textContent = value;
+                row.appendChild(cell);
+            }
+
+            tbody.appendChild(row);
+        });
+    }
+
+    // -------------------- DISCORD --------------------
+
+    async function sendDiscord(testOnly = false) {
+        const webhook = state.webhook.trim();
+
+        if (!/^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\//i.test(webhook)) {
+            alert('Otwórz ⚙ i wpisz poprawny adres webhooka Discord.');
+            return;
+        }
+
+        if (!testOnly && !state.mapAllowed) {
+            alert('Wysyłanie listy jest dostępne tylko na wybranych mapach.');
+            return;
+        }
+
+        const players = [...state.players.values()].slice(0, 10);
+        const titan = state.titan;
+
+        const content = testOnly
+            ? 'Test Titan Tracker — webhook działa.'
+            : [
+                `**Mapa ID:** ${state.currentMap ?? '?'}`,
+                `**Tytan:** ${titan?.nick || 'Nie wykryto'}`,
+                `**Poziom:** ${titan?.level ?? '?'}`,
+                `**Czas wykrycia:** ${titan?.detectedAt || '?'}`,
+                '',
+                '**Top 10 graczy:**',
+                ...(players.length
+                    ? players.map((p, i) =>
+                        `${i + 1}. **${p.nick}** — ${p.level} lvl, ${p.prof}, ${p.time}`
+                    )
+                    : ['Brak zapisanych graczy.'])
+            ].join('\n');
+
+        try {
+            const response = await fetch(webhook, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: 'Titan Tracker',
+                    content: content.slice(0, 1900)
+                })
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            alert(testOnly
+                ? 'Wysłano wiadomość testową!'
+                : 'Wysłano listę na Discorda.');
+        } catch (error) {
+            console.error('[Titan Tracker] Discord:', error);
+            alert('Wysyłka nie powiodła się. Sprawdź webhook i konsolę F12.');
+        }
+    }
+
+    // -------------------- GŁÓWNA PĘTLA --------------------
+
+    function tick() {
+        if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.titan) {
+            const panel = $('#rtt-panel');
+            if (panel) panel.style.setProperty('display', 'none', 'important');
+            return;
+        }
+        checkMap();
+        hookPlayers();
+
+        if (state.mapAllowed) {
+            saveHero();
+            scanTitan();
+            cleanMissingPlayers();
+        }
+
+        updateTable();
+    }
+
+    function start() {
+        if (!document.body) {
+            setTimeout(start, 500);
+            return;
+        }
+
+        createPanel();
+        tick();
+        setInterval(tick, 1000);
+    }
+
+    start();
+})();
+
+
+/* =========================================================
+   VICKNESS UNIFIED BLACK & GOLD THEME
+   Styluje panele dodatków oraz typowe okna interfejsu gry.
+   Zmiany są wyłącznie wizualne; nie zmieniają mechaniki gry.
+   ========================================================= */
+(() => {
+    if (document.getElementById('vicknessUnifiedTheme')) return;
+
+    const style = document.createElement('style');
+    style.id = 'vicknessUnifiedTheme';
+    style.textContent = `
+        :root {
+            --vx-bg: #0b0b0b;
+            --vx-bg-soft: #151515;
+            --vx-bg-row: #111111;
+            --vx-bg-hover: #29220e;
+            --vx-gold: #d4af37;
+            --vx-gold-light: #f5d778;
+            --vx-text: #f4e8bd;
+            --vx-muted: #c5b57e;
+        }
+
+        /* Dodatki Vickness */
+        #vxStandalonePanel, #margDc221Panel, #margDc221Mini,
+        #rtt-panel, #rtt-settings-panel, #tmLootPanel,
+        #vickness-lootbar, #vxLootlogPanel, #lootlog-panel,
+        .vxLootlogPanel, .vxLootlogWindow,
+        [id*="lootlog" i], [class*="lootlog" i] {
+            background-color: var(--vx-bg) !important;
+            color: var(--vx-text) !important;
+            border-color: var(--vx-gold) !important;
+        }
+
+        #vxStandaloneHeader, #margDc221Header, #rtt-head,
+        #tmLootHeader, #vxLootlogHeader,
+        [id*="lootlog" i] [class*="header" i],
+        [class*="lootlog" i] [class*="header" i] {
+            background: var(--vx-bg-soft) !important;
+            color: var(--vx-gold-light) !important;
+            border-color: var(--vx-gold) !important;
+        }
+
+        #margDc221Body, #margDc221Status, #rtt-body,
+        #tmLootBody, #tmTabLoot, #vxSettingsToolbar,
+        .vxLootlogInfo, #tmLootPanel .tmRarityRow,
+        #tmLootPanel .tmSettingLine {
+            background-color: var(--vx-bg-row) !important;
+            color: var(--vx-text) !important;
+            border-color: #5f4b20 !important;
+        }
+
+        #vxStandalonePanel button, #margDc221Panel button,
+        #rtt-panel button, #rtt-settings-panel button,
+        #tmLootPanel button, #vxSettingsToolbar button,
+        .vxLootlogActions button, #vickness-lootbar button,
+        [id*="lootlog" i] button, [class*="lootlog" i] button {
+            background: #17140c !important;
+            color: var(--vx-gold-light) !important;
+            border: 1px solid #806321 !important;
+        }
+
+        #vxStandalonePanel button:hover, #margDc221Panel button:hover,
+        #rtt-panel button:hover, #rtt-settings-panel button:hover,
+        #tmLootPanel button:hover, #vxSettingsToolbar button:hover,
+        .vxLootlogActions button:hover, #vickness-lootbar button:hover,
+        [id*="lootlog" i] button:hover, [class*="lootlog" i] button:hover {
+            background: var(--vx-bg-hover) !important;
+            color: #fff0b3 !important;
+            border-color: var(--vx-gold) !important;
+        }
+
+        #vxStandalonePanel input:not([type="checkbox"]):not([type="range"]):not([type="color"]),
+        #vxStandalonePanel select, #margDc221Panel input,
+        #rtt-panel input, #rtt-settings-panel input,
+        #tmLootPanel select,
+        #tmLootPanel input:not([type="checkbox"]):not([type="range"]):not([type="color"]),
+        [id*="lootlog" i] input, [id*="lootlog" i] select,
+        [class*="lootlog" i] input, [class*="lootlog" i] select {
+            background: #101010 !important;
+            color: var(--vx-text) !important;
+            border-color: #6d5a20 !important;
+        }
+
+        #rtt-panel table, #rtt-panel thead, #rtt-panel tbody,
+        #rtt-panel tr, #rtt-panel th, #rtt-panel td {
+            background-color: var(--vx-bg) !important;
+            color: var(--vx-text) !important;
+            border-color: #806321 !important;
+        }
+        #rtt-panel th { background: #211b0b !important; color: var(--vx-gold-light) !important; }
+        #rtt-panel tbody tr:nth-child(even) td { background: #18150d !important; }
+
+        #vxLootlogState { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+
+        /* Celowo nie stylujemy okien samej gry Margonem:
+           czat, mapa, grupa, ekwipunek i pozostałe okna zachowują oryginalny wygląd. */
+
+        /* Złote etykiety Vickness */
+        #vxStandaloneBrand, #vxCurrentSetting,
+        .vxStandaloneName, .vxOpenSettings, .vxNavBtn,
+        #margDc221Title, #tmLootPanel .tmBrandText,
+        #tmLootPanel .tmRarityName {
+            color: var(--vx-gold-light) !important;
+        }
+
+        #margDc221Status.good { color: #8fdb8f !important; }
+        #margDc221Status.bad { color: #ff8f8f !important; }
+        #margDc221Status.gold { color: var(--vx-gold-light) !important; }
+
+        .vxToggle span { background: #211b0b !important; border-color: #806321 !important; }
+        .vxToggle input:checked + span { background: #6b5415 !important; border-color: var(--vx-gold) !important; }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+})();
+
