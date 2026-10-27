@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.20
-// @description  Vickness Addons: Loot Glow, DC Wykrywacz, Lootlog 4.4.7, Titan Tracker Gold, Procent łupu 5.11.0 i The Crew Online 2.4.0 — poprawka integracji API Lootlog
+// @version      1.1.21
+// @description  Vickness Addons: panel przeprojektowany, The Crew Online 2.6.0, Procent łupu 5.11.0 i pozostałe dodatki
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -2477,7 +2477,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.20 — poprawiona obsługa API i połączenia Lootlog
+// VICKNESS ADDON PANEL 1.1.21 — panel centralny, półprzezroczysty i trwałe pozycje
 // =============================================================
 (() => {
   'use strict';
@@ -2485,7 +2485,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   if (window.__vicknessStandaloneManagerStarted) return;
   window.__vicknessStandaloneManagerStarted = true;
 
-  const KEY = 'vickness_addon_panel_layout_v1';
+  const KEY = 'vickness_addon_panel_layout_v2';
   const FLAGS_KEY = 'vickness_addon_enabled_v1';
   const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true });
   try {
@@ -2528,36 +2528,43 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   root.innerHTML = `
   <style>
     #vicknessStandaloneRoot { all:initial; font-family:Arial,sans-serif; }
-    #vxStandalonePanel { position:fixed; z-index:2147483646; left:20px; top:100px; width:260px; max-width:calc(100vw - 16px); max-height:65vh; overflow:hidden; background:#0b0b0b; color:#eee; border:1px solid #c9a227; border-radius:8px; box-shadow:0 8px 26px #000b; font:12px Arial,sans-serif; }
+    #vxStandalonePanel { position:fixed; z-index:2147483646; left:20px; top:20px; display:flex; flex-direction:column; width:min(650px,calc(100vw - 20px)); height:min(80vh,720px); min-height:260px; max-height:calc(100vh - 16px); overflow:hidden; background:rgba(8,8,8,.88); color:#eee; border:1px solid #c9a227; border-radius:8px; box-shadow:0 8px 26px #000b; font:12px Arial,sans-serif; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
     #vxStandalonePanel * { box-sizing:border-box; }
-    #vxStandaloneHeader { position:relative; padding:12px 35px 11px 10px; text-align:center; background:#101010; border-bottom:1px solid #765b20; cursor:move; user-select:none; }
+    #vxStandaloneHeader { position:relative; flex:0 0 auto; padding:12px 35px 11px 10px; text-align:center; background:rgba(16,16,16,.92); border-bottom:1px solid #765b20; cursor:move; user-select:none; }
     #vxStandaloneBrand { color:#dfb943; font-size:16px; font-weight:bold; letter-spacing:2px; }
     #vxStandaloneSubtitle { margin-top:4px; color:#999; font-size:9px; }
-    #vxStandaloneMin { position:absolute; right:7px; top:7px; border:1px solid #806321; border-radius:4px; background:#17140c; color:#dfb943; cursor:pointer; }
+    #vxStandaloneMin { position:absolute; right:7px; top:7px; border:1px solid #806321; border-radius:4px; background:rgba(23,20,12,.9); color:#dfb943; cursor:pointer; }
     .vxView { padding:8px; }
-    .vxStandaloneRow { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:4px 0; padding:6px; border:1px solid #5f4b20; border-radius:5px; background:#141414; }
+    .vxStandaloneRow { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin:0; padding:9px; min-height:112px; border:1px solid rgba(95,75,32,.85); border-radius:5px; background:rgba(20,20,20,.76); }
+    .vxStandaloneRow > div:first-child { flex:1; min-width:0; }
     .vxStandaloneName { color:#e0bd53; font-weight:bold; }
     .vxStandaloneDesc { display:block; margin-top:4px; color:#999; font-size:10px; }
     .vxStandaloneState { margin-top:4px; color:#aaa; font-size:9px; }
-    .vxOpenSettings,.vxNavBtn { margin-top:7px; padding:5px 8px; border:1px solid #806321; border-radius:4px; background:#17140c; color:#dfb943; font-size:10px; cursor:pointer; }
-    .vxOpenSettings:hover,.vxNavBtn:hover { background:#30250b; border-color:#d4af37; color:#ffe28a; }
-    .vxToggle { position:relative; width:42px; height:23px; flex:0 0 42px; }
+    .vxOpenSettings,.vxNavBtn { margin-top:7px; padding:5px 8px; border:1px solid #806321; border-radius:4px; background:rgba(23,20,12,.88); color:#dfb943; font-size:10px; cursor:pointer; }
+    .vxOpenSettings:hover,.vxNavBtn:hover { background:rgba(48,37,11,.92); border-color:#d4af37; color:#ffe28a; }
+    .vxToggle { position:relative; width:42px; height:23px; flex:0 0 42px; margin-top:1px; }
     .vxToggle input { position:absolute; opacity:0; width:1px; height:1px; }
     .vxToggle span { position:absolute; inset:0; border-radius:20px; background:#4b2929; border:1px solid #8b4545; cursor:pointer; transition:.15s; }
     .vxToggle span:before { content:''; position:absolute; left:2px; top:2px; width:17px; height:17px; border-radius:50%; background:#eee; transition:.15s; }
     .vxToggle input:checked + span { background:#315b36; border-color:#69b875; }
     .vxToggle input:checked + span:before { transform:translateX(19px); background:#dfffe2; }
-    #vxStandaloneFooter { padding:7px; text-align:center; border-top:1px solid #3b3018; color:#777; font-size:9px; }
-    #vxSettingsView { display:none; max-height:calc(65vh - 50px); overflow:auto; }
-    #vxSettingsToolbar { display:flex; gap:6px; align-items:center; padding:7px 8px; border-bottom:1px solid #4b3b17; background:#111; }
+    #vxStandaloneFooter { flex:0 0 auto; padding:7px; text-align:center; border-top:1px solid #3b3018; background:rgba(10,10,10,.86); color:#777; font-size:9px; }
+    #vxSettingsView { display:none; flex:1 1 auto; flex-direction:column; min-height:0; max-height:none; overflow:auto; background:rgba(8,8,8,.36); }
+    #vxSettingsToolbar { display:flex; gap:6px; align-items:center; padding:7px 8px; border-bottom:1px solid #4b3b17; background:rgba(17,17,17,.9); }
     #vxSettingsToolbar .vxNavBtn { margin:0; }
     #vxCurrentSetting { color:#e0bd53; font-weight:bold; flex:1; text-align:center; }
     .vxSettingsSlot { min-width:0; padding:7px; }
     .vxSettingsSlot[hidden] { display:none!important; }
-    #vxStandaloneMini { position:fixed; z-index:2147483646; display:none; align-items:center; gap:8px; padding:10px 14px; background:#0b0b0b; color:#dfb943; border:1px solid #c9a227; border-radius:5px; font:bold 12px Arial,sans-serif; cursor:pointer; user-select:none; }
+    #vxStandaloneMini { position:fixed; z-index:2147483646; display:none; align-items:center; gap:8px; padding:10px 14px; background:rgba(11,11,11,.9); color:#dfb943; border:1px solid #c9a227; border-radius:5px; font:bold 12px Arial,sans-serif; cursor:pointer; user-select:none; box-shadow:0 4px 16px #0008; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
     #vxStandaloneMini .diamond { color:#f0c64b; font-size:15px; }
-    /* Widgety dodatków są osadzane wewnątrz okna Vickness zamiast pływać osobno. */
-    #vxHomeView { max-height:calc(65vh - 50px); overflow-y:auto; }
+    /* Widok główny jest przewijany wewnątrz okna; stopka zostaje na dole. */
+    #vxHomeView { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-content:start; gap:6px; flex:1 1 auto; min-height:0; max-height:none; overflow-y:auto; overflow-x:hidden; }
+    #vxHomeView, #vxSettingsView { scrollbar-width:thin; scrollbar-color:rgba(201,162,39,.28) transparent; overscroll-behavior:contain; }
+    #vxHomeView::-webkit-scrollbar, #vxSettingsView::-webkit-scrollbar { width:4px; }
+    #vxHomeView::-webkit-scrollbar-track, #vxSettingsView::-webkit-scrollbar-track { background:transparent; }
+    #vxHomeView::-webkit-scrollbar-thumb, #vxSettingsView::-webkit-scrollbar-thumb { background:rgba(201,162,39,.22); border-radius:8px; }
+    #vxHomeView::-webkit-scrollbar-thumb:hover, #vxSettingsView::-webkit-scrollbar-thumb:hover { background:rgba(201,162,39,.42); }
+    @media (max-width:560px) { #vxStandalonePanel { width:calc(100vw - 12px); height:calc(100vh - 12px); max-height:calc(100vh - 12px); left:6px; top:6px; } #vxHomeView { grid-template-columns:minmax(0,1fr); } .vxStandaloneRow { min-height:0; } }
     #vxSettingsLootChance #mlc513-panel { position:relative!important; left:auto!important; top:auto!important; right:auto!important; bottom:auto!important; width:100%!important; max-width:100%!important; margin:0!important; padding:3px!important; z-index:1!important; box-shadow:none!important; border:0!important; border-radius:0!important; background:transparent!important; display:block!important; }
     #mlc513-panel { display:none!important; }
     #vxSettingsLootChance #mlc513-panel .heading { display:none!important; }
@@ -2571,15 +2578,15 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     #vxSettingsDc #margDc221Panel { position:relative!important; left:auto!important; top:auto!important; right:auto!important; bottom:auto!important; width:100%!important; max-width:100%!important; margin:0!important; z-index:1!important; box-shadow:none!important; }
     #vxSettingsDc #margDc221Header { display:none!important; }
     #vxSettingsDc #margDc221Body { padding:4px!important; }
-    .vxLootlogInfo { padding:8px; color:#b9ad84; font-size:11px; line-height:1.45; border:1px solid #5f4b20; border-radius:5px; background:#111; margin-bottom:8px; }
+    .vxLootlogInfo { padding:8px; color:#b9ad84; font-size:11px; line-height:1.45; border:1px solid #5f4b20; border-radius:5px; background:rgba(17,17,17,.72); margin-bottom:8px; }
     .vxLootlogActions { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
-    .vxLootlogActions button { min-width:0; padding:8px 5px; border:1px solid #806321; border-radius:4px; background:#17140c; color:#dfb943; font-size:10px; cursor:pointer; }
-    .vxLootlogActions button:hover { background:#30250b; border-color:#d4af37; color:#ffe28a; }
+    .vxLootlogActions button { min-width:0; padding:8px 5px; border:1px solid #806321; border-radius:4px; background:rgba(23,20,12,.86); color:#dfb943; font-size:10px; cursor:pointer; }
+    .vxLootlogActions button:hover { background:rgba(48,37,11,.92); border-color:#d4af37; color:#ffe28a; }
     /* Sterowanie belką jest dostępne w panelu Vickness, bez osobnego pływającego menu. */
     #vickness-lootbar .vl-controls { display:none!important; }
   </style>
   <div id="vxStandalonePanel">
-    <div id="vxStandaloneHeader"><div id="vxStandaloneBrand">VICKNESS</div><div id="vxStandaloneSubtitle">PANEL ZARZĄDZANIA DODATKAMI</div><button id="vxStandaloneMin" type="button" title="Minimalizuj">−</button></div>
+    <div id="vxStandaloneHeader"><div id="vxStandaloneBrand">Panel Dodatków</div><div id="vxStandaloneSubtitle">VICKNESS • ZARZĄDZANIE DODATKAMI</div><button id="vxStandaloneMin" type="button" title="Minimalizuj">−</button></div>
     <div id="vxHomeView" class="vxView">
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Loot Glow</span><span class="vxStandaloneDesc">Podświetlanie lootu • kolor i intensywność</span><div class="vxStandaloneState" id="vxLootState"></div><button type="button" class="vxOpenSettings" id="vxLootOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxLootSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">DC Wykrywacz</span><span class="vxStandaloneDesc">Herosi, tytani, grzybki i Discord</span><div class="vxStandaloneState" id="vxDcState"></div><button type="button" class="vxOpenSettings" id="vxDcOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxDcSwitch" type="checkbox"><span></span></label></div>
@@ -2587,7 +2594,6 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Titan Tracker Gold</span><span class="vxStandaloneDesc">Tytani i lista do 15 graczy na wybranych mapach</span><div class="vxStandaloneState" id="vxTitanState"></div><button type="button" class="vxOpenSettings" id="vxTitanOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxTitanSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Procent łupu</span><span class="vxStandaloneDesc">Szansa według profesji i uprawnionych graczy</span><div class="vxStandaloneState" id="vxLootChanceState"></div><button type="button" class="vxOpenSettings" id="vxLootChanceOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxLootChanceSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">The Crew Online</span><span class="vxStandaloneDesc">Lista klanowiczów online z Lootloga</span><div class="vxStandaloneState" id="vxCrewOnlineState"></div><button type="button" class="vxOpenSettings" id="vxCrewOnlineOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxCrewOnlineSwitch" type="checkbox"><span></span></label></div>
-      <div id="vxStandaloneFooter">BLACK &amp; GOLD • ADDON MANAGER</div>
     </div>
     <div id="vxSettingsView">
       <div id="vxSettingsToolbar"><button class="vxNavBtn" id="vxBackHome" type="button">← WSTECZ</button><span id="vxCurrentSetting">USTAWIENIA</span><button class="vxNavBtn" id="vxSwitchAddon" type="button">DRUGI DODATEK →</button></div>
@@ -2619,6 +2625,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         </div>
       </div>
     </div>
+    <div id="vxStandaloneFooter">Addons by Vickness</div>
   </div>
   <button id="vxStandaloneMini" type="button" title="Otwórz panel"><span class="diamond">◆</span><span>Addons</span></button>`;
 
@@ -2675,7 +2682,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     enabled[which] = true;
     saveFlags();
     root.querySelector('#vxHomeView').style.display = 'none';
-    root.querySelector('#vxSettingsView').style.display = 'block';
+    root.querySelector('#vxSettingsView').style.display = 'flex';
     root.querySelector('#vxSettingsLoot').hidden = which !== 'loot';
     root.querySelector('#vxSettingsDc').hidden = which !== 'dc';
     root.querySelector('#vxSettingsLootlog').hidden = which !== 'lootlog';
@@ -2692,21 +2699,29 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   }
   function backHome() {
     root.querySelector('#vxSettingsView').style.display = 'none';
-    root.querySelector('#vxHomeView').style.display = 'block';
+    root.querySelector('#vxHomeView').style.display = 'grid';
   }
   function showMini() {
     const panel = root.querySelector('#vxStandalonePanel');
     const mini = root.querySelector('#vxStandaloneMini');
-    const r = panel.getBoundingClientRect();
-    mini.style.left = Math.max(0, Math.min(r.left, innerWidth - mini.offsetWidth)) + 'px';
-    mini.style.top = Math.max(0, Math.min(r.top, innerHeight - mini.offsetHeight)) + 'px';
-    panel.style.display = 'none'; mini.style.display = 'flex';
-    layout.minimized = true; savePos(mini, 'mini'); saveLayout();
+    if (getComputedStyle(panel).display !== 'none') savePos(panel, 'main');
+    // Pozycja skrótu Addons jest niezależna od położenia rozwiniętego okna.
+    // Zapis pozycji mini jest robiony przy starcie i po przeciągnięciu skrótu.
+    panel.style.display = 'none';
+    mini.style.display = 'flex';
+    layout.minimized = true;
+    saveLayout();
   }
   function restore() {
-    root.querySelector('#vxStandalonePanel').style.display = 'block';
-    root.querySelector('#vxStandaloneMini').style.display = 'none';
-    layout.minimized = false; saveLayout(); applyToggles();
+    const panel = root.querySelector('#vxStandalonePanel');
+    const mini = root.querySelector('#vxStandaloneMini');
+    panel.style.display = 'flex';
+    mini.style.display = 'none';
+    // Pozycja rozwiniętego panelu jest zapisywana niezależnie od pozycji skrótu.
+    clamp(panel, 'main', Math.max(8, Math.round((innerWidth - panel.offsetWidth) / 2)), Math.max(8, Math.round((innerHeight - panel.offsetHeight) / 2)));
+    layout.minimized = false;
+    saveLayout();
+    applyToggles();
   }
   function boot() {
     if (!document.body) { setTimeout(boot, 50); return; }
@@ -2714,7 +2729,21 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     const panel = root.querySelector('#vxStandalonePanel');
     const mini = root.querySelector('#vxStandaloneMini');
     const header = root.querySelector('#vxStandaloneHeader');
-    clamp(panel, 'main'); clamp(mini, 'mini');
+    mini.style.display = 'flex';
+    clamp(panel, 'main', Math.max(8, Math.round((innerWidth - panel.offsetWidth) / 2)), Math.max(8, Math.round((innerHeight - panel.offsetHeight) / 2)));
+    clamp(mini, 'mini', 20, 100);
+    if (!layout.main) savePos(panel, 'main');
+    if (!layout.mini) savePos(mini, 'mini');
+    root.addEventListener('wheel', event => {
+      const home = root.querySelector('#vxHomeView');
+      const settings = root.querySelector('#vxSettingsView');
+      const activeView = settings && settings.style.display !== 'none' ? settings : home;
+      if (!activeView || activeView.scrollHeight <= activeView.clientHeight) return;
+      if (event.target.closest('#vxStandaloneHeader, #vxStandaloneFooter')) {
+        event.preventDefault();
+        activeView.scrollTop += event.deltaY;
+      }
+    }, { passive: false });
 
     root.querySelector('#vxLootSwitch').addEventListener('change', e => { enabled.loot = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxDcSwitch').addEventListener('change', e => { enabled.dc = e.target.checked; saveFlags(); applyToggles(); });
@@ -2800,7 +2829,17 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     }
 
     setInterval(applyToggles, 500);
-    window.addEventListener('resize', () => { clamp(panel,'main'); clamp(mini,'mini'); savePos(panel,'main'); savePos(mini,'mini'); });
+    window.addEventListener('resize', () => {
+      // Nie zapisuj pozycji elementu ukrytego (getBoundingClientRect zwróci wtedy 0,0).
+      if (getComputedStyle(panel).display !== 'none') {
+        clamp(panel, 'main', Math.max(8, Math.round((innerWidth - panel.offsetWidth) / 2)), Math.max(8, Math.round((innerHeight - panel.offsetHeight) / 2)));
+        savePos(panel, 'main');
+      }
+      if (getComputedStyle(mini).display !== 'none') {
+        clamp(mini, 'mini');
+        savePos(mini, 'mini');
+      }
+    });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once:true }); else boot();
 })();
@@ -5056,7 +5095,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
  })();
 
 // =============================================================
-// THE CREW ONLINE 2.4.0 — widget zarządzany z panelu Vickness
+// THE CREW ONLINE 2.6.0 — widget z załącznika, zintegrowany z panelem Vickness
 // =============================================================
 (() => {
    'use strict';
@@ -5108,7 +5147,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        box-sizing: border-box;
        min-width: 270px;
        min-height: 42px;
-       background: #101010;
+       background: rgba(12,12,12,.91);
        color: #eee;
        border: 2px solid #d7ad52;
        border-radius: 5px;
@@ -5128,7 +5167,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        gap: 5px;
        min-height: 35px;
        padding: 5px 7px;
-       background: #211b10;
+       background: rgba(33,27,16,.94);
        color: #e7c36e;
        border-bottom: 1px solid #80652e;
        cursor: move;
@@ -5177,27 +5216,27 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        overflow-y: auto;
        overflow-x: hidden;
        scrollbar-width: thin;
-       scrollbar-color: #80652e #101010;
+       scrollbar-color: rgba(128,101,46,.35) transparent;
        overscroll-behavior: contain;
        scrollbar-gutter: stable;
      }
 
      /* Chrome i Edge */
      #tc-list::-webkit-scrollbar {
-       width: 5px;
+       width: 4px;
      }
 
      #tc-list::-webkit-scrollbar-track {
-       background: #101010;
+       background: transparent;
      }
 
      #tc-list::-webkit-scrollbar-thumb {
-       background: #80652e;
+       background: rgba(128,101,46,.28);
        border-radius: 8px;
      }
 
      #tc-list::-webkit-scrollbar-thumb:hover {
-       background: #d7ad52;
+       background: rgba(215,173,82,.48);
      }
 
      .tc-player {
@@ -5210,7 +5249,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      }
 
      .tc-player:nth-child(even) {
-       background: #181818;
+       background: rgba(24,24,24,.62);
      }
 
      .tc-name {
@@ -5553,7 +5592,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        row.className = 'tc-player';
 
        const details = make('div');
-       const name = make('div', player.nick);
+       const name = make('div', player.nick + (player.afk ? ' (AFK)' : ''));
        name.className = 'tc-name';
 
        const level = player.level == null
