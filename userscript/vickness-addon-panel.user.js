@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.19
-// @description  Vickness Addons: Loot Glow, DC Wykrywacz, Lootlog 4.4.7, Titan Tracker Gold, Procent łupu 5.11.0 i The Crew Online 2.4.0 — poprawka API Lootlog
+// @version      1.1.20
+// @description  Vickness Addons: Loot Glow, DC Wykrywacz, Lootlog 4.4.7, Titan Tracker Gold, Procent łupu 5.11.0 i The Crew Online 2.4.0 — poprawka integracji API Lootlog
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -2477,7 +2477,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.19 — poprawka API strony dla The Crew Online
+// VICKNESS ADDON PANEL 1.1.20 — poprawiona obsługa API i połączenia Lootlog
 // =============================================================
 (() => {
   'use strict';
@@ -5404,24 +5404,82 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
    });
 
    // Pobieranie listy online z Lootloga.
-   const getPlayers = async () => {
-     // Panel pojawia się od razu; jeśli Lootlog jeszcze się inicjalizuje,
-     // czekamy krótko na API zamiast od razu pokazywać błąd.
-     const waitStarted = Date.now();
-     let api = PAGE.lootlogGameClientApi;
+   // Sprawdzamy zarówno stronę gry (unsafeWindow), jak i kontekst userscriptu.
+   // Dzięki temu moduł działa również wtedy, gdy skrypt jest uruchamiany przez loader.
+   const getLootlogApi = () => {
+     const contexts = [];
+     try { if (typeof unsafeWindow !== 'undefined' && unsafeWindow) contexts.push(unsafeWindow); } catch (_) {}
+     try { if (window) contexts.push(window); } catch (_) {}
+     try { if (document.defaultView) contexts.push(document.defaultView); } catch (_) {}
 
+     for (const context of contexts) {
+       try {
+         const api = context && context.lootlogGameClientApi;
+         if (api && typeof api === 'object') return api;
+       } catch (_) {}
+     }
+     return null;
+   };
+
+   const getSocketState = api => {
+     try {
+       if (api && typeof api.getSocketState === 'function') return api.getSocketState();
+     } catch (_) {}
+     return null;
+   };
+
+   const getPlayers = async () => {
+     const apiDeadline = Date.now() + 30000;
+     let api = getLootlogApi();
+
+     // Najpierw czekamy na publiczne API Lootloga, niezależnie od flagi ready.
      while (
-       (!api?.ready || typeof api.getOnlinePlayers !== 'function') &&
-       Date.now() - waitStarted < 20000 &&
+       (!api || api.apiVersion !== 1 || typeof api.getOnlinePlayers !== 'function') &&
+       Date.now() < apiDeadline &&
        !(window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.crewOnline)
      ) {
        await new Promise(resolve => setTimeout(resolve, 250));
-       api = PAGE.lootlogGameClientApi;
+       api = getLootlogApi();
      }
 
      if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.crewOnline) return [];
-     if (!api?.ready || typeof api.getOnlinePlayers !== 'function') {
-       throw new Error('Lootlog Game Client API nie uruchomiło się w ciągu 20 s.');
+     if (!api) {
+       throw new Error('Nie znaleziono API Lootloga na stronie gry. Sprawdź, czy dodatek Lootlog jest włączony i załadowany.');
+     }
+     if (api.apiVersion !== 1 || typeof api.getOnlinePlayers !== 'function') {
+       throw new Error('Wykryto nieobsługiwaną wersję API Lootloga. Odśwież grę i zaktualizuj dodatek Lootlog.');
+     }
+
+     // ready oznacza inicjalizację gry; samo w sobie nie oznacza gotowości połączenia online.
+     const readyDeadline = Date.now() + 30000;
+     while (
+       api.ready !== true && Date.now() < readyDeadline &&
+       !(window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.crewOnline)
+     ) {
+       await new Promise(resolve => setTimeout(resolve, 250));
+       api = getLootlogApi() || api;
+     }
+
+     if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.crewOnline) return [];
+     if (api.ready !== true) {
+       throw new Error('API Lootloga jest dostępne, ale Margonem nie zakończył inicjalizacji. Spróbuj odświeżyć grę.');
+     }
+
+     // Obecność API i ready nie gwarantują połączenia z bramką online.
+     const socketDeadline = Date.now() + 15000;
+     let socket = getSocketState(api);
+     while (
+       socket && (!socket.connected || !socket.joined) && Date.now() < socketDeadline &&
+       !(window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.crewOnline)
+     ) {
+       await new Promise(resolve => setTimeout(resolve, 500));
+       api = getLootlogApi() || api;
+       socket = getSocketState(api);
+     }
+
+     if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.crewOnline) return [];
+     if (socket && (!socket.connected || !socket.joined)) {
+       throw new Error('Lootlog jest załadowany, ale połączenie online nie jest gotowe. Sprawdź połączenie Lootloga i spróbuj ponownie.');
      }
 
      const result = await api.getOnlinePlayers({
@@ -5429,8 +5487,11 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        world: WORLD
      });
 
+     if (result?.status === 'forbidden') {
+       throw new Error(`Lootlog odmówił dostępu do listy online (${result.code || 'FORBIDDEN'}). Sprawdź uprawnienia organizacji The Crew.`);
+     }
      if (result?.status !== 'success' || !result.players) {
-       throw new Error('Lootlog nie zwrócił poprawnej listy graczy.');
+       throw new Error('Lootlog nie zwrócił poprawnej listy graczy. Spróbuj ponownie za chwilę.');
      }
 
      return Object.values(result.players)
