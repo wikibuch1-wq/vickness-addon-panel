@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.18
-// @description  Vickness Addons: Loot Glow, DC Wykrywacz, Lootlog 4.4.7, Titan Tracker Gold, Procent łupu 5.11.0 i The Crew Online 2.4.0
+// @version      1.1.19
+// @description  Vickness Addons: Loot Glow, DC Wykrywacz, Lootlog 4.4.7, Titan Tracker Gold, Procent łupu 5.11.0 i The Crew Online 2.4.0 — poprawka API Lootlog
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -2477,7 +2477,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.18 — Procent łupu 5.11.0 + The Crew Online 2.4.0
+// VICKNESS ADDON PANEL 1.1.19 — poprawka API strony dla The Crew Online
 // =============================================================
 (() => {
   'use strict';
@@ -5061,6 +5061,10 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 (() => {
    'use strict';
 
+   // Lootlog Game Client API i mechanizm zaproszeń istnieją w kontekście strony gry.
+   // Ponieważ główny skrypt ma uprawnienia GM_*, trzeba czytać je przez unsafeWindow.
+   const PAGE = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+
    if (window.top !== window.self) return;
    if (document.getElementById('tc-online-panel')) return;
 
@@ -5404,7 +5408,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      // Panel pojawia się od razu; jeśli Lootlog jeszcze się inicjalizuje,
      // czekamy krótko na API zamiast od razu pokazywać błąd.
      const waitStarted = Date.now();
-     let api = window.lootlogGameClientApi;
+     let api = PAGE.lootlogGameClientApi;
 
      while (
        (!api?.ready || typeof api.getOnlinePlayers !== 'function') &&
@@ -5412,7 +5416,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        !(window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.crewOnline)
      ) {
        await new Promise(resolve => setTimeout(resolve, 250));
-       api = window.lootlogGameClientApi;
+       api = PAGE.lootlogGameClientApi;
      }
 
      if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.crewOnline) return [];
@@ -5527,13 +5531,13 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
            inviteBtn.textContent = '…';
 
            try {
-             if (typeof window._g !== 'function') {
+             if (typeof PAGE._g !== 'function') {
                throw new Error(
                  'Mechanizm zaproszeń nie jest dostępny.'
                );
              }
 
-             window._g(
+             PAGE._g(
                `party&a=inv&id=${encodeURIComponent(player.id)}`
              );
 
