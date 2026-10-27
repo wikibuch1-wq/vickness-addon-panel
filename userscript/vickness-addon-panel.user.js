@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.24
-// @description  Vickness Addons: panel zmienny rozmiarem z proporcjonalną czcionką, The Crew Online 2.7.0, Procent łupu 5.11.0
+// @version      1.1.25
+// @description  Vickness Addons: DC Wykrywacz w osobnym oknie; The Crew Online 2.7.0; Procent łupu 5.11.0
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -428,6 +428,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         if (Number.isFinite(rect.top)) state.panelY = Math.round(rect.top);
 
         state.minimized = true;
+        panel.dataset.vicknessPopupOpen = '0';
+        mini.dataset.vicknessPopupMini = '1';
 
         panel.style.display = 'none';
         mini.style.display = 'flex';
@@ -442,6 +444,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         if (!panel || !mini) return;
 
         state.minimized = false;
+        panel.dataset.vicknessPopupOpen = '1';
+        mini.dataset.vicknessPopupMini = '0';
 
         mini.style.display = 'none';
         panel.style.display = 'block';
@@ -451,6 +455,10 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
         saveState();
     }
+
+    // Publiczne metody wyłącznie do sterowania osobnym oknem DC przez panel Vickness.
+    window.__vicknessExpandDCPanel = expand;
+    window.__vicknessMinimizeDCPanel = minimize;
 
     function setupDrag(handle, element, target) {
         if (!handle || !element) return;
@@ -890,13 +898,12 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
         currentDetection = record;
 
-        // Po poprawnym rozpoznaniu NPC otwórz widok DC w panelu Vickness.
-        // Nie pokazuj osobnego, pływającego widgetu DC.
-        if (typeof window.__vicknessOpenAddonSettings === 'function') {
-            window.__vicknessOpenAddonSettings('dc');
+        // Po rozpoznaniu NPC pokaż osobne okno DC, bez otwierania całego panelu Vickness.
+        if (typeof window.__vicknessOpenDCWindow === 'function') {
+            window.__vicknessOpenDCWindow();
         } else {
-            // Zabezpieczenie na wypadek, gdy menedżer dopiero się inicjalizuje.
-            window.__vicknessPendingAddonSettings = 'dc';
+            // Wykrywanie mogło zakończyć się przed startem menedżera Vickness.
+            window.__vicknessPendingOpenDCWindow = true;
         }
 
         setStatus(
@@ -1096,13 +1103,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
             minimize();
         }
 
-        // Zamknięcie okna Wykrywacza minimalizuje cały panel Vickness.
-        if (typeof window.__vicknessMinimizeStandalonePanel === 'function') {
-            window.__vicknessMinimizeStandalonePanel();
-        } else {
-            // Zabezpieczenie, jeśli manager nie zdążył jeszcze się uruchomić.
-            window.__vicknessPendingMinimizeStandalonePanel = true;
-        }
+        // Po zniknięciu wykrytego wpisu minimalizujemy tylko okno DC.
+        // Główny panel Vickness pozostaje w dotychczasowym stanie.
 
         if (statusElement) {
             setStatus(
@@ -2477,7 +2479,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.23 — mniejszy panel, zmienny rozmiar i skalowanie czcionki
+// VICKNESS ADDON PANEL 1.1.25 — DC Wykrywacz otwierany w osobnym oknie
 // =============================================================
 (() => {
   'use strict';
@@ -2512,6 +2514,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   const PANEL_BASE_HEIGHT = 420;
   let currentPanelScale = 1;
   const baseFontSizes = new WeakMap();
+  // Po wykryciu NPC panel DC odpinamy z widoku ustawień i pokazujemy jako samodzielne okno.
+  let dcWindowDetached = false;
 
   function saveFlags() { try { localStorage.setItem(FLAGS_KEY, JSON.stringify(enabled)); } catch (_) {} }
   function saveLayout() { try { localStorage.setItem(KEY, JSON.stringify(layout)); } catch (_) {} }
@@ -2643,7 +2647,10 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     <div id="vxSettingsView">
       <div id="vxSettingsToolbar"><button class="vxNavBtn" id="vxBackHome" type="button">← WSTECZ</button><span id="vxCurrentSetting">USTAWIENIA</span><button class="vxNavBtn" id="vxSwitchAddon" type="button">DRUGI DODATEK →</button></div>
       <div id="vxSettingsLoot" class="vxSettingsSlot" hidden></div>
-      <div id="vxSettingsDc" class="vxSettingsSlot" hidden></div>
+      <div id="vxSettingsDc" class="vxSettingsSlot" hidden>
+        <div class="vxLootlogInfo">DC Wykrywacz otwiera się w osobnym oknie po wykryciu herosa, tytana lub grzybka. Okno możesz przesuwać i minimalizować niezależnie od panelu Vickness.</div>
+        <div class="vxLootlogActions"><button type="button" id="vxDcShowWindow">POKAŻ OSOBNE OKNO DC</button></div>
+      </div>
       <div id="vxSettingsLootlog" class="vxSettingsSlot" hidden>
         <div class="vxLootlogInfo">Belka pokazuje ostatnie zdobycze z Lootlog TheCrew. Sama belka pozostaje na ekranie gry, a jej obsługę znajdziesz tutaj. Przeciągnij belkę, aby zmienić jej położenie.</div>
         <div class="vxLootlogActions">
@@ -2682,15 +2689,24 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     const lootSlot = root.querySelector('#vxSettingsLoot');
     const dcSlot = root.querySelector('#vxSettingsDc');
     if (loot && lootSlot && !lootSlot.contains(loot)) lootSlot.appendChild(loot);
-    if (dc && dcSlot && !dcSlot.contains(dc)) dcSlot.appendChild(dc);
-    if (dcMini) dcMini.style.setProperty('display', 'none', 'important');
+    if (dc && dcSlot && !dcWindowDetached && !dcSlot.contains(dc)) dcSlot.appendChild(dc);
     if (loot && lootSlot.contains(loot)) {
       loot.style.setProperty('display', enabled.loot ? 'block' : 'none', 'important');
       loot.classList.remove('tmCollapsed');
       const body = loot.querySelector('#tmLootBody');
       if (body) body.style.setProperty('display', 'block', 'important');
     }
-    if (dc && dcSlot.contains(dc)) dc.style.setProperty('display', enabled.dc ? 'block' : 'none', 'important');
+    if (dcWindowDetached && dc) {
+      // Okno DC jest poza głównym panelu; nie dokuj go ponownie podczas odświeżania przełączników.
+      if (dc.parentElement !== document.body) document.body.appendChild(dc);
+      if (dcMini && dcMini.parentElement !== document.body) document.body.appendChild(dcMini);
+      const popupOpen = dc.dataset.vicknessPopupOpen !== '0';
+      dc.style.setProperty('display', enabled.dc && popupOpen ? 'block' : 'none', 'important');
+      if (dcMini) dcMini.style.setProperty('display', enabled.dc && !popupOpen ? 'flex' : 'none', 'important');
+    } else {
+      if (dcMini) dcMini.style.setProperty('display', 'none', 'important');
+      if (dc && dcSlot.contains(dc)) dc.style.setProperty('display', enabled.dc ? 'block' : 'none', 'important');
+    }
     const lootbar = getPanel('vickness-lootbar');
     if (lootbar) lootbar.style.setProperty('display', enabled.lootlog ? 'flex' : 'none', 'important');
     const titanPanel = getPanel('rtt-panel');
@@ -2707,6 +2723,41 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     if (!enabled.lootlog) document.querySelectorAll('.vl-tip').forEach(tip => { tip.style.display = 'none'; });
     if (typeof window.__vicknessApplyCrewOnline === 'function') window.__vicknessApplyCrewOnline();
   }
+
+  function openDCWindow() {
+    const dc = getPanel('margDc221Panel');
+    const dcMini = getPanel('margDc221Mini');
+    if (!dc || !dcMini) {
+      window.__vicknessPendingOpenDCWindow = true;
+      return;
+    }
+
+    dcWindowDetached = true;
+    enabled.dc = true;
+    saveFlags();
+
+    // Odłącz istniejące elementy (bez klonowania), aby zachować jeden stan webhooka i wykrywania.
+    document.body.appendChild(dc);
+    document.body.appendChild(dcMini);
+    dc.style.removeProperty('display');
+    dcMini.style.removeProperty('display');
+
+    if (typeof window.__vicknessExpandDCPanel === 'function') {
+      window.__vicknessExpandDCPanel();
+    } else {
+      dc.dataset.vicknessPopupOpen = '1';
+      dcMini.dataset.vicknessPopupMini = '0';
+      dc.style.setProperty('display', 'block');
+      dcMini.style.setProperty('display', 'none');
+    }
+
+    // Utrzymaj okno w granicach widocznego ekranu.
+    const rect = dc.getBoundingClientRect();
+    dc.style.left = Math.max(0, Math.min(rect.left, innerWidth - dc.offsetWidth)) + 'px';
+    dc.style.top = Math.max(0, Math.min(rect.top, innerHeight - dc.offsetHeight)) + 'px';
+    applyToggles();
+  }
+
   function applyToggles() {
     root.querySelector('#vxLootSwitch').checked = !!enabled.loot;
     root.querySelector('#vxDcSwitch').checked = !!enabled.dc;
@@ -2813,7 +2864,11 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     root.querySelector('#vxLootChanceSwitch').addEventListener('change', e => { enabled.lootChance = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxCrewOnlineSwitch').addEventListener('change', e => { enabled.crewOnline = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxLootOpen').addEventListener('click', () => openSettings('loot'));
-    root.querySelector('#vxDcOpen').addEventListener('click', () => openSettings('dc'));
+    root.querySelector('#vxDcOpen').addEventListener('click', () => {
+      if (dcWindowDetached) openDCWindow();
+      else openSettings('dc');
+    });
+    root.querySelector('#vxDcShowWindow').addEventListener('click', openDCWindow);
     root.querySelector('#vxLootlogOpen').addEventListener('click', () => openSettings('lootlog'));
     root.querySelector('#vxTitanOpen').addEventListener('click', () => openSettings('titan'));
     root.querySelector('#vxLootChanceOpen').addEventListener('click', () => openSettings('lootChance'));
@@ -2867,25 +2922,18 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     layout.minimized = true;
     saveLayout();
 
-    // Interfejs dla dodatku DC: przy wykryciu moba pokaż główny panel
-    // Vickness i od razu przejdź do ustawień/obsługi DC.
+    // DC działa niezależnie od głównego panelu: wykrycie otwiera własne okno.
+    window.__vicknessOpenDCWindow = openDCWindow;
+    // Zachowaj dotychczasową nawigację ustawień, ale nie używaj jej przy samym wykryciu.
     window.__vicknessOpenAddonSettings = function(which) {
       restore();
       openSettings(which === 'loot' ? 'loot' : 'dc');
     };
 
-    // Zamknięcie okna wykrywania minimalizuje cały panel Vickness.
-    window.__vicknessMinimizeStandalonePanel = showMini;
-    if (window.__vicknessPendingMinimizeStandalonePanel) {
-      window.__vicknessPendingMinimizeStandalonePanel = false;
-      showMini();
-    }
-
-    // Jeśli mob został wykryty zanim panel menedżera się uruchomił, obsłuż to teraz.
-    if (window.__vicknessPendingAddonSettings) {
-      const pending = window.__vicknessPendingAddonSettings;
-      window.__vicknessPendingAddonSettings = null;
-      window.__vicknessOpenAddonSettings(pending);
+    // Obsłuż wykrycie, które nastąpiło przed uruchomieniem menedżera Vickness.
+    if (window.__vicknessPendingOpenDCWindow) {
+      window.__vicknessPendingOpenDCWindow = false;
+      openDCWindow();
     }
 
     setInterval(applyToggles, 500);
