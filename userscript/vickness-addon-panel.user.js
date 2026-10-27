@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.22
-// @description  Vickness Addons: panel przeprojektowany, The Crew Online 2.6.0, Procent łupu 5.11.0 i pozostałe dodatki
+// @version      1.1.24
+// @description  Vickness Addons: panel zmienny rozmiarem z proporcjonalną czcionką, The Crew Online 2.7.0, Procent łupu 5.11.0
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -2477,7 +2477,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.22 — panel dopasowany do zawartości, bez podtytułu
+// VICKNESS ADDON PANEL 1.1.23 — mniejszy panel, zmienny rozmiar i skalowanie czcionki
 // =============================================================
 (() => {
   'use strict';
@@ -2508,10 +2508,50 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   let layout = {};
   try { layout = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (_) {}
 
+  const PANEL_BASE_WIDTH = 520;
+  const PANEL_BASE_HEIGHT = 420;
+  let currentPanelScale = 1;
+  const baseFontSizes = new WeakMap();
+
   function saveFlags() { try { localStorage.setItem(FLAGS_KEY, JSON.stringify(enabled)); } catch (_) {} }
   function saveLayout() { try { localStorage.setItem(KEY, JSON.stringify(layout)); } catch (_) {} }
+
+  // Zmiana rozmiaru okna skaluje proporcjonalnie tekst i odstępy wizualne;
+  // bazowe rozmiary zapisywane są tylko raz, aby wielokrotne przeciąganie
+  // uchwytu nie kumulowało błędu skalowania.
+  function applyPanelScale(el) {
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const raw = Math.sqrt((rect.width / PANEL_BASE_WIDTH) * (rect.height / PANEL_BASE_HEIGHT));
+    const scale = Math.max(0.72, Math.min(1.28, raw));
+    const nodes = [el, ...el.querySelectorAll('*')];
+    for (const node of nodes) {
+      let base = baseFontSizes.get(node);
+      if (!base) {
+        const computed = parseFloat(getComputedStyle(node).fontSize) || 12;
+        base = computed / currentPanelScale;
+        baseFontSizes.set(node, base);
+      }
+      node.style.setProperty('font-size', `${Math.max(7, base * scale).toFixed(2)}px`, 'important');
+    }
+    currentPanelScale = scale;
+    const home = el.querySelector('#vxHomeView');
+    if (home) home.classList.toggle('vxNarrow', rect.width < 470);
+  }
+
   function clamp(el, key, fx = 20, fy = 100) {
     const pos = layout[key] || {};
+    if (key === 'main') {
+      const maxW = Math.max(1, innerWidth - 12);
+      const maxH = Math.max(1, innerHeight - 12);
+      const minW = Math.min(390, maxW);
+      const minH = Math.min(300, maxH);
+      const savedW = Number(pos.width) > 0 ? Number(pos.width) : Math.min(PANEL_BASE_WIDTH, maxW);
+      const savedH = Number(pos.height) > 0 ? Number(pos.height) : Math.min(PANEL_BASE_HEIGHT, maxH);
+      el.style.width = Math.max(minW, Math.min(savedW, maxW)) + 'px';
+      el.style.height = Math.max(minH, Math.min(savedH, maxH)) + 'px';
+    }
     const x = Number.isFinite(Number(pos.left)) ? Number(pos.left) : fx;
     const y = Number.isFinite(Number(pos.top)) ? Number(pos.top) : fy;
     el.style.left = Math.max(0, Math.min(x, innerWidth - el.offsetWidth)) + 'px';
@@ -2519,7 +2559,12 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   }
   function savePos(el, key) {
     const r = el.getBoundingClientRect();
-    layout[key] = { left: Math.round(r.left), top: Math.round(r.top) };
+    const prior = layout[key] || {};
+    layout[key] = { ...prior, left: Math.round(r.left), top: Math.round(r.top) };
+    if (key === 'main') {
+      layout[key].width = Math.round(r.width);
+      layout[key].height = Math.round(r.height);
+    }
     saveLayout();
   }
 
@@ -2528,13 +2573,13 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   root.innerHTML = `
   <style>
     #vicknessStandaloneRoot { all:initial; font-family:Arial,sans-serif; }
-    #vxStandalonePanel { position:fixed; z-index:2147483646; left:20px; top:20px; display:flex; flex-direction:column; width:min(650px,calc(100vw - 20px)); height:auto; min-height:0; max-height:calc(100vh - 16px); overflow:hidden; background:rgba(8,8,8,.88); color:#eee; border:1px solid #c9a227; border-radius:8px; box-shadow:0 8px 26px #000b; font:12px Arial,sans-serif; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+    #vxStandalonePanel { position:fixed; z-index:2147483646; left:20px; top:20px; display:flex; flex-direction:column; width:min(520px,calc(100vw - 20px)); height:min(420px,calc(100vh - 16px)); min-width:390px; min-height:300px; max-width:calc(100vw - 12px); max-height:calc(100vh - 12px); resize:both; overflow:hidden; background:rgba(8,8,8,.88); color:#eee; border:1px solid #c9a227; border-radius:8px; box-shadow:0 8px 26px #000b; font:12px Arial,sans-serif; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
     #vxStandalonePanel * { box-sizing:border-box; }
-    #vxStandaloneHeader { position:relative; flex:0 0 auto; padding:12px 35px 11px 10px; text-align:center; background:rgba(16,16,16,.92); border-bottom:1px solid #765b20; cursor:move; user-select:none; }
+    #vxStandaloneHeader { position:relative; flex:0 0 auto; padding:9px 35px 8px 10px; text-align:center; background:rgba(16,16,16,.92); border-bottom:1px solid #765b20; cursor:move; user-select:none; }
     #vxStandaloneBrand { color:#dfb943; font-size:16px; font-weight:bold; letter-spacing:2px; }
     #vxStandaloneMin { position:absolute; right:7px; top:7px; border:1px solid #806321; border-radius:4px; background:rgba(23,20,12,.9); color:#dfb943; cursor:pointer; }
     .vxView { padding:8px; }
-    .vxStandaloneRow { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin:0; padding:9px; min-height:112px; border:1px solid rgba(95,75,32,.85); border-radius:5px; background:rgba(20,20,20,.76); }
+    .vxStandaloneRow { display:flex; align-items:flex-start; justify-content:space-between; gap:7px; margin:0; padding:7px; min-height:96px; border:1px solid rgba(95,75,32,.85); border-radius:5px; background:rgba(20,20,20,.76); }
     .vxStandaloneRow > div:first-child { flex:1; min-width:0; }
     .vxStandaloneName { color:#e0bd53; font-weight:bold; }
     .vxStandaloneDesc { display:block; margin-top:4px; color:#999; font-size:10px; }
@@ -2548,7 +2593,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     .vxToggle input:checked + span { background:#315b36; border-color:#69b875; }
     .vxToggle input:checked + span:before { transform:translateX(19px); background:#dfffe2; }
     #vxStandaloneFooter { flex:0 0 auto; padding:7px; text-align:center; border-top:1px solid #3b3018; background:rgba(10,10,10,.86); color:#777; font-size:9px; }
-    #vxSettingsView { display:none; flex:0 1 auto; flex-direction:column; min-height:0; max-height:calc(100vh - 82px); overflow:auto; background:rgba(8,8,8,.36); }
+    #vxSettingsView { display:none; flex:1 1 0%; flex-direction:column; min-height:0; max-height:none; overflow:auto; background:rgba(8,8,8,.36); }
     #vxSettingsToolbar { display:flex; gap:6px; align-items:center; padding:7px 8px; border-bottom:1px solid #4b3b17; background:rgba(17,17,17,.9); }
     #vxSettingsToolbar .vxNavBtn { margin:0; }
     #vxCurrentSetting { color:#e0bd53; font-weight:bold; flex:1; text-align:center; }
@@ -2557,13 +2602,14 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     #vxStandaloneMini { position:fixed; z-index:2147483646; display:none; align-items:center; gap:8px; padding:10px 14px; background:rgba(11,11,11,.9); color:#dfb943; border:1px solid #c9a227; border-radius:5px; font:bold 12px Arial,sans-serif; cursor:pointer; user-select:none; box-shadow:0 4px 16px #0008; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
     #vxStandaloneMini .diamond { color:#f0c64b; font-size:15px; }
     /* Widok główny jest przewijany wewnątrz okna; stopka zostaje na dole. */
-    #vxHomeView { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-content:start; gap:6px; flex:0 1 auto; height:auto; min-height:0; max-height:calc(100vh - 88px); overflow-y:auto; overflow-x:hidden; }
+    #vxHomeView { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:minmax(96px,1fr); align-content:stretch; gap:5px; padding:6px; flex:1 1 0%; height:0; min-height:0; max-height:none; overflow-y:auto; overflow-x:hidden; }
+    #vxHomeView.vxNarrow { grid-template-columns:minmax(0,1fr); grid-auto-rows:minmax(88px,auto); }
     #vxHomeView, #vxSettingsView { scrollbar-width:thin; scrollbar-color:rgba(201,162,39,.28) transparent; overscroll-behavior:contain; }
     #vxHomeView::-webkit-scrollbar, #vxSettingsView::-webkit-scrollbar { width:4px; }
     #vxHomeView::-webkit-scrollbar-track, #vxSettingsView::-webkit-scrollbar-track { background:transparent; }
     #vxHomeView::-webkit-scrollbar-thumb, #vxSettingsView::-webkit-scrollbar-thumb { background:rgba(201,162,39,.22); border-radius:8px; }
     #vxHomeView::-webkit-scrollbar-thumb:hover, #vxSettingsView::-webkit-scrollbar-thumb:hover { background:rgba(201,162,39,.42); }
-    @media (max-width:560px) { #vxStandalonePanel { width:calc(100vw - 12px); height:auto; max-height:calc(100vh - 12px); left:6px; top:6px; } #vxHomeView { grid-template-columns:minmax(0,1fr); max-height:calc(100vh - 88px); } #vxSettingsView { max-height:calc(100vh - 72px); } .vxStandaloneRow { min-height:0; } }
+    @media (max-width:560px) { #vxStandalonePanel { max-width:calc(100vw - 12px); max-height:calc(100vh - 12px); left:6px; top:6px; } #vxHomeView { grid-template-columns:minmax(0,1fr); grid-auto-rows:minmax(88px,auto); } #vxSettingsView { max-height:none; } .vxStandaloneRow { min-height:0; } }
     #vxSettingsLootChance #mlc513-panel { position:relative!important; left:auto!important; top:auto!important; right:auto!important; bottom:auto!important; width:100%!important; max-width:100%!important; margin:0!important; padding:3px!important; z-index:1!important; box-shadow:none!important; border:0!important; border-radius:0!important; background:transparent!important; display:block!important; }
     #mlc513-panel { display:none!important; }
     #vxSettingsLootChance #mlc513-panel .heading { display:none!important; }
@@ -2718,6 +2764,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     mini.style.display = 'none';
     // Pozycja rozwiniętego panelu jest zapisywana niezależnie od pozycji skrótu.
     clamp(panel, 'main', Math.max(8, Math.round((innerWidth - panel.offsetWidth) / 2)), Math.max(8, Math.round((innerHeight - panel.offsetHeight) / 2)));
+    applyPanelScale(panel);
     layout.minimized = false;
     saveLayout();
     applyToggles();
@@ -2731,8 +2778,20 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     mini.style.display = 'flex';
     clamp(panel, 'main', Math.max(8, Math.round((innerWidth - panel.offsetWidth) / 2)), Math.max(8, Math.round((innerHeight - panel.offsetHeight) / 2)));
     clamp(mini, 'mini', 20, 100);
-    if (!layout.main) savePos(panel, 'main');
+    if (!layout.main || !(Number(layout.main.width) > 0) || !(Number(layout.main.height) > 0)) savePos(panel, 'main');
     if (!layout.mini) savePos(mini, 'mini');
+
+    let panelResizeSaveTimer = null;
+    const panelResizeObserver = new ResizeObserver(() => {
+      if (!panel.isConnected || getComputedStyle(panel).display === 'none') return;
+      applyPanelScale(panel);
+      clearTimeout(panelResizeSaveTimer);
+      panelResizeSaveTimer = setTimeout(() => savePos(panel, 'main'), 220);
+    });
+    panelResizeObserver.observe(panel);
+    // Oczyść podtytuł ze starszych wariantów, jeśli został pozostawiony przez wcześniejszy panel.
+    root.querySelectorAll('#vxStandaloneHeader [data-vickness-subtitle], #vxStandaloneHeader .vxStandaloneSubtitle').forEach(el => el.remove());
+
     root.addEventListener('wheel', event => {
       const home = root.querySelector('#vxHomeView');
       const settings = root.querySelector('#vxSettingsView');
@@ -2799,12 +2858,14 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     draggable(header, panel, 'main', true);
     draggable(mini, mini, 'mini', false);
 
-    // Po każdym odświeżeniu pokaż tylko mały przycisk Addons.
+    // Najpierw osadź wszystkie dodatki i skalibruj ich bazowe czcionki,
+    // a następnie pokaż wyłącznie mały skrót Addons (bez migania panelu).
+    applyToggles();
+    applyPanelScale(panel);
     panel.style.display = 'none';
     mini.style.display = 'flex';
     layout.minimized = true;
     saveLayout();
-    applyToggles();
 
     // Interfejs dla dodatku DC: przy wykryciu moba pokaż główny panel
     // Vickness i od razu przejdź do ustawień/obsługi DC.
@@ -2833,6 +2894,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       if (getComputedStyle(panel).display !== 'none') {
         clamp(panel, 'main', Math.max(8, Math.round((innerWidth - panel.offsetWidth) / 2)), Math.max(8, Math.round((innerHeight - panel.offsetHeight) / 2)));
         savePos(panel, 'main');
+        applyPanelScale(panel);
       }
       if (getComputedStyle(mini).display !== 'none') {
         clamp(mini, 'mini');
@@ -5094,7 +5156,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
  })();
 
 // =============================================================
-// THE CREW ONLINE 2.6.0 — widget z załącznika, zintegrowany z panelem Vickness
+// THE CREW ONLINE 2.7.0 — zaktualizowany moduł z załącznika, zintegrowany z panelem Vickness
 // =============================================================
 (() => {
    'use strict';
@@ -5251,24 +5313,42 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        background: rgba(24,24,24,.62);
      }
 
+     /* Wersja 2.7.0: osoby z aktualnej drużyny są oznaczone turkusem. */
+     .tc-player.tc-in-group {
+       background: rgba(16,43,43,.82) !important;
+       box-shadow: inset 3px 0 0 #35d6c8;
+     }
+
+     .tc-player.tc-in-group .tc-name {
+       color: #55e7dc;
+     }
+
      .tc-name {
        color: #f3d48a;
        font-weight: bold;
        overflow-wrap: anywhere;
      }
 
+     #tc-online-panel .tc-level {
+       color: #d7ad52;
+       font-weight: bold;
+     }
+
      .tc-info {
-       margin-top: 3px;
+       margin-top: 2px;
        color: #bbb;
-       line-height: 1.5;
+       line-height: 1.3;
        overflow-wrap: anywhere;
        white-space: pre-line;
      }
 
      .tc-invite {
-       min-width: 28px;
-       min-height: 28px;
-       font-size: 17px;
+       min-width: 23px;
+       min-height: 23px;
+       width: 23px;
+       height: 23px;
+       padding: 1px;
+       font-size: 14px;
        font-weight: bold;
      }
 
@@ -5552,6 +5632,15 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
          const mapX = Number(location.x);
          const mapY = Number(location.y);
 
+         // Nowość z The Crew Online 2.7.0: wyróżnij osoby z naszej drużyny.
+         // API Engine musi być czytane z kontekstu strony Margonem.
+         let isInGroup = false;
+         try {
+           const whoIsHere = PAGE.Engine?.whoIsHere?.getList?.() || {};
+           const localEntry = whoIsHere[characterId] || whoIsHere[Number(characterId)];
+           isInGroup = localEntry?.relation === 'group';
+         } catch (_) {}
+
          return {
            id: characterId,
            nick: player.name || 'Nieznany gracz',
@@ -5562,6 +5651,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
            map: location.map || record.mapName || '',
            x: location.x != null && Number.isFinite(mapX) ? mapX : null,
            y: location.y != null && Number.isFinite(mapY) ? mapY : null,
+           isInGroup,
            afk: record.isAfk === true
          };
        })
@@ -5588,7 +5678,9 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
      for (const player of players) {
        const row = make('div');
-       row.className = 'tc-player';
+       row.className = player.isInGroup
+         ? 'tc-player tc-in-group'
+         : 'tc-player';
 
        const details = make('div');
        const name = make('div', player.nick + (player.afk ? ' (AFK)' : ''));
@@ -5606,15 +5698,22 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
            ? `${player.x}, ${player.y}`
            : 'brak danych';
 
-       const info = make(
-         'div',
-         `Poziom: ${level} | Profesja: ${profession}\n` +
-         `Mapa: ${map}\n` +
-         `Współrzędne: ${coords}\n` +
-         `Status: online${player.afk ? ' (AFK)' : ''}`
+       const info = make('div');
+       info.className = 'tc-info';
+
+       const levelLine = make('div');
+       const levelValue = make('span', String(level));
+       levelValue.className = 'tc-level';
+       levelLine.append(
+         document.createTextNode('Poziom: '),
+         levelValue,
+         document.createTextNode(` | Profesja: ${profession}`)
        );
 
-       info.className = 'tc-info';
+       const mapLine = make('div', `Mapa: ${map}`);
+       const coordsLine = make('div', `Współrzędne: ${coords}`);
+
+       info.append(levelLine, mapLine, coordsLine);
        details.append(name, info);
 
        const inviteBtn = make('button', '+');
