@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.21
+// @version      1.1.22
 // @description  Vickness Addons: panel przeprojektowany, The Crew Online 2.6.0, Procent łupu 5.11.0 i pozostałe dodatki
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
@@ -2477,7 +2477,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.21 — panel centralny, półprzezroczysty i trwałe pozycje
+// VICKNESS ADDON PANEL 1.1.22 — panel dopasowany do zawartości, bez podtytułu
 // =============================================================
 (() => {
   'use strict';
@@ -2528,11 +2528,10 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   root.innerHTML = `
   <style>
     #vicknessStandaloneRoot { all:initial; font-family:Arial,sans-serif; }
-    #vxStandalonePanel { position:fixed; z-index:2147483646; left:20px; top:20px; display:flex; flex-direction:column; width:min(650px,calc(100vw - 20px)); height:min(80vh,720px); min-height:260px; max-height:calc(100vh - 16px); overflow:hidden; background:rgba(8,8,8,.88); color:#eee; border:1px solid #c9a227; border-radius:8px; box-shadow:0 8px 26px #000b; font:12px Arial,sans-serif; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+    #vxStandalonePanel { position:fixed; z-index:2147483646; left:20px; top:20px; display:flex; flex-direction:column; width:min(650px,calc(100vw - 20px)); height:auto; min-height:0; max-height:calc(100vh - 16px); overflow:hidden; background:rgba(8,8,8,.88); color:#eee; border:1px solid #c9a227; border-radius:8px; box-shadow:0 8px 26px #000b; font:12px Arial,sans-serif; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
     #vxStandalonePanel * { box-sizing:border-box; }
     #vxStandaloneHeader { position:relative; flex:0 0 auto; padding:12px 35px 11px 10px; text-align:center; background:rgba(16,16,16,.92); border-bottom:1px solid #765b20; cursor:move; user-select:none; }
     #vxStandaloneBrand { color:#dfb943; font-size:16px; font-weight:bold; letter-spacing:2px; }
-    #vxStandaloneSubtitle { margin-top:4px; color:#999; font-size:9px; }
     #vxStandaloneMin { position:absolute; right:7px; top:7px; border:1px solid #806321; border-radius:4px; background:rgba(23,20,12,.9); color:#dfb943; cursor:pointer; }
     .vxView { padding:8px; }
     .vxStandaloneRow { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin:0; padding:9px; min-height:112px; border:1px solid rgba(95,75,32,.85); border-radius:5px; background:rgba(20,20,20,.76); }
@@ -2549,7 +2548,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     .vxToggle input:checked + span { background:#315b36; border-color:#69b875; }
     .vxToggle input:checked + span:before { transform:translateX(19px); background:#dfffe2; }
     #vxStandaloneFooter { flex:0 0 auto; padding:7px; text-align:center; border-top:1px solid #3b3018; background:rgba(10,10,10,.86); color:#777; font-size:9px; }
-    #vxSettingsView { display:none; flex:1 1 auto; flex-direction:column; min-height:0; max-height:none; overflow:auto; background:rgba(8,8,8,.36); }
+    #vxSettingsView { display:none; flex:0 1 auto; flex-direction:column; min-height:0; max-height:calc(100vh - 82px); overflow:auto; background:rgba(8,8,8,.36); }
     #vxSettingsToolbar { display:flex; gap:6px; align-items:center; padding:7px 8px; border-bottom:1px solid #4b3b17; background:rgba(17,17,17,.9); }
     #vxSettingsToolbar .vxNavBtn { margin:0; }
     #vxCurrentSetting { color:#e0bd53; font-weight:bold; flex:1; text-align:center; }
@@ -2558,13 +2557,13 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     #vxStandaloneMini { position:fixed; z-index:2147483646; display:none; align-items:center; gap:8px; padding:10px 14px; background:rgba(11,11,11,.9); color:#dfb943; border:1px solid #c9a227; border-radius:5px; font:bold 12px Arial,sans-serif; cursor:pointer; user-select:none; box-shadow:0 4px 16px #0008; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
     #vxStandaloneMini .diamond { color:#f0c64b; font-size:15px; }
     /* Widok główny jest przewijany wewnątrz okna; stopka zostaje na dole. */
-    #vxHomeView { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-content:start; gap:6px; flex:1 1 auto; min-height:0; max-height:none; overflow-y:auto; overflow-x:hidden; }
+    #vxHomeView { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-content:start; gap:6px; flex:0 1 auto; height:auto; min-height:0; max-height:calc(100vh - 88px); overflow-y:auto; overflow-x:hidden; }
     #vxHomeView, #vxSettingsView { scrollbar-width:thin; scrollbar-color:rgba(201,162,39,.28) transparent; overscroll-behavior:contain; }
     #vxHomeView::-webkit-scrollbar, #vxSettingsView::-webkit-scrollbar { width:4px; }
     #vxHomeView::-webkit-scrollbar-track, #vxSettingsView::-webkit-scrollbar-track { background:transparent; }
     #vxHomeView::-webkit-scrollbar-thumb, #vxSettingsView::-webkit-scrollbar-thumb { background:rgba(201,162,39,.22); border-radius:8px; }
     #vxHomeView::-webkit-scrollbar-thumb:hover, #vxSettingsView::-webkit-scrollbar-thumb:hover { background:rgba(201,162,39,.42); }
-    @media (max-width:560px) { #vxStandalonePanel { width:calc(100vw - 12px); height:calc(100vh - 12px); max-height:calc(100vh - 12px); left:6px; top:6px; } #vxHomeView { grid-template-columns:minmax(0,1fr); } .vxStandaloneRow { min-height:0; } }
+    @media (max-width:560px) { #vxStandalonePanel { width:calc(100vw - 12px); height:auto; max-height:calc(100vh - 12px); left:6px; top:6px; } #vxHomeView { grid-template-columns:minmax(0,1fr); max-height:calc(100vh - 88px); } #vxSettingsView { max-height:calc(100vh - 72px); } .vxStandaloneRow { min-height:0; } }
     #vxSettingsLootChance #mlc513-panel { position:relative!important; left:auto!important; top:auto!important; right:auto!important; bottom:auto!important; width:100%!important; max-width:100%!important; margin:0!important; padding:3px!important; z-index:1!important; box-shadow:none!important; border:0!important; border-radius:0!important; background:transparent!important; display:block!important; }
     #mlc513-panel { display:none!important; }
     #vxSettingsLootChance #mlc513-panel .heading { display:none!important; }
@@ -2586,7 +2585,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     #vickness-lootbar .vl-controls { display:none!important; }
   </style>
   <div id="vxStandalonePanel">
-    <div id="vxStandaloneHeader"><div id="vxStandaloneBrand">Panel Dodatków</div><div id="vxStandaloneSubtitle">VICKNESS • ZARZĄDZANIE DODATKAMI</div><button id="vxStandaloneMin" type="button" title="Minimalizuj">−</button></div>
+    <div id="vxStandaloneHeader"><div id="vxStandaloneBrand">Panel Dodatków</div><button id="vxStandaloneMin" type="button" title="Minimalizuj">−</button></div>
     <div id="vxHomeView" class="vxView">
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Loot Glow</span><span class="vxStandaloneDesc">Podświetlanie lootu • kolor i intensywność</span><div class="vxStandaloneState" id="vxLootState"></div><button type="button" class="vxOpenSettings" id="vxLootOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxLootSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">DC Wykrywacz</span><span class="vxStandaloneDesc">Herosi, tytani, grzybki i Discord</span><div class="vxStandaloneState" id="vxDcState"></div><button type="button" class="vxOpenSettings" id="vxDcOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxDcSwitch" type="checkbox"><span></span></label></div>
