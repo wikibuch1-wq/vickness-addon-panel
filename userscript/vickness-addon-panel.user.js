@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.14
-// @description  Vickness Addons: Loot Glow, DC Wykrywacz, Lootlog 4.4.7, Titan Tracker Gold i Procent łupu 5.8.0
+// @version      1.1.17
+// @description  Vickness Addons: Loot Glow, DC Wykrywacz, Lootlog 4.4.7, Titan Tracker Gold i Procent łupu 5.11.0 — integracja panelu
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -2477,7 +2477,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.14 — integracja Procent łupu 5.8.0, Lootlog 4.4.7 i Titan Tracker Gold
+// VICKNESS ADDON PANEL 1.1.17 — integracja Procent łupu 5.11.0, osadzanie bezpośrednio w panelu Vickness
 // =============================================================
 (() => {
   'use strict';
@@ -2555,12 +2555,12 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     #vxStandaloneMini .diamond { color:#f0c64b; font-size:15px; }
     /* Widgety dodatków są osadzane wewnątrz okna Vickness zamiast pływać osobno. */
     #vxHomeView { max-height:calc(65vh - 50px); overflow-y:auto; }
-    #vxSettingsLootChance #mlc58-panel { position:relative!important; left:auto!important; top:auto!important; right:auto!important; bottom:auto!important; width:100%!important; max-width:100%!important; margin:0!important; padding:3px!important; z-index:1!important; box-shadow:none!important; border:0!important; border-radius:0!important; background:transparent!important; display:block!important; }
-    #mlc58-panel { display:none!important; }
-    #vxSettingsLootChance #mlc58-panel .heading { display:none!important; }
-    #vxSettingsLootChance #mlc58-panel > div:not(.heading) { display:block!important; }
-    #vxSettingsLootChance #mlc58-panel label { color:#f5f0d5; }
-    #vxSettingsLootChance #mlc58-panel .status { overflow-wrap:anywhere; }
+    #vxSettingsLootChance #mlc512-panel { position:relative!important; left:auto!important; top:auto!important; right:auto!important; bottom:auto!important; width:100%!important; max-width:100%!important; margin:0!important; padding:3px!important; z-index:1!important; box-shadow:none!important; border:0!important; border-radius:0!important; background:transparent!important; display:block!important; }
+    #mlc512-panel { display:none!important; }
+    #vxSettingsLootChance #mlc512-panel .heading { display:none!important; }
+    #vxSettingsLootChance #mlc512-panel > div:not(.heading) { display:block!important; }
+    #vxSettingsLootChance #mlc512-panel label { color:#f5f0d5; }
+    #vxSettingsLootChance #mlc512-panel .status { overflow-wrap:anywhere; }
     #vxSettingsLoot #tmLootPanel { position:relative!important; left:auto!important; top:auto!important; right:auto!important; bottom:auto!important; width:100%!important; max-width:100%!important; height:auto!important; margin:0!important; z-index:1!important; box-shadow:none!important; border:0!important; border-radius:0!important; background:transparent!important; }
     #vxSettingsLoot #tmLootHeader { display:none!important; }
     #vxSettingsLoot #tmLootBody { display:block!important; padding:3px!important; }
@@ -2631,7 +2631,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     if (lootbar) lootbar.style.setProperty('display', enabled.lootlog ? 'flex' : 'none', 'important');
     const titanPanel = getPanel('rtt-panel');
     if (titanPanel) titanPanel.style.setProperty('display', enabled.titan ? 'block' : 'none', 'important');
-    const lootChancePanel = getPanel('mlc58-panel');
+    const lootChancePanel = getPanel('mlc512-panel');
     const lootChanceSlot = root.querySelector('#vxSettingsLootChance');
     if (lootChancePanel && lootChanceSlot && !lootChanceSlot.contains(lootChancePanel)) lootChanceSlot.appendChild(lootChancePanel);
     if (lootChancePanel && lootChanceSlot.contains(lootChancePanel)) {
@@ -2639,7 +2639,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       const body = Array.from(lootChancePanel.children).find(child => !child.classList.contains('heading'));
       if (body) body.style.setProperty('display', 'block', 'important');
     }
-    if (!enabled.lootChance) document.querySelectorAll('.mlc58-label').forEach(label => label.remove());
+    if (!enabled.lootChance) document.querySelectorAll('.mlc512-label').forEach(label => label.remove());
     if (!enabled.lootlog) document.querySelectorAll('.vl-tip').forEach(tip => { tip.style.display = 'none'; });
   }
   function applyToggles() {
@@ -4459,14 +4459,30 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// PROCENT ŁUPU 5.8.0 — zintegrowany z panelem Vickness
+// PROCENT ŁUPU 5.11.0 — zintegrowany z panelem Vickness
 // =============================================================
 (() => {
    'use strict';
-   if (window.__margonemLootChanceV58) return;
-   window.__margonemLootChanceV58 = true;
 
-   const STORE = 'mlcSettingsV58';
+   // API Margonem czytamy z kontekstu strony, a nie z izolowanego sandboxa userscriptu.
+   const PAGE = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+   function getGameEngine() {
+     try {
+       if (typeof PAGE.getEngine === 'function') {
+         const engine = PAGE.getEngine();
+         if (engine) return engine;
+       }
+     } catch (_) {}
+     try {
+       return PAGE.Engine || PAGE.engine || PAGE.g?.Engine || PAGE.g?.engine || window.Engine || null;
+     } catch (_) {
+       return null;
+     }
+   }
+   if (window.__margonemLootChanceV512) return;
+   window.__margonemLootChanceV512 = true;
+
+   const STORE = 'mlcSettingsV512';
    const PROFESSIONS = {
      b: 'Tancerz ostrzy', h: 'Łowca', w: 'Wojownik',
      t: 'Tropiciel', p: 'Paladyn', m: 'Mag'
@@ -4514,13 +4530,24 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
    }
 
    function getCurrentProfession() {
-     // Kod profesji własnej postaci udostępniany przez Margonem.
+     // Najpierw użyj funkcji Margonem, a następnie pól postaci z silnika gry.
+     const engine = getGameEngine();
+     const candidates = [];
      try {
-       if (typeof window.getHeroProf === 'function') {
-         const code = String(window.getHeroProf() || '').toLowerCase();
-         if (PROFESSIONS[code]) return code;
-       }
+       if (typeof PAGE.getHeroProf === 'function') candidates.push(PAGE.getHeroProf());
      } catch (_) {}
+     candidates.push(
+       engine?.hero?.d?.prof,
+       engine?.hero?.prof,
+       PAGE.g?.hero?.d?.prof,
+       PAGE.g?.hero?.prof,
+       PAGE.hero?.d?.prof,
+       PAGE.hero?.prof
+     );
+     for (const value of candidates) {
+       const code = String(value || '').toLowerCase();
+       if (Object.prototype.hasOwnProperty.call(PROFESSIONS, code)) return code;
+     }
      return null;
    }
 
@@ -4588,7 +4615,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
    function getTeam() {
      try {
-       const engine = typeof window.getEngine === 'function' ? window.getEngine() : null;
+       const engine = getGameEngine();
        const members = engine?.party?.getMembers?.();
        if (members instanceof Map) {
          const team = [];
@@ -4630,7 +4657,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      if (requirements.has(key)) return true;
 
      try {
-       const engine = typeof window.getEngine === 'function' ? window.getEngine() : null;
+       const engine = getGameEngine();
        const id = String(item.className || '').match(/\bitem-id-(\d+)\b/)?.[1];
        const gameItem = id && engine?.items?.getItemById?.(id);
        const stats = gameItem?._cachedStats;
@@ -4661,7 +4688,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
      document.querySelectorAll(
        '.mlc41-label, .mlc42-label, .mlc43-label, ' +
-       '.mlc44-label, .mlc45-label, .mlc46-label, .mlc58-label'
+       '.mlc44-label, .mlc45-label, .mlc46-label, .mlc512-label'
      ).forEach(el => el.remove());
    }
 
@@ -4670,7 +4697,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
      if (!label || !label.isConnected) {
        label = document.createElement('span');
-       label.className = 'mlc58-label';
+       label.className = 'mlc512-label';
        label.style.cssText =
          'position:fixed;z-index:2147483647;display:none;pointer-events:none;' +
          'margin:0;padding:0;background:transparent;border:0;white-space:nowrap;' +
@@ -4839,38 +4866,38 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
    }
 
    function addStyles() {
-     if (document.getElementById('mlc58-style')) return;
+     if (document.getElementById('mlc512-style')) return;
 
      const style = document.createElement('style');
-     style.id = 'mlc58-style';
+     style.id = 'mlc512-style';
      style.textContent = `
-       #mlc58-panel {
+       #mlc512-panel {
          position:fixed;z-index:2147483646;left:auto;top:auto;right:12px;bottom:12px;
          width:190px;max-width:calc(100vw - 24px);padding:8px;color:#f5f0d5;
          background:rgba(8,8,8,.97);border:1px solid #e4bd28;border-radius:5px;
          box-shadow:0 2px 10px #000b;font:11px/1.35 Arial,sans-serif;
        }
-       #mlc58-panel .heading {
+       #mlc512-panel .heading {
          display:flex;justify-content:space-between;align-items:center;
          margin:-2px -2px 6px;padding:4px 5px;background:#17140a;
          border-bottom:1px solid #8f751a;font-weight:bold;cursor:move;
          user-select:none;touch-action:none;
        }
-       #mlc58-panel .heading button {
+       #mlc512-panel .heading button {
          width:25px;min-width:25px;margin:0;padding:1px 4px;
          color:#f8e7a0;background:#171717;border:1px solid #c8a51e;border-radius:3px;
          cursor:pointer;
        }
-       #mlc58-panel label {display:block;margin:3px 0;cursor:pointer}
-       #mlc58-panel input[type="checkbox"] {accent-color:#e4bd28;transform:scale(.9);transform-origin:left center}
-       #mlc58-panel button:not(.heading button) {
+       #mlc512-panel label {display:block;margin:3px 0;cursor:pointer}
+       #mlc512-panel input[type="checkbox"] {accent-color:#e4bd28;transform:scale(.9);transform-origin:left center}
+       #mlc512-panel button:not(.heading button) {
          width:100%;margin-top:5px;padding:5px 4px;color:#f8e7a0;
          background:#19160a;border:1px solid #c8a51e;border-radius:3px;cursor:pointer;
        }
-       #mlc58-panel button:hover {filter:brightness(1.2)}
-       #mlc58-panel .status {margin-top:6px;padding-top:5px;border-top:1px solid #574718;color:#cfc8a9;font-size:10px;overflow-wrap:anywhere}
-       #mlc58-panel .rarity-title {font-weight:bold;margin-top:6px}
-       #mlc58-panel .profession-info {margin:4px 0;color:#cfc8a9}
+       #mlc512-panel button:hover {filter:brightness(1.2)}
+       #mlc512-panel .status {margin-top:6px;padding-top:5px;border-top:1px solid #574718;color:#cfc8a9;font-size:10px;overflow-wrap:anywhere}
+       #mlc512-panel .rarity-title {font-weight:bold;margin-top:6px}
+       #mlc512-panel .profession-info {margin:4px 0;color:#cfc8a9}
      `;
      document.head.appendChild(style);
    }
@@ -4879,7 +4906,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      if (panel || !document.body) return;
 
      panel = document.createElement('div');
-     panel.id = 'mlc58-panel';
+     panel.id = 'mlc512-panel';
 
      const heading = document.createElement('div');
      heading.className = 'heading';
@@ -4938,7 +4965,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        save();
        scheduleScan(0);
      });
-     enabledLabel.append(enabled, document.createTextNode(' Włącz skrypt'));
+     enabledLabel.append(enabled, document.createTextNode(' Włącz dodatek'));
      content.appendChild(enabledLabel);
 
      const professionInfo = document.createElement('div');
@@ -4955,7 +4982,11 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      rarityTitle.textContent = 'Pokazuj rzadkości:';
      content.appendChild(rarityTitle);
 
-     Object.entries(RARITY_NAMES).forEach(([key, name]) => {
+     // Panel udostępnia przełączniki tylko dla przedmiotów heroicznych i legendarnych.
+     // Pospolite i unikatowe pozostają wyłączone i nie można ich włączyć z panelu.
+     settings.rarities.common = false;
+     settings.rarities.unique = false;
+     ['heroic', 'legendary'].forEach(key => {
        const label = document.createElement('label');
        const checkbox = document.createElement('input');
        checkbox.type = 'checkbox';
@@ -4965,25 +4996,18 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
          save();
          scheduleScan(0);
        });
-       label.append(checkbox, document.createTextNode(' ' + name));
+       label.append(checkbox, document.createTextNode(' ' + RARITY_NAMES[key]));
        content.appendChild(label);
      });
 
-     const refresh = document.createElement('button');
-     refresh.textContent = 'Odśwież procenty';
-     refresh.addEventListener('click', () => scheduleScan(0));
-     content.appendChild(refresh);
-
-     status = document.createElement('div');
-     status.className = 'status';
-     status.textContent = 'Oczekiwanie na okno łupu…';
-     content.appendChild(status);
-     document.body.appendChild(panel);
+     // Ukryto licznik „Przedmioty | Etykiety” — panel pozostaje kompaktowy.
+     const host = document.getElementById('vxSettingsLootChance') || document.body;
+     host.appendChild(panel);
    }
 
    function start() {
      document.querySelectorAll(
-       '.mlc41-label, .mlc42-label, .mlc43-label, .mlc44-label, .mlc45-label, .mlc46-label, .mlc47-label, .mlc48-label, .mlc49-label, .mlc50-label, .mlc58-label'
+       '.mlc41-label, .mlc42-label, .mlc43-label, .mlc44-label, .mlc45-label, .mlc46-label, .mlc47-label, .mlc48-label, .mlc49-label, .mlc50-label, .mlc512-label'
      ).forEach(el => el.remove());
 
      addStyles();
@@ -5000,7 +5024,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        subtree: true
      });
 
-  
+
      // Sprawdza zamknięcie okna jako zabezpieczenie, gdy gra nie usuwa go z DOM.
      setInterval(() => {
        if (lastWindowOpen && !isLootWindowOpen()) {
