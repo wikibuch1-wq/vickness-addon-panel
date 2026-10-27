@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.25
-// @description  Vickness Addons: DC Wykrywacz w osobnym oknie; The Crew Online 2.7.0; Procent łupu 5.11.0
+// @version      1.1.26
+// @description  Vickness Addons: DC w osobnym oknie; The Crew Online 3.1.0; Procent łupu 5.11.0
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -5204,7 +5204,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
  })();
 
 // =============================================================
-// THE CREW ONLINE 2.7.0 — zaktualizowany moduł z załącznika, zintegrowany z panelem Vickness
+// THE CREW ONLINE 3.1.0 — moduł z załącznika, zintegrowany z panelem Vickness
 // =============================================================
 (() => {
    'use strict';
@@ -5350,10 +5350,10 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
      .tc-player {
        display: grid;
-       grid-template-columns: minmax(0, 1fr) 30px;
+       grid-template-columns: minmax(0, 1fr) 22px;
        align-items: center;
-       gap: 5px;
-       padding: 7px;
+       gap: 4px;
+       padding: 3px 5px;
        border-bottom: 1px solid #302a20;
      }
 
@@ -5361,7 +5361,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        background: rgba(24,24,24,.62);
      }
 
-     /* Wersja 2.7.0: osoby z aktualnej drużyny są oznaczone turkusem. */
+     /* The Crew Online 3.1.0: osoby z aktualnej drużyny są oznaczone turkusem. */
      .tc-player.tc-in-group {
        background: rgba(16,43,43,.82) !important;
        box-shadow: inset 3px 0 0 #35d6c8;
@@ -5373,8 +5373,10 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
      .tc-name {
        color: #f3d48a;
+       font-size: 12px;
        font-weight: bold;
        overflow-wrap: anywhere;
+       line-height: 1.15;
      }
 
      #tc-online-panel .tc-level {
@@ -5385,18 +5387,36 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      .tc-info {
        margin-top: 2px;
        color: #bbb;
-       line-height: 1.3;
+       line-height: 1.2;
        overflow-wrap: anywhere;
-       white-space: pre-line;
+       white-space: normal;
+       font-size: 11px;
+     }
+
+     .tc-info-line {
+       display: flex;
+       flex-wrap: wrap;
+       align-items: baseline;
+       column-gap: 5px;
+       row-gap: 1px;
+       min-width: 0;
+     }
+
+     .tc-info-line span {
+       min-width: 0;
+     }
+
+     .tc-map {
+       overflow-wrap: anywhere;
      }
 
      .tc-invite {
-       min-width: 23px;
-       min-height: 23px;
-       width: 23px;
-       height: 23px;
+       min-width: 20px;
+       min-height: 20px;
+       width: 20px;
+       height: 20px;
        padding: 1px;
-       font-size: 14px;
+       font-size: 12px;
        font-weight: bold;
      }
 
@@ -5407,15 +5427,18 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
      #tc-open {
        position: fixed;
-       right: 12px;
-       bottom: 100px;
+       left: var(--tc-open-left, calc(100vw - 155px));
+       top: var(--tc-open-top, calc(100vh - 100px));
        z-index: 2147483000;
-       padding: 9px 12px;
+       padding: 6px 9px;
+       font: 12px Arial, sans-serif;
        color: #e7c36e;
-       background: #101010;
+       background: rgba(12,12,12,.91);
        border: 2px solid #d7ad52;
        border-radius: 5px;
-       cursor: pointer;
+       cursor: move;
+       user-select: none;
+       touch-action: none;
      }
    `;
 
@@ -5480,6 +5503,14 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      const masterEnabled = !(window.__vicknessAddonEnabled && window.__vicknessAddonEnabled.crewOnline === false);
      panel.style.display = !masterEnabled || settings.hidden ? 'none' : 'flex';
      openBtn.style.display = !masterEnabled ? 'none' : settings.hidden ? 'block' : 'none';
+     const openLeft = settings.openLeft == null
+       ? Math.max(0, window.innerWidth - 155)
+       : Number(settings.openLeft);
+     const openTop = settings.openTop == null
+       ? Math.max(0, window.innerHeight - 100)
+       : Number(settings.openTop);
+     openBtn.style.left = `${Math.max(0, Math.min(openLeft, window.innerWidth - openBtn.offsetWidth))}px`;
+     openBtn.style.top = `${Math.max(0, Math.min(openTop, window.innerHeight - openBtn.offsetHeight))}px`;
      content.style.display = settings.collapsed ? 'none' : 'flex';
      collapseBtn.textContent = settings.collapsed ? '+' : '−';
    };
@@ -5507,7 +5538,44 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      save();
    });
 
-   openBtn.addEventListener('click', () => {
+   // Skrót The Crew można przeciągać, a jego pozycja zapisuje się niezależnie od okna.
+   let draggedOpenButton = false;
+   openBtn.addEventListener('pointerdown', event => {
+     if (event.button !== 0) return;
+     const startX = event.clientX;
+     const startY = event.clientY;
+     const startLeft = openBtn.offsetLeft;
+     const startTop = openBtn.offsetTop;
+     let moved = false;
+
+     const move = e => {
+       const dx = e.clientX - startX;
+       const dy = e.clientY - startY;
+       if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
+       settings.openLeft = Math.max(0, Math.min(window.innerWidth - openBtn.offsetWidth, startLeft + dx));
+       settings.openTop = Math.max(0, Math.min(window.innerHeight - openBtn.offsetHeight, startTop + dy));
+       openBtn.style.left = `${settings.openLeft}px`;
+       openBtn.style.top = `${settings.openTop}px`;
+     };
+     const up = () => {
+       document.removeEventListener('pointermove', move);
+       document.removeEventListener('pointerup', up);
+       if (moved) {
+         draggedOpenButton = true;
+         save();
+       }
+     };
+     document.addEventListener('pointermove', move);
+     document.addEventListener('pointerup', up);
+     event.preventDefault();
+   });
+   openBtn.addEventListener('click', event => {
+     if (draggedOpenButton) {
+       draggedOpenButton = false;
+       event.preventDefault();
+       event.stopPropagation();
+       return;
+     }
      settings.hidden = false;
      applySettings();
      save();
@@ -5680,13 +5748,28 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
          const mapX = Number(location.x);
          const mapY = Number(location.y);
 
-         // Nowość z The Crew Online 2.7.0: wyróżnij osoby z naszej drużyny.
-         // API Engine musi być czytane z kontekstu strony Margonem.
+         // The Crew Online 3.1.0: wyróżnia członków aktualnej drużyny.
+         // Odczyt Engine z kontekstu strony działa także w userskrypcie z grantami GM_*.
          let isInGroup = false;
          try {
-           const whoIsHere = PAGE.Engine?.whoIsHere?.getList?.() || {};
-           const localEntry = whoIsHere[characterId] || whoIsHere[Number(characterId)];
-           isInGroup = localEntry?.relation === 'group';
+           const partyMembers = PAGE.Engine?.party?.getMembers?.();
+           const partyIds = new Set();
+           if (partyMembers instanceof Map) {
+             for (const [memberId, member] of partyMembers.entries()) {
+               if (memberId != null) partyIds.add(String(memberId));
+               if (member?.id != null) partyIds.add(String(member.id));
+             }
+           } else if (Array.isArray(partyMembers)) {
+             for (const member of partyMembers) {
+               if (member?.id != null) partyIds.add(String(member.id));
+             }
+           } else if (partyMembers && typeof partyMembers === 'object') {
+             for (const [memberId, member] of Object.entries(partyMembers)) {
+               partyIds.add(String(memberId));
+               if (member?.id != null) partyIds.add(String(member.id));
+             }
+           }
+           isInGroup = characterId !== '' && partyIds.has(characterId);
          } catch (_) {}
 
          return {
@@ -5748,20 +5831,16 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
        const info = make('div');
        info.className = 'tc-info';
-
-       const levelLine = make('div');
-       const levelValue = make('span', String(level));
+       const infoLine = make('div');
+       infoLine.className = 'tc-info-line';
+       const levelValue = make('span', `Poz. ${level}`);
        levelValue.className = 'tc-level';
-       levelLine.append(
-         document.createTextNode('Poziom: '),
-         levelValue,
-         document.createTextNode(` | Profesja: ${profession}`)
-       );
-
-       const mapLine = make('div', `Mapa: ${map}`);
-       const coordsLine = make('div', `Współrzędne: ${coords}`);
-
-       info.append(levelLine, mapLine, coordsLine);
+       const professionValue = make('span', profession);
+       const mapValue = make('span', map);
+       mapValue.className = 'tc-map';
+       const coordsValue = make('span', coords);
+       infoLine.append(levelValue, professionValue, mapValue, coordsValue);
+       info.append(infoLine);
        details.append(name, info);
 
        const inviteBtn = make('button', '+');
