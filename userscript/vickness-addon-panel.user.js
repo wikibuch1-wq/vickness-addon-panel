@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.42
-// @description  Vickness Addons 1.1.42: poprawiona typografia bocznych zakładek panelu
+// @version      1.1.43
+// @description  Vickness Addons 1.1.43: zmniejszone okno Margonem DC
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -190,27 +190,32 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         style.id = 'margDc221CSS';
 
         style.textContent = `
+            /* Kompaktowe, mniejsze okno wykrywacza DC */
             #margDc221Panel {
                 position:fixed;
                 left:20px;
                 top:120px;
-                width:280px;
+                width:245px;
+                max-width:calc(100vw - 12px);
+                box-sizing:border-box;
                 z-index:2147483647;
                 color:#fff;
                 background:rgba(12,12,12,.97);
-                border:2px solid #d4af37;
-                border-radius:9px;
-                box-shadow:0 5px 20px rgba(0,0,0,.65);
-                font:12px Arial,sans-serif;
+                border:1px solid #d4af37;
+                border-radius:8px;
+                box-shadow:0 4px 14px rgba(0,0,0,.6);
+                font:11px Arial,sans-serif;
                 user-select:none;
             }
 
             #margDc221Header {
-                height:32px;
-                padding:0 8px;
+                min-height:27px;
+                box-sizing:border-box;
+                padding:0 6px;
                 display:flex;
                 align-items:center;
                 justify-content:space-between;
+                gap:5px;
                 background:#191919;
                 border-radius:7px 7px 0 0;
                 cursor:move;
@@ -218,7 +223,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
             #margDc221Title {
                 color:#d4af37;
-                font-size:13px;
+                font-size:12px;
+                line-height:1.2;
                 font-weight:bold;
             }
 
@@ -227,39 +233,47 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
                 border:0;
                 color:#aaa;
                 cursor:pointer;
+                padding:2px 0 2px 3px;
+                font-size:9px;
+                white-space:nowrap;
             }
 
             #margDc221Body {
-                padding:9px;
+                padding:6px;
             }
 
             #margDc221Webhook {
+                display:block;
                 width:100%;
-                height:30px;
+                height:26px;
                 box-sizing:border-box;
                 background:#181818;
                 color:#fff;
                 border:1px solid #444;
-                border-radius:5px;
-                padding:5px 7px;
-                font-size:11px;
+                border-radius:4px;
+                padding:4px 6px;
+                font-size:10px;
             }
 
             #margDc221Buttons {
                 display:flex;
-                gap:5px;
-                margin-top:7px;
+                gap:4px;
+                margin-top:5px;
             }
 
             .margDc221Btn {
-                flex:1;
-                height:29px;
+                flex:1 1 0;
+                min-width:0;
+                height:25px;
+                padding:2px 3px;
+                box-sizing:border-box;
                 background:#222;
                 color:#fff;
                 border:1px solid #555;
-                border-radius:5px;
+                border-radius:4px;
                 cursor:pointer;
-                font-size:10px;
+                font-size:9px;
+                white-space:nowrap;
             }
 
             .margDc221Gold {
@@ -268,12 +282,15 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
             }
 
             #margDc221Status {
-                margin-top:8px;
-                min-height:38px;
-                padding:7px;
+                margin-top:6px;
+                min-height:0;
+                padding:5px 6px;
+                box-sizing:border-box;
                 background:#171717;
-                border-radius:5px;
-                line-height:1.4;
+                border-radius:4px;
+                line-height:1.25;
+                font-family:Arial,sans-serif!important;
+                font-size:11px!important;
                 color:#aaa;
                 white-space:pre-wrap;
                 overflow-wrap:anywhere;
@@ -2480,7 +2497,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.41 — przyciemnianie mapy v8.0 zintegrowane z panelem
+// VICKNESS ADDON PANEL 1.1.43 — mniejsze okno Margonem DC
 // =============================================================
 (() => {
   'use strict';
@@ -2957,6 +2974,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.43</span><span class="vxChangelogDate">bieżące wydanie</span><div>Zmniejszono wyskakujące okno Margonem DC: węższy panel, niższy nagłówek i przyciski, mniejsze odstępy oraz czytelniejsza, ujednolicona czcionka informacji o wykryciu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.42</span><span class="vxChangelogDate">bieżące wydanie</span><div>Poprawiono czcionkę bocznych kafelków Dodatki, Log zmian i Wygląd: wymuszono czytelną czcionkę bezszeryfową i ujednolicono rozmiar, grubość oraz odstępy, niezależnie od stylów strony gry.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.41</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono mechanizm Złotego przyciemnienia mapy na rdzeń ze skryptu v8.0. Pozostawiono sterowanie w zakładce Wygląd, dodano nakładanie filtra maksymalnie raz na klatkę podczas przeciągania suwaka oraz zachowano zapis ustawień i wykrywanie zmiany mapy/canvasu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.40</span><span class="vxChangelogDate">bieżące wydanie</span><div>Optymalizacja płynności: mniej kosztownych skanów DOM, ograniczenie zbędnych aktualizacji paneli, filtrowanie obserwatora mapy i rzadsze kontrole pomocnicze. Dodatki i ich funkcje pozostają zachowane.</div></div>
@@ -3151,7 +3169,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.42';
+  const CURRENT_PANEL_VERSION = '1.1.43';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
