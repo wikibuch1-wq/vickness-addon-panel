@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.27
-// @description  Vickness Addons: zakładki, log zmian, wygląd i powiadomienia o aktualizacjach
+// @version      1.1.28
+// @description  Vickness Addons: zakładki, wygląd, złote przyciemnienie mapy i aktualizacje
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -2480,7 +2480,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.27 — zakładki, changelog, wygląd i sprawdzanie aktualizacji
+// VICKNESS ADDON PANEL 1.1.28 — zakładki, złote przyciemnienie mapy i sprawdzanie aktualizacji
 // =============================================================
 (() => {
   'use strict';
@@ -2520,6 +2520,87 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
   function saveFlags() { try { localStorage.setItem(FLAGS_KEY, JSON.stringify(enabled)); } catch (_) {} }
   function saveLayout() { try { localStorage.setItem(KEY, JSON.stringify(layout)); } catch (_) {} }
+
+  // Złote przyciemnienie mapy: ustawienia pozostają zgodne z samodzielnym dodatkiem v6.
+  const PAGE_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+  const MAP_DIMMER_KEYS = { amount: 'margonemDimAmount', enabled: 'margonemDimEnabled' };
+  const storedDimmerAmount = localStorage.getItem(MAP_DIMMER_KEYS.amount);
+  let mapDimmerAmount = storedDimmerAmount === null
+    ? 50
+    : Math.max(0, Math.min(100, Number(storedDimmerAmount) || 0));
+  let mapDimmerEnabled = localStorage.getItem(MAP_DIMMER_KEYS.enabled) !== '0';
+  let lastMapDimmerEngine = null;
+  let lastMapDimmerMap = null;
+  let lastMapDimmerMapId = null;
+  let lastMapDimmerApplyTime = 0;
+  let mapDimmerMonitorStarted = false;
+
+  function applyMapDimmer(force = false) {
+    const engine = PAGE_WINDOW.Engine || window.Engine;
+    if (!engine?.canvasFilter || !engine?.map) return false;
+    const mapId = engine.map.getId?.() ?? engine.map.d?.id ?? null;
+    const changed = engine !== lastMapDimmerEngine || engine.map !== lastMapDimmerMap || mapId !== lastMapDimmerMapId;
+    if (!force && !changed && Date.now() - lastMapDimmerApplyTime < 2000) return true;
+    try {
+      const filter = (!mapDimmerEnabled || mapDimmerAmount === 0)
+        ? 'none'
+        : `brightness(${1 - mapDimmerAmount / 100})`;
+      engine.canvasFilter.addObjectsFilter('MAP', null, filter);
+      engine.map.updateFilterImage();
+      engine.map.updateBackgroundOffsetImage();
+      lastMapDimmerEngine = engine;
+      lastMapDimmerMap = engine.map;
+      lastMapDimmerMapId = mapId;
+      lastMapDimmerApplyTime = Date.now();
+      return true;
+    } catch (error) {
+      console.warn('[Vickness — Złote przyciemnienie mapy]', error);
+      return false;
+    }
+  }
+
+  function syncMapDimmerControls() {
+    const enabledControl = root.querySelector('#vxMapDimmerEnabled');
+    const amountControl = root.querySelector('#vxMapDimmerRange');
+    const amountValue = root.querySelector('#vxMapDimmerValue');
+    const stateValue = root.querySelector('#vxMapDimmerState');
+    if (enabledControl) enabledControl.checked = mapDimmerEnabled;
+    if (amountControl) {
+      amountControl.value = String(mapDimmerAmount);
+      amountControl.disabled = !mapDimmerEnabled;
+    }
+    if (amountValue) amountValue.textContent = `${mapDimmerAmount}%`;
+    if (stateValue) stateValue.textContent = mapDimmerEnabled ? 'WŁĄCZONE' : 'WYŁĄCZONE';
+  }
+
+  function setMapDimmerAmount(value) {
+    mapDimmerAmount = Math.max(0, Math.min(100, Number(value) || 0));
+    try { localStorage.setItem(MAP_DIMMER_KEYS.amount, String(mapDimmerAmount)); } catch (_) {}
+    syncMapDimmerControls();
+    applyMapDimmer(true);
+  }
+
+  function setMapDimmerEnabled(value) {
+    mapDimmerEnabled = Boolean(value);
+    try { localStorage.setItem(MAP_DIMMER_KEYS.enabled, mapDimmerEnabled ? '1' : '0'); } catch (_) {}
+    syncMapDimmerControls();
+    applyMapDimmer(true);
+  }
+
+  function startMapDimmerMonitor() {
+    if (mapDimmerMonitorStarted) return;
+    mapDimmerMonitorStarted = true;
+    applyMapDimmer(true);
+    // Nie obserwujemy całego DOM — lekki polling wykrywa zmianę silnika lub mapy.
+    setInterval(() => {
+      const engine = PAGE_WINDOW.Engine || window.Engine;
+      if (!engine?.canvasFilter || !engine?.map) return;
+      const mapId = engine.map.getId?.() ?? engine.map.d?.id ?? null;
+      if (engine !== lastMapDimmerEngine || engine.map !== lastMapDimmerMap || mapId !== lastMapDimmerMapId) {
+        applyMapDimmer(true);
+      }
+    }, 350);
+  }
 
   // Zmiana rozmiaru okna skaluje proporcjonalnie tekst i odstępy wizualne;
   // bazowe rozmiary zapisywane są tylko raz, aby wielokrotne przeciąganie
@@ -2728,7 +2809,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.27</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano zakładki Dodatki, Log zmian i Wygląd, sprawdzanie nowszej wersji z GitHuba, informację o aktualizacji oraz ustawienia przezroczystości, rozmycia i motywu.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.28</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano Złote przyciemnienie mapy w zakładce Wygląd z suwakiem, przełącznikiem i przywracaniem jasności. Zaktualizowano The Crew Online do 3.3.9.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.27</span><div>Dodano zakładki Dodatki, Log zmian i Wygląd, sprawdzanie nowszej wersji z GitHuba oraz ustawienia przezroczystości, rozmycia i motywu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.26</span><div>The Crew Online 3.1.0; skrócony widok graczy i wyróżnianie członków drużyny.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.25</span><div>DC Wykrywacz działa w osobnym oknie po wykryciu NPC.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.24</span><div>The Crew Online 2.7.0 oraz poprawki wyróżniania członków drużyny.</div></div>
@@ -2745,6 +2827,14 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         <label class="vxAppearanceControl"><span><span>Rozmycie tła</span><output id="vxBlurValue">4 px</output></span><input id="vxBlurRange" type="range" min="0" max="12" step="1" value="4"></label>
         <label class="vxAppearanceControl"><span><span>Motyw kolorystyczny</span></span><select id="vxThemeSelect"><option value="gold">Czarno-złoty</option><option value="turquoise">Czarno-turkusowy</option><option value="purple">Czarno-fioletowy</option></select></label>
         <div class="vxLootlogActions"><button type="button" id="vxAppearanceReset" class="vxActionBtn">DOMYŚLNY WYGLĄD</button><button type="button" id="vxLayoutReset" class="vxActionBtn">RESETUJ ROZMIAR I POZYCJĘ</button></div>
+      </div>
+      <div class="vxPageCard">
+        <span class="vxPageTitle">Złote przyciemnienie mapy</span>
+        <div class="vxPageNote">Filtr mapy zapisywany lokalnie. Możesz włączać i wyłączać przyciemnienie, zmienić jego siłę oraz jednym przyciskiem przywrócić pełną jasność.</div>
+        <label class="vxAppearanceControl"><span><span>Aktywność filtra</span><output id="vxMapDimmerState">WŁĄCZONE</output></span><span style="display:flex;align-items:center;justify-content:flex-start;gap:8px"><input id="vxMapDimmerEnabled" type="checkbox" checked style="accent-color:var(--vx-accent)"> Włącz złote przyciemnienie</span></label>
+        <label class="vxAppearanceControl"><span><span>Przyciemnienie mapy</span><output id="vxMapDimmerValue">50%</output></span><input id="vxMapDimmerRange" type="range" min="0" max="100" step="1" value="50"></label>
+        <div class="vxLootlogActions"><button type="button" id="vxMapDimmerRestore" class="vxActionBtn">☀ PRZYWRÓĆ JASNOŚĆ</button><button type="button" id="vxMapDimmerApply" class="vxActionBtn">↻ ZASTOSUJ FILTR</button></div>
+        <div class="vxPageNote" style="margin-top:7px">0% = pełna jasność. 100% = maksymalne przyciemnienie. Filtr jest ponownie nakładany po zmianie mapy.</div>
       </div>
     </div>
       </div>
@@ -2890,7 +2980,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.27';
+  const CURRENT_PANEL_VERSION = '1.1.28';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -3065,6 +3155,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     if (!layout.mini) savePos(mini, 'mini');
     applyAppearance();
     syncAppearanceControls();
+    syncMapDimmerControls();
+    startMapDimmerMonitor();
     setMainTab('addons');
     setTimeout(() => checkForUpdates(true), 1800);
 
@@ -3125,6 +3217,10 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     root.querySelector('#vxOpacityRange').addEventListener('input', e => saveAppearanceField('opacity', Number(e.target.value)));
     root.querySelector('#vxBlurRange').addEventListener('input', e => saveAppearanceField('blur', Number(e.target.value)));
     root.querySelector('#vxThemeSelect').addEventListener('change', e => saveAppearanceField('theme', e.target.value));
+    root.querySelector('#vxMapDimmerEnabled').addEventListener('change', e => setMapDimmerEnabled(e.target.checked));
+    root.querySelector('#vxMapDimmerRange').addEventListener('input', e => setMapDimmerAmount(Number(e.target.value)));
+    root.querySelector('#vxMapDimmerRestore').addEventListener('click', () => setMapDimmerAmount(0));
+    root.querySelector('#vxMapDimmerApply').addEventListener('click', () => applyMapDimmer(true));
     root.querySelector('#vxAppearanceReset').addEventListener('click', () => {
       layout.appearance = { opacity: 88, blur: 4, theme: 'gold' };
       saveLayout(); applyAppearance(); syncAppearanceControls();
@@ -5454,14 +5550,11 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
  })();
 
 // =============================================================
-// THE CREW ONLINE 3.1.0 — moduł z załącznika, zintegrowany z panelem Vickness
-// =============================================================
+// THE CREW ONLINE 3.3.9 — zaktualizowany moduł z załącznika, zintegrowany z Vickness
 (() => {
    'use strict';
 
-   // Lootlog Game Client API i mechanizm zaproszeń istnieją w kontekście strony gry.
-   // Ponieważ główny skrypt ma uprawnienia GM_*, trzeba czytać je przez unsafeWindow.
-   const PAGE = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+  const PAGE = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
    if (window.top !== window.self) return;
    if (document.getElementById('tc-online-panel')) return;
@@ -5474,8 +5567,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
    const defaults = {
      left: Math.max(10, window.innerWidth - 350),
      top: 90,
-     width: 335,
-     height: 420,
+     width: 260,
+     height: 400,
      collapsed: false,
      hidden: false
    };
@@ -5500,13 +5593,13 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
    style.textContent = `
      #tc-online-panel {
        position: fixed;
-       z-index: 2147483000;
+       z-index: 900;
        display: flex;
        flex-direction: column;
        box-sizing: border-box;
-       min-width: 270px;
+       min-width: 220px;
        min-height: 42px;
-       background: rgba(12,12,12,.91);
+       background: #101010;
        color: #eee;
        border: 2px solid #d7ad52;
        border-radius: 5px;
@@ -5526,7 +5619,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        gap: 5px;
        min-height: 35px;
        padding: 5px 7px;
-       background: rgba(33,27,16,.94);
+       background: #211b10;
        color: #e7c36e;
        border-bottom: 1px solid #80652e;
        cursor: move;
@@ -5575,45 +5668,77 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        overflow-y: auto;
        overflow-x: hidden;
        scrollbar-width: thin;
-       scrollbar-color: rgba(128,101,46,.35) transparent;
+       scrollbar-color: #80652e #101010;
        overscroll-behavior: contain;
        scrollbar-gutter: stable;
      }
 
      /* Chrome i Edge */
      #tc-list::-webkit-scrollbar {
-       width: 4px;
+       width: 5px;
      }
 
      #tc-list::-webkit-scrollbar-track {
-       background: transparent;
+       background: #101010;
      }
 
      #tc-list::-webkit-scrollbar-thumb {
-       background: rgba(128,101,46,.28);
+       background: #80652e;
        border-radius: 8px;
      }
 
      #tc-list::-webkit-scrollbar-thumb:hover {
-       background: rgba(215,173,82,.48);
+       background: #d7ad52;
      }
 
      .tc-player {
        display: grid;
-       grid-template-columns: minmax(0, 1fr) 22px;
+       grid-template-columns: minmax(0, 1fr) 20px;
        align-items: center;
-       gap: 4px;
-       padding: 3px 5px;
-       border-bottom: 1px solid #302a20;
+       gap: 5px;
+       padding: 4px 5px;
+       border-bottom: 1px solid #403626;
      }
 
      .tc-player:nth-child(even) {
-       background: rgba(24,24,24,.62);
+       background: #181818;
      }
 
-     /* The Crew Online 3.1.0: osoby z aktualnej drużyny są oznaczone turkusem. */
+     .tc-name {
+       color: #ffe09a;
+       font-size: 11px;
+       font-weight: 700;
+       overflow-wrap: anywhere;
+       line-height: 1.25;
+       letter-spacing: .1px;
+       text-shadow: 0 1px 1px #000;
+     }
+
+     .tc-summary {
+       margin-top: 2px;
+       color: #dedede;
+       font-size: 10px;
+       line-height: 1.25;
+       overflow-wrap: anywhere;
+       white-space: normal;
+     }
+
+     .tc-summary .tc-summary-level {
+       color: #ffe09a;
+       font-weight: 700;
+     }
+
+     .tc-summary .tc-summary-location {
+       color: #b9e6c5;
+     }
+
+     .tc-summary .tc-summary-missing {
+       color: #aaa;
+       font-style: italic;
+     }
+
      .tc-player.tc-in-group {
-       background: rgba(16,43,43,.82) !important;
+       background: #102b2b !important;
        box-shadow: inset 3px 0 0 #35d6c8;
      }
 
@@ -5621,23 +5746,15 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        color: #55e7dc;
      }
 
-     .tc-name {
-       color: #f3d48a;
-       font-size: 12px;
-       font-weight: bold;
-       overflow-wrap: anywhere;
-       line-height: 1.15;
-     }
-
-     #tc-online-panel .tc-level {
+     .tc-level {
        color: #d7ad52;
        font-weight: bold;
      }
 
      .tc-info {
-       margin-top: 2px;
-       color: #bbb;
-       line-height: 1.2;
+       margin-top: 4px;
+       color: #e0e0e0;
+       line-height: 1.35;
        overflow-wrap: anywhere;
        white-space: normal;
        font-size: 11px;
@@ -5646,18 +5763,60 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      .tc-info-line {
        display: flex;
        flex-wrap: wrap;
-       align-items: baseline;
+       align-items: flex-start;
        column-gap: 5px;
-       row-gap: 1px;
+       row-gap: 5px;
        min-width: 0;
+       width: 100%;
      }
 
      .tc-info-line span {
        min-width: 0;
      }
 
-     .tc-map {
+     .tc-chip {
+       display: inline-flex;
+       align-items: center;
+       box-sizing: border-box;
+       max-width: 100%;
+       min-height: 20px;
+       padding: 3px 6px;
+       border: 1px solid #51442d;
+       border-radius: 3px;
+       background: #211d16;
+       color: #e5e5e5;
        overflow-wrap: anywhere;
+     }
+
+     .tc-level {
+       color: #ffe09a;
+       font-weight: 700;
+       border-color: #8c6b2e;
+       background: #302515;
+     }
+
+     .tc-profession {
+       color: #bce9ff;
+       border-color: #31566b;
+       background: #14232b;
+     }
+
+     .tc-map {
+       color: #d7d7d7;
+       overflow-wrap: anywhere;
+     }
+
+     .tc-coords {
+       color: #8ee5b0;
+       border-color: #31583f;
+       background: #13251a;
+       white-space: nowrap;
+     }
+
+     .tc-missing {
+       color: #aaa;
+       border-style: dashed;
+       background: #171717;
      }
 
      .tc-invite {
@@ -5679,11 +5838,11 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        position: fixed;
        left: var(--tc-open-left, calc(100vw - 155px));
        top: var(--tc-open-top, calc(100vh - 100px));
-       z-index: 2147483000;
+       z-index: 900;
        padding: 6px 9px;
        font: 12px Arial, sans-serif;
        color: #e7c36e;
-       background: rgba(12,12,12,.91);
+       background: #101010;
        border: 2px solid #d7ad52;
        border-radius: 5px;
        cursor: move;
@@ -5733,7 +5892,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
    document.body.appendChild(openBtn);
 
    const applySettings = () => {
-     settings.width = Math.max(270, Number(settings.width) || defaults.width);
+     settings.width = Math.max(220, Number(settings.width) || defaults.width);
      settings.height = Math.max(42, Number(settings.height) || defaults.height);
 
      settings.left = Math.max(
@@ -5750,17 +5909,18 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      panel.style.top = `${settings.top}px`;
      panel.style.width = `${settings.width}px`;
      panel.style.height = `${settings.height}px`;
-     const masterEnabled = !(window.__vicknessAddonEnabled && window.__vicknessAddonEnabled.crewOnline === false);
-     panel.style.display = !masterEnabled || settings.hidden ? 'none' : 'flex';
-     openBtn.style.display = !masterEnabled ? 'none' : settings.hidden ? 'block' : 'none';
+      const masterEnabled = !(window.__vicknessAddonEnabled && window.__vicknessAddonEnabled.crewOnline === false);
+      panel.style.display = (!masterEnabled || settings.hidden) ? 'none' : 'flex';
+
+      openBtn.style.display = !masterEnabled ? 'none' : settings.hidden ? 'block' : 'none';
      const openLeft = settings.openLeft == null
        ? Math.max(0, window.innerWidth - 155)
        : Number(settings.openLeft);
      const openTop = settings.openTop == null
        ? Math.max(0, window.innerHeight - 100)
        : Number(settings.openTop);
-     openBtn.style.left = `${Math.max(0, Math.min(openLeft, window.innerWidth - openBtn.offsetWidth))}px`;
-     openBtn.style.top = `${Math.max(0, Math.min(openTop, window.innerHeight - openBtn.offsetHeight))}px`;
+     openBtn.style.left = `${Math.max(0, Math.min(openLeft, window.innerWidth - 80))}px`;
+     openBtn.style.top = `${Math.max(0, Math.min(openTop, window.innerHeight - 35))}px`;
      content.style.display = settings.collapsed ? 'none' : 'flex';
      collapseBtn.textContent = settings.collapsed ? '+' : '−';
    };
@@ -5788,7 +5948,6 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      save();
    });
 
-   // Skrót The Crew można przeciągać, a jego pozycja zapisuje się niezależnie od okna.
    let draggedOpenButton = false;
    openBtn.addEventListener('pointerdown', event => {
      if (event.button !== 0) return;
@@ -5802,8 +5961,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        const dx = e.clientX - startX;
        const dy = e.clientY - startY;
        if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
-       settings.openLeft = Math.max(0, Math.min(window.innerWidth - openBtn.offsetWidth, startLeft + dx));
-       settings.openTop = Math.max(0, Math.min(window.innerHeight - openBtn.offsetHeight, startTop + dy));
+       settings.openLeft = Math.max(0, Math.min(window.innerWidth - 80, startLeft + dx));
+       settings.openTop = Math.max(0, Math.min(window.innerHeight - 35, startTop + dy));
        openBtn.style.left = `${settings.openLeft}px`;
        openBtn.style.top = `${settings.openTop}px`;
      };
@@ -5819,6 +5978,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      document.addEventListener('pointerup', up);
      event.preventDefault();
    });
+
    openBtn.addEventListener('click', event => {
      if (draggedOpenButton) {
        draggedOpenButton = false;
@@ -5887,153 +6047,234 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      save();
    });
 
-   // Pobieranie listy online z Lootloga.
-   // Sprawdzamy zarówno stronę gry (unsafeWindow), jak i kontekst userscriptu.
-   // Dzięki temu moduł działa również wtedy, gdy skrypt jest uruchamiany przez loader.
-   const getLootlogApi = () => {
-     const contexts = [];
-     try { if (typeof unsafeWindow !== 'undefined' && unsafeWindow) contexts.push(unsafeWindow); } catch (_) {}
-     try { if (window) contexts.push(window); } catch (_) {}
-     try { if (document.defaultView) contexts.push(document.defaultView); } catch (_) {}
+   // Bezpieczny tryb pasywny: nie wysyłamy żądania clan&a=members
+   // i nigdy nie blokujemy natywnych handlerów gry. Dzięki temu ręczne
+   // otwieranie zakładki Klanowicze pozostaje dostępne.
+   let cachedRawMembers = null;
+   let cachedMembersAt = 0;
+   let pendingMembersRequest = null;
+   let membersDispatcherHooked = false;
+   let lastRoster = [];
+   const playerDetailsCache = new Map();
+   const REQUEST_TIMEOUT_MS = 10000;
 
-     for (const context of contexts) {
-       try {
-         const api = context && context.lootlogGameClientApi;
-         if (api && typeof api === 'object') return api;
-       } catch (_) {}
-     }
-     return null;
+   const normalizeMembersPayload = (data) => {
+     if (Array.isArray(data)) return data.length >= 11 ? data : null;
+     if (!data || typeof data !== 'object') return null;
+     if (Array.isArray(data.members)) return data.members.length >= 11 ? data.members : null;
+
+     // Odpowiedź obserwowana w grze: 2563 klucze numeryczne = 233 rekordy po 11 pól.
+     const numericKeys = Object.keys(data).filter(key => /^(0|[1-9]\d*)$/.test(key));
+     if (numericKeys.length < 11) return null;
+     numericKeys.sort((a, b) => Number(a) - Number(b));
+     const flattened = numericKeys.map(key => data[key]);
+     return flattened.length >= 11 ? flattened : null;
    };
 
-   const getSocketState = api => {
+   const installMembersHook = () => {
+     const dispatcher = PAGE.Engine?.communication?.dispatcher;
+     if (membersDispatcherHooked || !dispatcher || typeof dispatcher.on_members !== 'function') return;
+
+     const originalOnMembers = dispatcher.on_members;
+     dispatcher.on_members = function(data, ...args) {
+       const members = normalizeMembersPayload(data);
+       if (members) {
+         cachedRawMembers = members;
+         cachedMembersAt = Date.now();
+         if (pendingMembersRequest) {
+           const pending = pendingMembersRequest;
+           pendingMembersRequest = null;
+           clearTimeout(pending.timeout);
+           pending.resolve(members);
+           // Pomijamy handler UI tylko dla odpowiedzi naszego żądania,
+           // gdy okno klanu jest zamknięte.
+           if (!PAGE.Engine?.clan) return;
+         }
+       }
+       return originalOnMembers.call(this, data, ...args);
+     };
+
+     membersDispatcherHooked = true;
+   };
+
+   const readMembersFromOpenClan = () => {
      try {
-       if (api && typeof api.getSocketState === 'function') return api.getSocketState();
-     } catch (_) {}
-     return null;
+       const clan = PAGE.Engine?.clan;
+       if (!clan || typeof clan.getMemberList !== 'function') return null;
+       const memberList = clan.getMemberList();
+       if (!memberList || typeof memberList !== 'object') return null;
+       // getMemberList() is normally keyed by player ID; each value is an 11-field record.
+       const records = Array.isArray(memberList) ? memberList : Object.values(memberList);
+       const flattened = [];
+       for (const record of records) {
+         if (Array.isArray(record) && record.length >= 11) flattened.push(...record.slice(0, 11));
+       }
+       return flattened.length >= 11 ? flattened : null;
+     } catch (error) {
+       return null;
+     }
    };
 
+   const requestMembers = () => new Promise((resolve, reject) => {
+     installMembersHook();
+     const liveRoster = readMembersFromOpenClan();
+     if (liveRoster) {
+       cachedRawMembers = liveRoster;
+       cachedMembersAt = Date.now();
+       resolve(liveRoster);
+       return;
+     }
+     if (Array.isArray(cachedRawMembers) && cachedRawMembers.length >= 11 &&
+         Date.now() - cachedMembersAt < 30000) {
+       resolve(cachedRawMembers);
+       return;
+     }
+     if (pendingMembersRequest) {
+       reject(new Error('Oczekiwanie na listę członków już trwa.'));
+       return;
+     }
+
+     const pending = { resolve, reject, timeout: null };
+     pendingMembersRequest = pending;
+     pending.timeout = window.setTimeout(() => {
+       if (pendingMembersRequest === pending) pendingMembersRequest = null;
+       reject(new Error('Serwer nie zwrócił listy. Jeśli automatyczne pobranie nie działa, otwórz Klanowicze ręcznie.'));
+     }, REQUEST_TIMEOUT_MS);
+
+     // Najpierw podpinamy przechwytywanie, dopiero potem wysyłamy żądanie.
+     try {
+       if (typeof PAGE._g === 'function') {
+         PAGE._g('clan&a=members');
+       } else {
+         clearTimeout(pending.timeout);
+         pendingMembersRequest = null;
+         reject(new Error('Nie znaleziono funkcji komunikacji gry.'));
+       }
+     } catch (error) {
+       clearTimeout(pending.timeout);
+       pendingMembersRequest = null;
+       reject(error);
+     }
+   });
+
+   // Odpowiedź members to spłaszczona tablica rekordów po 11 pól:
+   // id, nick, hp, maxhp, profesja, mapa, x, y, ranga, czas/status, grafika.
    const getPlayers = async () => {
-     const apiDeadline = Date.now() + 30000;
-     let api = getLootlogApi();
-
-     // Najpierw czekamy na publiczne API Lootloga, niezależnie od flagi ready.
-     while (
-       (!api || api.apiVersion !== 1 || typeof api.getOnlinePlayers !== 'function') &&
-       Date.now() < apiDeadline &&
-       !(window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.crewOnline)
-     ) {
-       await new Promise(resolve => setTimeout(resolve, 250));
-       api = getLootlogApi();
+     const rawMembers = await requestMembers();
+     if (!Array.isArray(rawMembers) || rawMembers.length < 11) {
+       throw new Error('Serwer zwrócił niepełną listę członków klanu.');
      }
 
-     if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.crewOnline) return [];
-     if (!api) {
-       throw new Error('Nie znaleziono API Lootloga na stronie gry. Sprawdź, czy dodatek Lootlog jest włączony i załadowany.');
+     const roster = [];
+     for (let i = 0; i + 10 < rawMembers.length; i += 11) {
+       const id = String(rawMembers[i] ?? '');
+       const nick = String(rawMembers[i + 1] ?? '').trim();
+       if (!id || !nick) continue;
+       // Dane lokacji są już w rekordzie klanowym; nie polegaj wyłącznie na Lootlogu.
+      // Układ rekordu: id, nick, hp, maxhp, profesja, mapa, x, y, ranga, status, grafika.
+      const baseLevelValue = rawMembers[i + 2];
+      const baseLevel = baseLevelValue !== '' && baseLevelValue != null && Number.isFinite(Number(baseLevelValue))
+        ? Number(baseLevelValue)
+        : null;
+      const profession = String(rawMembers[i + 4] ?? '').trim();
+      const map = String(rawMembers[i + 5] ?? '').trim();
+      const xValue = rawMembers[i + 6];
+      const yValue = rawMembers[i + 7];
+      const x = xValue !== '' && xValue != null && Number.isFinite(Number(xValue)) ? Number(xValue) : null;
+      const y = yValue !== '' && yValue != null && Number.isFinite(Number(yValue)) ? Number(yValue) : null;
+      roster.push({
+        id, nick,
+        isOnline: Number(rawMembers[i + 9]) === 0,
+        baseLevel,
+        baseProfession: profession,
+        baseMap: map,
+        baseX: x,
+        baseY: y
+      });
      }
-     if (api.apiVersion !== 1 || typeof api.getOnlinePlayers !== 'function') {
-       throw new Error('Wykryto nieobsługiwaną wersję API Lootloga. Odśwież grę i zaktualizuj dodatek Lootlog.');
-     }
+     if (!roster.length) throw new Error('Lista członków nie zawiera rozpoznawalnych rekordów.');
+     lastRoster = roster;
 
-     // ready oznacza inicjalizację gry; samo w sobie nie oznacza gotowości połączenia online.
-     const readyDeadline = Date.now() + 30000;
-     while (
-       api.ready !== true && Date.now() < readyDeadline &&
-       !(window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.crewOnline)
-     ) {
-       await new Promise(resolve => setTimeout(resolve, 250));
-       api = getLootlogApi() || api;
-     }
+     // Spróbuj pobrać dodatkowe dane z Lootloga, ale nie uzależniaj od niego listy.
+     const extrasByNick = new Map();
+     try {
+       const api = PAGE.lootlogGameClientApi;
+       if (api?.ready && typeof api.getOnlinePlayers === 'function') {
+         const result = await api.getOnlinePlayers({
+           guildId: GUILD_ID,
+           world: WORLD
+         });
 
-     if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.crewOnline) return [];
-     if (api.ready !== true) {
-       throw new Error('API Lootloga jest dostępne, ale Margonem nie zakończył inicjalizacji. Spróbuj odświeżyć grę.');
-     }
+         if (result?.status === 'success' && result.players) {
+           for (const record of Object.values(result.players).flat()) {
+             const player = record?.player;
+             if (!player || record.status !== 'online' || player.world !== WORLD) continue;
 
-     // Obecność API i ready nie gwarantują połączenia z bramką online.
-     const socketDeadline = Date.now() + 15000;
-     let socket = getSocketState(api);
-     while (
-       socket && (!socket.connected || !socket.joined) && Date.now() < socketDeadline &&
-       !(window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.crewOnline)
-     ) {
-       await new Promise(resolve => setTimeout(resolve, 500));
-       api = getLootlogApi() || api;
-       socket = getSocketState(api);
-     }
+             const nick = String(player.name || '').trim().toLocaleLowerCase('pl');
+             if (!nick) continue;
 
-     if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.crewOnline) return [];
-     if (socket && (!socket.connected || !socket.joined)) {
-       throw new Error('Lootlog jest załadowany, ale połączenie online nie jest gotowe. Sprawdź połączenie Lootloga i spróbuj ponownie.');
-     }
-
-     const result = await api.getOnlinePlayers({
-       guildId: GUILD_ID,
-       world: WORLD
-     });
-
-     if (result?.status === 'forbidden') {
-       throw new Error(`Lootlog odmówił dostępu do listy online (${result.code || 'FORBIDDEN'}). Sprawdź uprawnienia organizacji The Crew.`);
-     }
-     if (result?.status !== 'success' || !result.players) {
-       throw new Error('Lootlog nie zwrócił poprawnej listy graczy. Spróbuj ponownie za chwilę.');
-     }
-
-     return Object.values(result.players)
-       .flat()
-       .filter(record =>
-         record &&
-         record.status === 'online' &&
-         record.player &&
-         record.player.world === WORLD
-       )
-       .map(record => {
-         const player = record.player;
-         const level = Number(player.lvl);
-         const characterId = player.characterId != null
-           ? String(player.characterId)
-           : '';
-
-         // Lootlog przechowuje pozycję w player.location.
-         const location = player.location || {};
-         const mapX = Number(location.x);
-         const mapY = Number(location.y);
-
-         // The Crew Online 3.1.0: wyróżnia członków aktualnej drużyny.
-         // Odczyt Engine z kontekstu strony działa także w userskrypcie z grantami GM_*.
-         let isInGroup = false;
-         try {
-           const partyMembers = PAGE.Engine?.party?.getMembers?.();
-           const partyIds = new Set();
-           if (partyMembers instanceof Map) {
-             for (const [memberId, member] of partyMembers.entries()) {
-               if (memberId != null) partyIds.add(String(memberId));
-               if (member?.id != null) partyIds.add(String(member.id));
-             }
-           } else if (Array.isArray(partyMembers)) {
-             for (const member of partyMembers) {
-               if (member?.id != null) partyIds.add(String(member.id));
-             }
-           } else if (partyMembers && typeof partyMembers === 'object') {
-             for (const [memberId, member] of Object.entries(partyMembers)) {
-               partyIds.add(String(memberId));
-               if (member?.id != null) partyIds.add(String(member.id));
-             }
+             const location = player.location || {};
+             const extra = {
+               level: player.lvl != null && player.lvl !== '' && Number.isFinite(Number(player.lvl)) ? Number(player.lvl) : null,
+               profession: player.prof || player.profession || '',
+               map: location.map || record.mapName || '',
+               x: location.x != null && location.x !== '' && Number.isFinite(Number(location.x)) ? Number(location.x) : null,
+               y: location.y != null && location.y !== '' && Number.isFinite(Number(location.y)) ? Number(location.y) : null,
+               afk: record.isAfk === true
+             };
+             const previous = playerDetailsCache.get(nick) || {};
+             const merged = {
+               level: extra.level ?? previous.level ?? null,
+               profession: extra.profession || previous.profession || '',
+               map: extra.map || previous.map || '',
+               x: extra.x ?? previous.x ?? null,
+               y: extra.y ?? previous.y ?? null,
+               afk: extra.afk || previous.afk === true
+             };
+             playerDetailsCache.set(nick, merged);
+             extrasByNick.set(nick, merged);
            }
-           isInGroup = characterId !== '' && partyIds.has(characterId);
-         } catch (_) {}
+         }
+       }
+     } catch (error) {
+       console.debug('[The Crew] Dodatkowe dane Lootloga niedostępne:', error);
+     }
 
+     // Podświetlanie członków aktualnej drużyny.
+     const partyMembers = PAGE.Engine?.party?.getMembers?.();
+     const partyIds = new Set();
+
+     if (partyMembers instanceof Map) {
+       for (const [memberId, member] of partyMembers.entries()) {
+         if (memberId != null) partyIds.add(String(memberId));
+         if (member?.id != null) partyIds.add(String(member.id));
+       }
+     } else if (Array.isArray(partyMembers)) {
+       for (const member of partyMembers) {
+         if (member?.id != null) partyIds.add(String(member.id));
+       }
+     } else if (partyMembers && typeof partyMembers === 'object') {
+       for (const [memberId, member] of Object.entries(partyMembers)) {
+         partyIds.add(String(memberId));
+         if (member?.id != null) partyIds.add(String(member.id));
+       }
+     }
+
+     return roster
+       .filter(player => player.isOnline)
+       .map(player => {
+         const nickKey = player.nick.toLocaleLowerCase('pl');
+         const extra = extrasByNick.get(nickKey) || playerDetailsCache.get(nickKey) || {};
          return {
-           id: characterId,
-           nick: player.name || 'Nieznany gracz',
-           level: Number.isFinite(level) && level >= 0
-             ? level
-             : null,
-           profession: player.prof || player.profession || '',
-           map: location.map || record.mapName || '',
-           x: location.x != null && Number.isFinite(mapX) ? mapX : null,
-           y: location.y != null && Number.isFinite(mapY) ? mapY : null,
-           isInGroup,
-           afk: record.isAfk === true
+           id: player.id,
+           nick: player.nick,
+           level: extra.level ?? player.baseLevel ?? null,
+           profession: extra.profession || player.baseProfession || '',
+           map: extra.map || player.baseMap || '',
+           x: extra.x ?? player.baseX ?? null,
+           y: extra.y ?? player.baseY ?? null,
+           isInGroup: partyIds.has(player.id),
+           afk: extra.afk === true
          };
        })
        .sort((a, b) =>
@@ -6053,7 +6294,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
      if (!players.length) {
        fragment.append(
-         make('div', 'Brak graczy online w danych Lootloga.')
+         make('div', 'Gra nie zgłasza obecnie członków klanu online.')
        );
      }
 
@@ -6067,31 +6308,37 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        const name = make('div', player.nick + (player.afk ? ' (AFK)' : ''));
        name.className = 'tc-name';
 
-       const level = player.level == null
-         ? 'brak danych'
-         : player.level;
+       // Zwięzły układ: Nick, poziom+profesja, mapa (x,y).
+       const summary = make('div');
+       summary.className = 'tc-summary';
 
-       const profession = player.profession || 'brak danych';
-       const map = player.map || 'brak danych';
+       const levelText = player.level != null ? String(player.level) : '—';
+       const professionText = player.profession ? String(player.profession) : '';
+       const levelProfession = make('span', `${levelText}${professionText}`);
+       levelProfession.className = 'tc-summary-level';
+       summary.append(levelProfession);
 
-       const coords =
-         player.x != null && player.y != null
-           ? `${player.x}, ${player.y}`
-           : 'brak danych';
+       const separator = make('span', ', ');
+       summary.append(separator);
 
-       const info = make('div');
-       info.className = 'tc-info';
-       const infoLine = make('div');
-       infoLine.className = 'tc-info-line';
-       const levelValue = make('span', `Poz. ${level}`);
-       levelValue.className = 'tc-level';
-       const professionValue = make('span', profession);
-       const mapValue = make('span', map);
-       mapValue.className = 'tc-map';
-       const coordsValue = make('span', coords);
-       infoLine.append(levelValue, professionValue, mapValue, coordsValue);
-       info.append(infoLine);
-       details.append(name, info);
+       const hasMap = Boolean(player.map);
+       const hasCoords = player.x != null && player.y != null;
+       let locationText = '';
+       if (hasMap) locationText = player.map;
+       else if (hasCoords) locationText = 'Nieznana mapa';
+       else locationText = 'Brak pozycji';
+
+       const location = make('span', locationText);
+       location.className = hasMap || hasCoords
+         ? 'tc-summary-location'
+         : 'tc-summary-missing';
+       summary.append(location);
+
+       if (hasCoords) {
+         summary.append(make('span', ` (${player.x},${player.y})`));
+       }
+
+       details.append(name, summary);
 
        const inviteBtn = make('button', '+');
        inviteBtn.className = 'tc-btn tc-invite';
@@ -6099,7 +6346,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
        if (!player.id) {
          inviteBtn.disabled = true;
-         inviteBtn.title = 'Brak ID postaci w danych Lootloga';
+         inviteBtn.title = 'Brak ID postaci w danych gry';
        } else {
          inviteBtn.addEventListener('click', () => {
            inviteBtn.disabled = true;
@@ -6143,12 +6390,11 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
    let refreshTimer;
 
    const refresh = async () => {
-     if ((window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.crewOnline) || busy) return;
+     if (busy) return;
      busy = true;
 
      try {
        const players = await getPlayers();
-       if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.crewOnline) return;
 
        render(players);
 
@@ -6158,35 +6404,35 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      } catch (error) {
        console.warn('[The Crew] Refresh error:', error);
 
-       status.textContent =
-         error.message || 'Błąd odczytu danych Lootloga.';
+       if (lastRoster.length) {
+         // Zachowaj ostatnie znane dane i jasno oznacz, że nie udało się ich odświeżyć.
+         const partyMembers = PAGE.Engine?.party?.getMembers?.();
+         const partyIds = new Set();
+         if (partyMembers instanceof Map) {
+           for (const [id, member] of partyMembers.entries()) {
+             if (id != null) partyIds.add(String(id));
+             if (member?.id != null) partyIds.add(String(member.id));
+           }
+         } else if (Array.isArray(partyMembers)) {
+           for (const member of partyMembers) if (member?.id != null) partyIds.add(String(member.id));
+         } else if (partyMembers && typeof partyMembers === 'object') {
+           for (const [id, member] of Object.entries(partyMembers)) {
+             partyIds.add(String(id));
+             if (member?.id != null) partyIds.add(String(member.id));
+           }
+         }
+         render(lastRoster.filter(p => p.isOnline).map(p => ({
+           id: p.id, nick: p.nick, level: null, profession: '', map: '', x: null, y: null,
+           isInGroup: partyIds.has(p.id), afk: false
+         })).sort((a, b) => a.nick.localeCompare(b.nick, 'pl')));
+         status.textContent = `Błąd odświeżania — pokazuję ostatnie dane · ${error.message || 'brak odpowiedzi'}`;
+       } else {
+         status.textContent = error.message || 'Błąd odczytu listy członków z gry.';
+       }
      } finally {
        busy = false;
      }
    };
-
-    // Integracja z panelem Vickness: przełącznik, pokaż/ukryj i odświeżanie listy.
-    window.__vicknessApplyCrewOnline = applySettings;
-    window.__vicknessCrewOnlineAction = action => {
-      if (action === 'show') {
-        settings.hidden = false;
-        settings.collapsed = false;
-      } else if (action === 'hide') {
-        settings.hidden = true;
-      } else if (action === 'collapse') {
-        settings.collapsed = !settings.collapsed;
-      } else if (action === 'refresh') {
-        refresh();
-        return;
-      }
-      applySettings();
-      save();
-    };
-    if (window.__vicknessPendingCrewOnlineAction) {
-      const pendingAction = window.__vicknessPendingCrewOnlineAction;
-      window.__vicknessPendingCrewOnlineAction = null;
-      window.__vicknessCrewOnlineAction(pendingAction);
-    }
 
    // F8: ukrywanie i ponowne otwieranie panelu.
    document.addEventListener('keydown', event => {
@@ -6198,6 +6444,31 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      applySettings();
      save();
    });
+
+   // Integracja z przełącznikiem i przyciskami w głównym panelu Vickness.
+   window.__vicknessApplyCrewOnline = applySettings;
+   window.__vicknessCrewOnlineAction = action => {
+     if (action === 'show') {
+       settings.hidden = false;
+       applySettings();
+       save();
+     } else if (action === 'hide') {
+       settings.hidden = true;
+       applySettings();
+       save();
+     } else if (action === 'collapse') {
+       settings.collapsed = !settings.collapsed;
+       applySettings();
+       save();
+     } else if (action === 'refresh') {
+       void refresh();
+     }
+   };
+   if (window.__vicknessPendingCrewOnlineAction) {
+     const pendingAction = window.__vicknessPendingCrewOnlineAction;
+     window.__vicknessPendingCrewOnlineAction = null;
+     window.__vicknessCrewOnlineAction(pendingAction);
+   }
 
    applySettings();
    refresh();
