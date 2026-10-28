@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.37
-// @description  Vickness Addons: Loot Bar 4.4.8 poprawki ładowania, Titan Tracker 5.0.2 i dodatkowe motywy
+// @version      1.1.38
+// @description  Vickness Addons: Loot Bar 4.4.9 szybsze ładowanie, pamięć podręczna, Titan Tracker 5.0.2 i dodatkowe motywy
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -2480,7 +2480,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.37 — naprawa ładowania Loot Bar 4.4.8 i przywrócenie Titan Tracker 5.0.2
+// VICKNESS ADDON PANEL 1.1.38 — Loot Bar 4.4.9: szybkie pierwsze wyświetlenie, cache i krótsze odświeżanie
 // =============================================================
 (() => {
   'use strict';
@@ -2931,6 +2931,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.38</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono belkę na Loot Bar 4.4.9. Skrócono okres automatycznego odświeżania do 3 minut, równolegle pobierane są dane zwykłe i legendarne, a ostatnie łupy są pokazywane od razu z lokalnej pamięci podręcznej podczas odświeżania.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.37</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono obsługę ładowania belki Loot Bar 4.4.8: widoczny stan podczas ładowania, komunikat diagnostyczny i przycisk ponowienia przy błędzie API. Przywrócono pełny moduł Titan Tracker Gold 5.0.2 do scalonego skryptu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.36</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono belkę lootów na Loot Bar by Vickness 4.4.8 z załącznika. Pozostawiono osobną kolorystykę belki niezależną od motywu głównego panelu oraz zachowano jej sterowanie z zakładek Vickness.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.35</span><span class="vxChangelogDate">bieżące wydanie</span><div>Zaktualizowano mechanizm Złotego przyciemnienia mapy do wersji 7.0 z automatycznym dopasowaniem do rozmiaru gry i ponownym nakładaniem po zmianie canvasu. Dodano trzy motywy: czarno-niebieski, czarno-zielony i czarno-różowy. Belka Lootlog zachowuje własną kolorystykę niezależnie od motywu Vickness.</div></div>
@@ -3113,7 +3114,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.37';
+  const CURRENT_PANEL_VERSION = '1.1.38';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -3547,11 +3548,11 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// BELKA LOOTÓW ZINTEGROWANA Z LOOTLOGIEM — kod dodatku 4.4.8 (z załącznika)
+// BELKA LOOTÓW ZINTEGROWANA Z LOOTLOGIEM — Loot Bar 4.4.9 (z załącznika), szybsze ładowanie
 // ==UserScript==
 // @name         Loot Bar by Vickness - Riventia
 // @namespace    vickness.riventia.lootbar
-// @version      4.4.8
+// @version      4.4.9
 // @description  Loot Bar Riventia - 10 najnowszych heroików Elity II i 5 najnowszych legend ze wszystkich źródeł
 // @match        https://riventia.margonem.pl/*
 // @run-at       document-idle
@@ -3574,7 +3575,10 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   const GUILD_URL = 'https://lootlog.pl/thecrew';
   const LEGENDARY_URL =
     'https://lootlog.pl/thecrew?lootbarFilter=legendary&rarities=LEGENDARY';
-  const REFRESH_MS = 10 * 60 * 1000;
+  const REFRESH_MS = 3 * 60 * 1000;
+  const REQUEST_TIMEOUT_MS = 12000;
+  const CACHE_KEY = `${STORAGE_KEY}:fast-cache`;
+  const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
   const STORAGE_KEY = 'vicknessRiventiaLootBar';
 
   document.querySelector('#vickness-lootbar')?.remove();
@@ -3890,8 +3894,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
   const itemsBox = bar.querySelector('.vl-items');
   const loadingNotice = document.createElement('div');
-  loadingNotice.className = 'vl-empty';
-  loadingNotice.textContent = 'Ładowanie łupów z Lootloga…';
+  loadingNotice.className = 'vl-empty vl-loading';
+  loadingNotice.textContent = 'Ładowanie łupów…';
   itemsBox.appendChild(loadingNotice);
 
   const tooltip = document.createElement('div');
@@ -4009,7 +4013,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
           method: 'GET',
           url,
           headers: { Accept: 'application/json' },
-          timeout: 20000,
+          timeout: REQUEST_TIMEOUT_MS,
           onload: response => {
             if (response.status < 200 || response.status >= 300) {
               reject(new Error(`HTTP ${response.status}: ${(response.responseText || '').slice(0, 240)}`));
@@ -4022,7 +4026,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
             }
           },
           onerror: () => reject(new Error('Błąd połączenia z API')),
-          ontimeout: () => reject(new Error('Przekroczono czas oczekiwania'))
+          ontimeout: () => reject(new Error('Przekroczono limit 12 s oczekiwania na API'))
         });
       } catch (error) {
         reject(error);
@@ -4306,7 +4310,21 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       if (value == null || result.length >= 35) return;
       if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
         const text = String(value).trim();
-        if (text && !result.includes(`${label}: ${text}`)) result.push(`${label}: ${text}`);
+        // Lootlog can return all item stats as one compact string, e.g. ac=569;act=1;... .
+        // Split that string into readable separate lines instead of one overflowing line.
+        if (/^(stat|stats|statystyki)$/i.test(String(label).trim()) && /[;|]/.test(text) && /=/.test(text)) {
+          for (const part of text.split(/[;|]/)) {
+            const match = part.trim().match(/^([^=:\s]+)\s*[=:]\s*(.+)$/);
+            if (match) {
+              const line = `${match[1]}: ${match[2].trim()}`;
+              if (!result.includes(line) && result.length < 35) result.push(line);
+            } else if (part.trim() && !result.includes(part.trim()) && result.length < 35) {
+              result.push(part.trim());
+            }
+          }
+        } else if (text && !result.includes(`${label}: ${text}`)) {
+          result.push(`${label}: ${text}`);
+        }
       }
     };
     function walk(value, depth = 0, prefix = '') {
@@ -4506,7 +4524,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
-  function render(loots) {
+  function render(loots, saveCache = true) {
     // Sortujemy po czasie utworzenia wpisu Lootlog, a nie po kolejności odpowiedzi API.
     const sorted = [...loots].sort((a, b) => lootTimestamp(b) - lootTimestamp(a));
 
@@ -4559,6 +4577,31 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     // Heroiki po lewej, a 5 najnowszych legend po prawej.
     const chosen = [...newestHeroic, ...newestLegendary];
 
+    if (saveCache && chosen.length) {
+      // Zapisz tylko wybrane wpisy (maks. 15), by pamięć podręczna była mała.
+      const cacheRows = chosen.map(({ loot, item }) => ({
+        id: loot?.id,
+        uniqueId: loot?.uniqueId,
+        createdAt: loot?.createdAt,
+        created_at: loot?.created_at,
+        date: loot?.date,
+        timestamp: loot?.timestamp,
+        npcs: loot?.npcs,
+        npc: loot?.npc,
+        players: loot?.players,
+        player: loot?.player,
+        lootShare: loot?.lootShare,
+        loot_share: loot?.loot_share,
+        item,
+        items: [item]
+      }));
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ savedAt: Date.now(), loots: cacheRows }));
+      } catch (error) {
+        console.debug('[Loot Bar] Nie udało się zapisać cache:', error);
+      }
+    }
+
     if (!chosen.length) {
       const empty = document.createElement('div');
       empty.className = 'vl-empty';
@@ -4575,20 +4618,22 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     busy = true;
 
     try {
-      const data = await fetchJson(API);
+      // Start both API requests together so the legendary endpoint does not delay
+      // the first visible render from the regular endpoint.
+      const recentPromise = fetchJson(API);
+      const legendaryPromise = fetchJson(LEGENDARY_API).then(getLoots).catch(error => {
+        console.warn('[Loot Bar] Osobne pobieranie legend nie powiodło się:', error);
+        return [];
+      });
+
+      const data = await recentPromise;
       const recentLoots = getLoots(data);
-      let legendaryLoots = [];
 
-      // Pobieramy też osobno legendy, aby dotrzeć do nich poza pierwszymi
-      // 100 najnowszymi łupami. Jeśli filtr nie jest obsługiwany, zachowujemy
-      // działanie podstawowego źródła zamiast wyłączać cały pasek.
-      try {
-        const legendaryData = await fetchJson(LEGENDARY_API);
-        legendaryLoots = getLoots(legendaryData);
-      } catch (legendaryError) {
-        console.warn('[Loot Bar] Osobne pobieranie legend nie powiodło się:', legendaryError);
-      }
+      // Show latest regular results as soon as the first endpoint responds.
+      // Do not wait for the additional legendary query to finish.
+      render(recentLoots);
 
+      const legendaryLoots = await legendaryPromise;
       const byId = new Map();
       for (const loot of [...recentLoots, ...legendaryLoots]) {
         const key = loot?.id ?? loot?.uniqueId;
@@ -4610,8 +4655,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       }
     } catch (error) {
       console.error('[Loot Bar]', error);
-      // Pokaż przyczynę i możliwość ponowienia; wcześniej błąd API był widoczny tylko w konsoli.
-      itemsBox.replaceChildren();
+      // If cached items are already visible, retain them and append a small warning.
       const errorBox = document.createElement('div');
       errorBox.className = 'vl-empty';
       Object.assign(errorBox.style, {
@@ -4620,7 +4664,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         overflowWrap: 'anywhere', lineHeight: '1.35', padding: '7px 9px'
       });
       const message = document.createElement('span');
-      message.textContent = `Loot Bar: nie udało się pobrać danych (${String(error?.message || 'błąd połączenia').slice(0, 120)}).`;
+      message.textContent = `Nie udało się odświeżyć łupów (${String(error?.message || 'błąd połączenia').slice(0, 100)}).`;
       const retry = document.createElement('button');
       retry.type = 'button';
       retry.textContent = '↻';
@@ -4635,7 +4679,9 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         loadLoots();
       });
       errorBox.append(message, retry);
-      itemsBox.appendChild(errorBox);
+      const hasTiles = itemsBox.querySelector('.vl-item');
+      if (hasTiles) itemsBox.appendChild(errorBox);
+      else itemsBox.replaceChildren(errorBox);
     } finally {
       busy = false;
     }
@@ -4645,6 +4691,16 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   setScale(scale);
   bar.style.left = `${x}px`;
   bar.style.top = `${y}px`;
+
+  try {
+    const cache = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+    if (cache && Array.isArray(cache.loots) &&
+        Date.now() - Number(cache.savedAt || 0) < CACHE_TTL_MS && cache.loots.length) {
+      render(cache.loots, false);
+    }
+  } catch (error) {
+    console.debug('[Loot Bar] Pominięto nieprawidłowy cache:', error);
+  }
 
   loadLoots();
   setInterval(loadLoots, REFRESH_MS);
