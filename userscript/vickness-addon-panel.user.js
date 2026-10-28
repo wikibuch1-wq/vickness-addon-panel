@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.35
-// @description  Vickness Addons: przyciemnienie mapy v7, dodatkowe motywy i niezależna belka lootów
+// @version      1.1.37
+// @description  Vickness Addons: Loot Bar 4.4.8 poprawki ładowania, Titan Tracker 5.0.2 i dodatkowe motywy
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -2480,7 +2480,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.35 — map dimmer v7, dodatkowe motywy; belka Lootlog zachowuje własne kolory
+// VICKNESS ADDON PANEL 1.1.37 — naprawa ładowania Loot Bar 4.4.8 i przywrócenie Titan Tracker 5.0.2
 // =============================================================
 (() => {
   'use strict';
@@ -2931,6 +2931,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.37</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono obsługę ładowania belki Loot Bar 4.4.8: widoczny stan podczas ładowania, komunikat diagnostyczny i przycisk ponowienia przy błędzie API. Przywrócono pełny moduł Titan Tracker Gold 5.0.2 do scalonego skryptu.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.36</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono belkę lootów na Loot Bar by Vickness 4.4.8 z załącznika. Pozostawiono osobną kolorystykę belki niezależną od motywu głównego panelu oraz zachowano jej sterowanie z zakładek Vickness.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.35</span><span class="vxChangelogDate">bieżące wydanie</span><div>Zaktualizowano mechanizm Złotego przyciemnienia mapy do wersji 7.0 z automatycznym dopasowaniem do rozmiaru gry i ponownym nakładaniem po zmianie canvasu. Dodano trzy motywy: czarno-niebieski, czarno-zielony i czarno-różowy. Belka Lootlog zachowuje własną kolorystykę niezależnie od motywu Vickness.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.34</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Ujednolicono i powiększono czcionki w zakładkach Dodatki, Log zmian i Wygląd. Wybrany motyw zmienia teraz również akcenty, obramowania i tabelki w oknach Loot Glow, belki Lootlog, DC Wykrywacza, Titan Trackera i The Crew Online.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.33</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano motyw czarno-czerwony i zaktualizowano Titan Tracker Gold do 5.0.2: kolejność wejścia graczy, komunikaty Discord inline oraz automatyczne rozwijanie po wykryciu tytana.</div></div>
@@ -3111,7 +3113,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.35';
+  const CURRENT_PANEL_VERSION = '1.1.37';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -3545,7 +3547,21 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// BELKA LOOTÓW ZINTEGROWANA Z LOOTLOGIEM — kod dodatku 4.4.7 (z załącznika)
+// BELKA LOOTÓW ZINTEGROWANA Z LOOTLOGIEM — kod dodatku 4.4.8 (z załącznika)
+// ==UserScript==
+// @name         Loot Bar by Vickness - Riventia
+// @namespace    vickness.riventia.lootbar
+// @version      4.4.8
+// @description  Loot Bar Riventia - 10 najnowszych heroików Elity II i 5 najnowszych legend ze wszystkich źródeł
+// @match        https://riventia.margonem.pl/*
+// @run-at       document-idle
+// @grant        GM_xmlhttpRequest
+// @connect      api.lootlog.pl
+// @connect      lootlog.pl
+// @connect      micc.garmory-cdn.cloud
+// @connect      www.margonem.pl
+// ==/UserScript==
+
 (() => {
   'use strict';
 
@@ -3792,6 +3808,20 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     .vl-tip .vl-tip-item {
       margin-top: 3px;
       color: #b8dcff;
+      font-weight: bold;
+    }
+
+    .vl-tip .vl-tip-stats {
+      margin-top: 7px;
+      padding-top: 6px;
+      border-top: 1px solid #393939;
+      color: #dedede;
+      white-space: pre-line;
+      line-height: 1.45;
+    }
+
+    .vl-tip .vl-tip-stat {
+      margin: 2px 0;
     }
 
     #vickness-lootbar .vl-empty {
@@ -3859,6 +3889,10 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   document.body.appendChild(bar);
 
   const itemsBox = bar.querySelector('.vl-items');
+  const loadingNotice = document.createElement('div');
+  loadingNotice.className = 'vl-empty';
+  loadingNotice.textContent = 'Ładowanie łupów z Lootloga…';
+  itemsBox.appendChild(loadingNotice);
 
   const tooltip = document.createElement('div');
   tooltip.className = 'vl-tip';
@@ -3952,26 +3986,47 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
   function fetchJson(url) {
     return new Promise((resolve, reject) => {
-      GM_xmlhttpRequest({
-        method: 'GET',
-        url,
-        headers: { Accept: 'application/json' },
-        timeout: 20000,
-        onload: response => {
-          if (response.status < 200 || response.status >= 300) {
-            reject(new Error(`HTTP ${response.status}: ${(response.responseText || '').slice(0, 500)}`));
-            return;
-          }
+      const legacyRequest = typeof GM_xmlhttpRequest === 'function'
+        ? GM_xmlhttpRequest
+        : null;
+      const modernRequest = typeof GM !== 'undefined' && typeof GM.xmlHttpRequest === 'function'
+        ? GM.xmlHttpRequest.bind(GM)
+        : null;
+      const request = legacyRequest || modernRequest;
 
-          try {
-            resolve(JSON.parse(response.responseText));
-          } catch {
-            reject(new Error('Nieprawidłowa odpowiedź JSON'));
-          }
-        },
-        onerror: () => reject(new Error('Błąd połączenia z API')),
-        ontimeout: () => reject(new Error('Przekroczono czas oczekiwania'))
-      });
+      if (!request) {
+        fetch(url, { headers: { Accept: 'application/json' }, credentials: 'omit' })
+          .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
+          })
+          .then(resolve, reject);
+        return;
+      }
+
+      try {
+        request({
+          method: 'GET',
+          url,
+          headers: { Accept: 'application/json' },
+          timeout: 20000,
+          onload: response => {
+            if (response.status < 200 || response.status >= 300) {
+              reject(new Error(`HTTP ${response.status}: ${(response.responseText || '').slice(0, 240)}`));
+              return;
+            }
+            try {
+              resolve(JSON.parse(response.responseText));
+            } catch {
+              reject(new Error('Nieprawidłowa odpowiedź JSON'));
+            }
+          },
+          onerror: () => reject(new Error('Błąd połączenia z API')),
+          ontimeout: () => reject(new Error('Przekroczono czas oczekiwania'))
+        });
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
@@ -4184,6 +4239,24 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     itemLine.textContent = source.dataset.item || 'Nieznany przedmiot';
     tooltip.appendChild(itemLine);
 
+    const stats = safeParseStats(source.dataset.stats || '[]');
+    if (stats.length) {
+      const statsBox = document.createElement('div');
+      statsBox.className = 'vl-tip-stats';
+      for (const stat of stats) {
+        const line = document.createElement('div');
+        line.className = 'vl-tip-stat';
+        line.textContent = stat;
+        statsBox.appendChild(line);
+      }
+      tooltip.appendChild(statsBox);
+    } else {
+      const noStats = document.createElement('div');
+      noStats.className = 'vl-tip-stats';
+      noStats.textContent = 'Brak statystyk w danych Lootlog dla tego przedmiotu.';
+      tooltip.appendChild(noStats);
+    }
+
     tooltip.style.display = 'block';
     tooltip.style.visibility = 'hidden';
     tooltip.style.left = '0px';
@@ -4208,6 +4281,70 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     tooltip.style.visibility = 'visible';
   }
 
+  function safeParseStats(value) {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // Lootlog API versions may expose item parameters under different keys.
+  // Only display fields present on the item object; never invent values.
+  function extractItemStats(item) {
+    if (!item || typeof item !== 'object') return [];
+    const result = [];
+    const seen = new Set();
+    const ignored = /^(id|hid|uid|uniqueid|name|label|title|rarity|quality|grade|tier|icon|image|img|url|href|description|desc|type|code|level|lvl|owner|player|createdat|updatedat)$/i;
+    const statContainers = /^(stats|statistics|attributes|parameters|properties|bonuses|effects|itemstats|item_stats|statlines|statslist)$/i;
+    const niceName = key => String(key)
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/[_-]+/g, ' ')
+      .replace(/^./, c => c.toUpperCase());
+    const add = (label, value) => {
+      if (value == null || result.length >= 35) return;
+      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+        const text = String(value).trim();
+        if (text && !result.includes(`${label}: ${text}`)) result.push(`${label}: ${text}`);
+      }
+    };
+    function walk(value, depth = 0, prefix = '') {
+      if (value == null || depth > 4 || result.length >= 35) return;
+      if (typeof value !== 'object') { if (prefix) add(prefix, value); return; }
+      if (seen.has(value)) return;
+      seen.add(value);
+      if (Array.isArray(value)) {
+        for (const entry of value) {
+          if (entry && typeof entry === 'object') {
+            const label = entry.name ?? entry.label ?? entry.title ?? entry.stat ?? entry.key;
+            const amount = entry.value ?? entry.amount ?? entry.bonus ?? entry.total;
+            if (label != null && amount != null) add(label, amount);
+            else walk(entry, depth + 1, prefix);
+          } else if (prefix) add(prefix, entry);
+        }
+        return;
+      }
+      for (const [key, child] of Object.entries(value)) {
+        if (ignored.test(key)) continue;
+        if (statContainers.test(key)) { walk(child, depth + 1, ''); continue; }
+        if (child && typeof child === 'object') {
+          const label = child.name ?? child.label ?? child.title ?? child.stat ?? child.key;
+          const amount = child.value ?? child.amount ?? child.bonus ?? child.total;
+          if (label != null && amount != null) add(label, amount);
+          else walk(child, depth + 1, prefix || niceName(key));
+        } else if (/^(?:stat|bonus|attack|armor|defense|strength|agility|intelligence|life|mana|crit|speed|resistance|damage|power|accuracy|block|dodge|hp|mp|lvl|level|req|requirement)/i.test(key)) {
+          add(niceName(key), child);
+        }
+      }
+    }
+    // Prefer explicit stat containers; if none exist, scan the item for common stat fields.
+    const containers = Object.entries(item).filter(([key, value]) => statContainers.test(key) && value != null);
+    if (containers.length) containers.forEach(([key, value]) => walk(value, 0, niceName(key)));
+    else walk(item);
+    return result;
+  }
+
   function makeTile(entry) {
     const loot = entry.loot;
     const item = entry.item || getItem(loot);
@@ -4223,6 +4360,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     tipSource.dataset.npc = `${npc.name} - lvl ${npc.level}`;
     tipSource.dataset.player = player;
     tipSource.dataset.item = item?.name || 'Nieznany przedmiot';
+    tipSource.dataset.stats = JSON.stringify(extractItemStats(item));
     tile.appendChild(tipSource);
 
     tile.addEventListener('mouseenter', () => showTooltip(tile));
@@ -4472,6 +4610,32 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       }
     } catch (error) {
       console.error('[Loot Bar]', error);
+      // Pokaż przyczynę i możliwość ponowienia; wcześniej błąd API był widoczny tylko w konsoli.
+      itemsBox.replaceChildren();
+      const errorBox = document.createElement('div');
+      errorBox.className = 'vl-empty';
+      Object.assign(errorBox.style, {
+        display: 'flex', alignItems: 'center', gap: '8px',
+        maxWidth: 'min(420px, calc(100vw - 24px))', whiteSpace: 'normal',
+        overflowWrap: 'anywhere', lineHeight: '1.35', padding: '7px 9px'
+      });
+      const message = document.createElement('span');
+      message.textContent = `Loot Bar: nie udało się pobrać danych (${String(error?.message || 'błąd połączenia').slice(0, 120)}).`;
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.textContent = '↻';
+      retry.title = 'Spróbuj ponownie';
+      Object.assign(retry.style, {
+        flex: '0 0 auto', padding: '4px 8px', color: '#e9c65d',
+        background: '#111', border: '1px solid #b58a20', borderRadius: '4px',
+        cursor: 'pointer', font: '16px Arial,sans-serif'
+      });
+      retry.addEventListener('click', event => {
+        event.stopPropagation();
+        loadLoots();
+      });
+      errorBox.append(message, retry);
+      itemsBox.appendChild(errorBox);
     } finally {
       busy = false;
     }
@@ -4500,6 +4664,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
   window.addEventListener('scroll', hideTooltip, true);
 })();
+
 
 // =============================================================
 // TITAN TRACKER GOLD 5.0.2 — zintegrowany z panelem Vickness
