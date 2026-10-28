@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.29
+// @version      1.1.30
 // @description  Vickness Addons: zakładki, wygląd, złote przyciemnienie mapy i aktualizacje
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
@@ -2480,7 +2480,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.29 — widoczny przycisk złotego przyciemnienia mapy
+// VICKNESS ADDON PANEL 1.1.30 — przyciemnienie mapy widoczne od razu w zakładce Wygląd
 // =============================================================
 (() => {
   'use strict';
@@ -2681,6 +2681,9 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     .vxExtraView { display:none; flex:1 1 0%; flex-direction:column; gap:8px; min-width:0; min-height:0; padding:9px; overflow:auto; background:rgba(8,8,8,.24); }
     .vxPageCard { border:1px solid rgba(95,75,32,.68); border-radius:5px; padding:10px; background:rgba(20,20,20,.48); color:#c8c3b5; line-height:1.45; }
     .vxPageTitle { display:block; margin-bottom:6px; color:var(--vx-accent); font-weight:bold; }
+    #vxMapDimmerCard { padding:8px 9px; border-color:var(--vx-accent-line); }
+    #vxMapDimmerCard .vxAppearanceControl { margin:6px 0; }
+    #vxMapDimmerCard .vxPageNote { line-height:1.35; }
     .vxChangelogEntry { padding:8px 0; border-top:1px solid rgba(201,162,39,.16); }
     .vxChangelogEntry:first-of-type { border-top:0; }
     .vxChangelogVersion { color:var(--vx-accent); font-weight:bold; }
@@ -2814,7 +2817,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.29</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano wyraźny przycisk WŁĄCZ/WYŁĄCZ ZŁOTE PRZYCIEMNIENIE w zakładce Wygląd. Etykieta przycisku synchronizuje się ze stanem filtra.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.30</span><span class="vxChangelogDate">bieżące wydanie</span><div>Przeniesiono Złote przyciemnienie mapy na początek zakładki Wygląd, aby przycisk i suwak były widoczne od razu. Poprawiono przewijanie zawartości kółkiem myszy.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.29</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Dodano wyraźny przycisk WŁĄCZ/WYŁĄCZ ZŁOTE PRZYCIEMNIENIE w zakładce Wygląd. Etykieta przycisku synchronizuje się ze stanem filtra.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.28</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Dodano Złote przyciemnienie mapy w zakładce Wygląd z suwakiem, przełącznikiem i przywracaniem jasności. Zaktualizowano The Crew Online do 3.3.9.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.27</span><div>Dodano zakładki Dodatki, Log zmian i Wygląd, sprawdzanie nowszej wersji z GitHuba oraz ustawienia przezroczystości, rozmycia i motywu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.26</span><div>The Crew Online 3.1.0; skrócony widok graczy i wyróżnianie członków drużyny.</div></div>
@@ -2826,15 +2830,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxPageCard"><span class="vxPageTitle">Aktualizacje</span><div id="vxChangelogUpdateStatus">Sprawdzanie aktualnej wersji…</div><div class="vxLootlogActions"><button type="button" id="vxUpdateCheck" class="vxActionBtn">SPRAWDŹ PONOWNIE</button><button type="button" id="vxUpdateOpenFromLog" class="vxActionBtn" style="display:none">OTWÓRZ AKTUALIZACJĘ</button></div><div class="vxPageNote" style="margin-top:7px">Tampermonkey sprawdza aktualizacje według własnego harmonogramu. Po publikacji nowej wersji zwiększ numer @version w pliku na GitHubie.</div></div>
     </div>
     <div id="vxAppearanceView" class="vxExtraView">
-      <div class="vxPageCard">
-        <span class="vxPageTitle">Wygląd panelu</span>
-        <div class="vxPageNote">Zmiany zapisują się lokalnie w tej przeglądarce. Rozmiar panelu zmienisz, przeciągając jego prawy dolny róg; czcionka skaluje się proporcjonalnie.</div>
-        <label class="vxAppearanceControl"><span><span>Krycie tła</span><output id="vxOpacityValue">88%</output></span><input id="vxOpacityRange" type="range" min="55" max="98" step="1" value="88"></label>
-        <label class="vxAppearanceControl"><span><span>Rozmycie tła</span><output id="vxBlurValue">4 px</output></span><input id="vxBlurRange" type="range" min="0" max="12" step="1" value="4"></label>
-        <label class="vxAppearanceControl"><span><span>Motyw kolorystyczny</span></span><select id="vxThemeSelect"><option value="gold">Czarno-złoty</option><option value="turquoise">Czarno-turkusowy</option><option value="purple">Czarno-fioletowy</option></select></label>
-        <div class="vxLootlogActions"><button type="button" id="vxAppearanceReset" class="vxActionBtn">DOMYŚLNY WYGLĄD</button><button type="button" id="vxLayoutReset" class="vxActionBtn">RESETUJ ROZMIAR I POZYCJĘ</button></div>
-      </div>
-      <div class="vxPageCard">
+      <div class="vxPageCard" id="vxMapDimmerCard">
         <span class="vxPageTitle">Złote przyciemnienie mapy</span>
         <div class="vxPageNote">Filtr mapy zapisywany lokalnie. Użyj przycisku, by natychmiast włączyć lub wyłączyć filtr. Suwak ustawia siłę przyciemnienia, a przywracanie jasności zeruje jego wartość.</div>
         <div class="vxLootlogActions" style="margin:8px 0"><button type="button" id="vxMapDimmerToggleButton" class="vxActionBtn" style="width:100%;padding:8px 10px;font-weight:bold">WYŁĄCZ ZŁOTE PRZYCIEMNIENIE</button></div>
@@ -2843,6 +2839,15 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         <div class="vxLootlogActions"><button type="button" id="vxMapDimmerRestore" class="vxActionBtn">☀ PRZYWRÓĆ JASNOŚĆ</button><button type="button" id="vxMapDimmerApply" class="vxActionBtn">↻ ZASTOSUJ FILTR</button></div>
         <div class="vxPageNote" style="margin-top:7px">0% = pełna jasność. 100% = maksymalne przyciemnienie. Filtr jest ponownie nakładany po zmianie mapy.</div>
       </div>
+      <div class="vxPageCard">
+        <span class="vxPageTitle">Wygląd panelu</span>
+        <div class="vxPageNote">Zmiany zapisują się lokalnie w tej przeglądarce. Rozmiar panelu zmienisz, przeciągając jego prawy dolny róg; czcionka skaluje się proporcjonalnie.</div>
+        <label class="vxAppearanceControl"><span><span>Krycie tła</span><output id="vxOpacityValue">88%</output></span><input id="vxOpacityRange" type="range" min="55" max="98" step="1" value="88"></label>
+        <label class="vxAppearanceControl"><span><span>Rozmycie tła</span><output id="vxBlurValue">4 px</output></span><input id="vxBlurRange" type="range" min="0" max="12" step="1" value="4"></label>
+        <label class="vxAppearanceControl"><span><span>Motyw kolorystyczny</span></span><select id="vxThemeSelect"><option value="gold">Czarno-złoty</option><option value="turquoise">Czarno-turkusowy</option><option value="purple">Czarno-fioletowy</option></select></label>
+        <div class="vxLootlogActions"><button type="button" id="vxAppearanceReset" class="vxActionBtn">DOMYŚLNY WYGLĄD</button><button type="button" id="vxLayoutReset" class="vxActionBtn">RESETUJ ROZMIAR I POZYCJĘ</button></div>
+      </div>
+
     </div>
       </div>
     </div>
@@ -2987,7 +2992,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.29';
+  const CURRENT_PANEL_VERSION = '1.1.30';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -3182,10 +3187,11 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       const candidates = ['#vxHomeView', '#vxSettingsView', '#vxChangelogView', '#vxAppearanceView'];
       const activeView = candidates.map(selector => root.querySelector(selector)).find(view => view && getComputedStyle(view).display !== 'none');
       if (!activeView || activeView.scrollHeight <= activeView.clientHeight) return;
-      if (!activeView.contains(event.target)) {
-        event.preventDefault();
-        activeView.scrollTop += event.deltaY;
-      }
+      // Przewijaj aktywną zakładkę kółkiem nad jej tłem i tekstem.
+      // Nie przechwytuj kółka nad suwakami, polami wyboru ani przyciskami.
+      if (event.target.closest('input, select, button, textarea')) return;
+      event.preventDefault();
+      activeView.scrollTop += event.deltaY;
     }, { passive: false });
 
     root.querySelector('#vxLootSwitch').addEventListener('change', e => { enabled.loot = e.target.checked; saveFlags(); applyToggles(); });
