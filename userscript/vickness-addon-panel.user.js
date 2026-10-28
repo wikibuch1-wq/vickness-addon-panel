@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.38
-// @description  Vickness Addons: Loot Bar 4.4.9 szybsze ładowanie, pamięć podręczna, Titan Tracker 5.0.2 i dodatkowe motywy
+// @version      1.1.40
+// @description  Vickness Addons 1.1.40: optymalizacja DOM, skanów i pętli dodatków dla płynniejszej gry
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -44,7 +44,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
     const NPC_ICON_URL = 'https://micc.garmory-cdn.cloud/obrazki/npc/';
     const SPECIAL_NPC_FALLBACK_IMAGE = 'https://micc.garmory-cdn.cloud/obrazki/npc/oev/grzyb_eve_npc1.gif';
-    const SCAN_INTERVAL = 1500;
+    const SCAN_INTERVAL = 2500;
 
     const SPECIAL_NPCS = new Set([
         'ogromna płomiennica tląca',
@@ -1147,7 +1147,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
                     handled.delete(key);
                 }
             }
-        }, 1000);
+        }, 2500);
     }
 
     // =========================================================
@@ -2480,7 +2480,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.38 — Loot Bar 4.4.9: szybkie pierwsze wyświetlenie, cache i krótsze odświeżanie
+// VICKNESS ADDON PANEL 1.1.40 — optymalizacja wydajności; zachowano wszystkie dodatki i cache Loot Bar
 // =============================================================
 (() => {
   'use strict';
@@ -2517,6 +2517,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   const baseFontSizes = new WeakMap();
   // Po wykryciu NPC panel DC odpinamy z widoku ustawień i pokazujemy jako samodzielne okno.
   let dcWindowDetached = false;
+  let lastCrewEnabledApplied = null;
 
   function saveFlags() { try { localStorage.setItem(FLAGS_KEY, JSON.stringify(enabled)); } catch (_) {} }
   function saveLayout() { try { localStorage.setItem(KEY, JSON.stringify(layout)); } catch (_) {} }
@@ -2541,7 +2542,6 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   let mapDimmerApplyQueued = false;
   let mapDimmerMonitorStarted = false;
   let mapDimmerResizeObserver = null;
-  let mapDimmerMutationObserver = null;
 
   function getMapDimmerGameElements() {
     const canvas = document.querySelector('#GAME_CANVAS');
@@ -2656,14 +2656,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     watchMapDimmerGameSize();
     applyMapDimmer(true);
 
-    if (typeof MutationObserver === 'function' && document.body) {
-      mapDimmerMutationObserver = new MutationObserver(() => {
-        const dimensions = getMapDimmerDimensions();
-        if (dimensions.canvas !== lastMapDimmerCanvas) watchMapDimmerGameSize();
-        else scheduleMapDimmerApply();
-      });
-      mapDimmerMutationObserver.observe(document.body, { childList: true, subtree: true });
-    }
+    // Celowo bez obserwatora całego body: ResizeObserver i kontrola co 500 ms
+    // wykrywają zmianę rozmiaru/canvasu bez kosztu obserwowania wszystkich mutacji interfejsu.
 
     window.addEventListener('resize', watchMapDimmerGameSize);
     document.addEventListener('fullscreenchange', watchMapDimmerGameSize);
@@ -2680,7 +2674,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         if (dimensions.canvas !== lastMapDimmerCanvas) watchMapDimmerGameSize();
         else scheduleMapDimmerApply();
       }
-    }, 150);
+    }, 500);
   }
 
   // Zmiana rozmiaru okna skaluje proporcjonalnie tekst i odstępy wizualne;
@@ -2931,6 +2925,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.40</span><span class="vxChangelogDate">bieżące wydanie</span><div>Optymalizacja płynności: mniej kosztownych skanów DOM, ograniczenie zbędnych aktualizacji paneli, filtrowanie obserwatora mapy i rzadsze kontrole pomocnicze. Dodatki i ich funkcje pozostają zachowane.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.39</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono belkę na kod Loot Bar 4.4.7 z załącznika. Zachowano szybsze ładowanie: równoległe zapytania, odświeżanie co 3 minuty, limit żądania 12 sekund, lokalna pamięć podręczna i przycisk ponowienia po błędzie.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.38</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono belkę na Loot Bar 4.4.9. Skrócono okres automatycznego odświeżania do 3 minut, równolegle pobierane są dane zwykłe i legendarne, a ostatnie łupy są pokazywane od razu z lokalnej pamięci podręcznej podczas odświeżania.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.37</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono obsługę ładowania belki Loot Bar 4.4.8: widoczny stan podczas ładowania, komunikat diagnostyczny i przycisk ponowienia przy błędzie API. Przywrócono pełny moduł Titan Tracker Gold 5.0.2 do scalonego skryptu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.36</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono belkę lootów na Loot Bar by Vickness 4.4.8 z załącznika. Pozostawiono osobną kolorystykę belki niezależną od motywu głównego panelu oraz zachowano jej sterowanie z zakładek Vickness.</div></div>
@@ -3015,9 +3011,16 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       const body = Array.from(lootChancePanel.children).find(child => !child.classList.contains('heading'));
       if (body) body.style.setProperty('display', 'block', 'important');
     }
-    if (!enabled.lootChance) document.querySelectorAll('.mlc513-label').forEach(label => label.remove());
-    if (!enabled.lootlog) document.querySelectorAll('.vl-tip').forEach(tip => { tip.style.display = 'none'; });
-    if (typeof window.__vicknessApplyCrewOnline === 'function') window.__vicknessApplyCrewOnline();
+    if (!enabled.lootChance && document.querySelector('.mlc513-label')) {
+      document.querySelectorAll('.mlc513-label').forEach(label => label.remove());
+    }
+    if (!enabled.lootlog && document.querySelector('.vl-tip')) {
+      document.querySelectorAll('.vl-tip').forEach(tip => { tip.style.display = 'none'; });
+    }
+    if (typeof window.__vicknessApplyCrewOnline === 'function' && lastCrewEnabledApplied !== !!enabled.crewOnline) {
+      lastCrewEnabledApplied = !!enabled.crewOnline;
+      window.__vicknessApplyCrewOnline();
+    }
   }
 
   function openDCWindow() {
@@ -3114,7 +3117,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.38';
+  const CURRENT_PANEL_VERSION = '1.1.40';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -3530,7 +3533,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       openDCWindow();
     }
 
-    setInterval(applyToggles, 500);
+    // Zmiany przełączników i tak stosują się natychmiast; ten timer jest tylko zabezpieczeniem dla paneli ładowanych później.
+    setInterval(applyToggles, 1500);
     window.addEventListener('resize', () => {
       // Nie zapisuj pozycji elementu ukrytego (getBoundingClientRect zwróci wtedy 0,0).
       if (getComputedStyle(panel).display !== 'none') {
@@ -3548,11 +3552,11 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// BELKA LOOTÓW ZINTEGROWANA Z LOOTLOGIEM — Loot Bar 4.4.9 (z załącznika), szybsze ładowanie
+// BELKA LOOTÓW ZINTEGROWANA Z LOOTLOGIEM — Loot Bar 4.4.7 (z załącznika), zachowane szybsze ładowanie
 // ==UserScript==
 // @name         Loot Bar by Vickness - Riventia
 // @namespace    vickness.riventia.lootbar
-// @version      4.4.9
+// @version      4.4.7
 // @description  Loot Bar Riventia - 10 najnowszych heroików Elity II i 5 najnowszych legend ze wszystkich źródeł
 // @match        https://riventia.margonem.pl/*
 // @run-at       document-idle
@@ -3577,9 +3581,9 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     'https://lootlog.pl/thecrew?lootbarFilter=legendary&rarities=LEGENDARY';
   const REFRESH_MS = 3 * 60 * 1000;
   const REQUEST_TIMEOUT_MS = 12000;
+  const STORAGE_KEY = 'vicknessRiventiaLootBar';
   const CACHE_KEY = `${STORAGE_KEY}:fast-cache`;
   const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
-  const STORAGE_KEY = 'vicknessRiventiaLootBar';
 
   document.querySelector('#vickness-lootbar')?.remove();
   document.querySelector('#vickness-lootbar-style')?.remove();
@@ -3812,20 +3816,6 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     .vl-tip .vl-tip-item {
       margin-top: 3px;
       color: #b8dcff;
-      font-weight: bold;
-    }
-
-    .vl-tip .vl-tip-stats {
-      margin-top: 7px;
-      padding-top: 6px;
-      border-top: 1px solid #393939;
-      color: #dedede;
-      white-space: pre-line;
-      line-height: 1.45;
-    }
-
-    .vl-tip .vl-tip-stat {
-      margin: 2px 0;
     }
 
     #vickness-lootbar .vl-empty {
@@ -3893,10 +3883,6 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   document.body.appendChild(bar);
 
   const itemsBox = bar.querySelector('.vl-items');
-  const loadingNotice = document.createElement('div');
-  loadingNotice.className = 'vl-empty vl-loading';
-  loadingNotice.textContent = 'Ładowanie łupów…';
-  itemsBox.appendChild(loadingNotice);
 
   const tooltip = document.createElement('div');
   tooltip.className = 'vl-tip';
@@ -3990,47 +3976,26 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
   function fetchJson(url) {
     return new Promise((resolve, reject) => {
-      const legacyRequest = typeof GM_xmlhttpRequest === 'function'
-        ? GM_xmlhttpRequest
-        : null;
-      const modernRequest = typeof GM !== 'undefined' && typeof GM.xmlHttpRequest === 'function'
-        ? GM.xmlHttpRequest.bind(GM)
-        : null;
-      const request = legacyRequest || modernRequest;
+      GM_xmlhttpRequest({
+        method: 'GET',
+        url,
+        headers: { Accept: 'application/json' },
+        timeout: REQUEST_TIMEOUT_MS,
+        onload: response => {
+          if (response.status < 200 || response.status >= 300) {
+            reject(new Error(`HTTP ${response.status}: ${(response.responseText || '').slice(0, 500)}`));
+            return;
+          }
 
-      if (!request) {
-        fetch(url, { headers: { Accept: 'application/json' }, credentials: 'omit' })
-          .then(response => {
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return response.json();
-          })
-          .then(resolve, reject);
-        return;
-      }
-
-      try {
-        request({
-          method: 'GET',
-          url,
-          headers: { Accept: 'application/json' },
-          timeout: REQUEST_TIMEOUT_MS,
-          onload: response => {
-            if (response.status < 200 || response.status >= 300) {
-              reject(new Error(`HTTP ${response.status}: ${(response.responseText || '').slice(0, 240)}`));
-              return;
-            }
-            try {
-              resolve(JSON.parse(response.responseText));
-            } catch {
-              reject(new Error('Nieprawidłowa odpowiedź JSON'));
-            }
-          },
-          onerror: () => reject(new Error('Błąd połączenia z API')),
-          ontimeout: () => reject(new Error('Przekroczono limit 12 s oczekiwania na API'))
-        });
-      } catch (error) {
-        reject(error);
-      }
+          try {
+            resolve(JSON.parse(response.responseText));
+          } catch {
+            reject(new Error('Nieprawidłowa odpowiedź JSON'));
+          }
+        },
+        onerror: () => reject(new Error('Błąd połączenia z API')),
+        ontimeout: () => reject(new Error('Przekroczono czas oczekiwania'))
+      });
     });
   }
 
@@ -4243,24 +4208,6 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     itemLine.textContent = source.dataset.item || 'Nieznany przedmiot';
     tooltip.appendChild(itemLine);
 
-    const stats = safeParseStats(source.dataset.stats || '[]');
-    if (stats.length) {
-      const statsBox = document.createElement('div');
-      statsBox.className = 'vl-tip-stats';
-      for (const stat of stats) {
-        const line = document.createElement('div');
-        line.className = 'vl-tip-stat';
-        line.textContent = stat;
-        statsBox.appendChild(line);
-      }
-      tooltip.appendChild(statsBox);
-    } else {
-      const noStats = document.createElement('div');
-      noStats.className = 'vl-tip-stats';
-      noStats.textContent = 'Brak statystyk w danych Lootlog dla tego przedmiotu.';
-      tooltip.appendChild(noStats);
-    }
-
     tooltip.style.display = 'block';
     tooltip.style.visibility = 'hidden';
     tooltip.style.left = '0px';
@@ -4285,84 +4232,6 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     tooltip.style.visibility = 'visible';
   }
 
-  function safeParseStats(value) {
-    try {
-      const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (_) {
-      return [];
-    }
-  }
-
-  // Lootlog API versions may expose item parameters under different keys.
-  // Only display fields present on the item object; never invent values.
-  function extractItemStats(item) {
-    if (!item || typeof item !== 'object') return [];
-    const result = [];
-    const seen = new Set();
-    const ignored = /^(id|hid|uid|uniqueid|name|label|title|rarity|quality|grade|tier|icon|image|img|url|href|description|desc|type|code|level|lvl|owner|player|createdat|updatedat)$/i;
-    const statContainers = /^(stats|statistics|attributes|parameters|properties|bonuses|effects|itemstats|item_stats|statlines|statslist)$/i;
-    const niceName = key => String(key)
-      .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .replace(/[_-]+/g, ' ')
-      .replace(/^./, c => c.toUpperCase());
-    const add = (label, value) => {
-      if (value == null || result.length >= 35) return;
-      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-        const text = String(value).trim();
-        // Lootlog can return all item stats as one compact string, e.g. ac=569;act=1;... .
-        // Split that string into readable separate lines instead of one overflowing line.
-        if (/^(stat|stats|statystyki)$/i.test(String(label).trim()) && /[;|]/.test(text) && /=/.test(text)) {
-          for (const part of text.split(/[;|]/)) {
-            const match = part.trim().match(/^([^=:\s]+)\s*[=:]\s*(.+)$/);
-            if (match) {
-              const line = `${match[1]}: ${match[2].trim()}`;
-              if (!result.includes(line) && result.length < 35) result.push(line);
-            } else if (part.trim() && !result.includes(part.trim()) && result.length < 35) {
-              result.push(part.trim());
-            }
-          }
-        } else if (text && !result.includes(`${label}: ${text}`)) {
-          result.push(`${label}: ${text}`);
-        }
-      }
-    };
-    function walk(value, depth = 0, prefix = '') {
-      if (value == null || depth > 4 || result.length >= 35) return;
-      if (typeof value !== 'object') { if (prefix) add(prefix, value); return; }
-      if (seen.has(value)) return;
-      seen.add(value);
-      if (Array.isArray(value)) {
-        for (const entry of value) {
-          if (entry && typeof entry === 'object') {
-            const label = entry.name ?? entry.label ?? entry.title ?? entry.stat ?? entry.key;
-            const amount = entry.value ?? entry.amount ?? entry.bonus ?? entry.total;
-            if (label != null && amount != null) add(label, amount);
-            else walk(entry, depth + 1, prefix);
-          } else if (prefix) add(prefix, entry);
-        }
-        return;
-      }
-      for (const [key, child] of Object.entries(value)) {
-        if (ignored.test(key)) continue;
-        if (statContainers.test(key)) { walk(child, depth + 1, ''); continue; }
-        if (child && typeof child === 'object') {
-          const label = child.name ?? child.label ?? child.title ?? child.stat ?? child.key;
-          const amount = child.value ?? child.amount ?? child.bonus ?? child.total;
-          if (label != null && amount != null) add(label, amount);
-          else walk(child, depth + 1, prefix || niceName(key));
-        } else if (/^(?:stat|bonus|attack|armor|defense|strength|agility|intelligence|life|mana|crit|speed|resistance|damage|power|accuracy|block|dodge|hp|mp|lvl|level|req|requirement)/i.test(key)) {
-          add(niceName(key), child);
-        }
-      }
-    }
-    // Prefer explicit stat containers; if none exist, scan the item for common stat fields.
-    const containers = Object.entries(item).filter(([key, value]) => statContainers.test(key) && value != null);
-    if (containers.length) containers.forEach(([key, value]) => walk(value, 0, niceName(key)));
-    else walk(item);
-    return result;
-  }
-
   function makeTile(entry) {
     const loot = entry.loot;
     const item = entry.item || getItem(loot);
@@ -4378,7 +4247,6 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     tipSource.dataset.npc = `${npc.name} - lvl ${npc.level}`;
     tipSource.dataset.player = player;
     tipSource.dataset.item = item?.name || 'Nieznany przedmiot';
-    tipSource.dataset.stats = JSON.stringify(extractItemStats(item));
     tile.appendChild(tipSource);
 
     tile.addEventListener('mouseenter', () => showTooltip(tile));
@@ -4578,7 +4446,6 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     const chosen = [...newestHeroic, ...newestLegendary];
 
     if (saveCache && chosen.length) {
-      // Zapisz tylko wybrane wpisy (maks. 15), by pamięć podręczna była mała.
       const cacheRows = chosen.map(({ loot, item }) => ({
         id: loot?.id,
         uniqueId: loot?.uniqueId,
@@ -4618,19 +4485,17 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     busy = true;
 
     try {
-      // Start both API requests together so the legendary endpoint does not delay
-      // the first visible render from the regular endpoint.
+      // Pobierz oba źródła równolegle; standardowy feed pokazujemy od razu.
       const recentPromise = fetchJson(API);
-      const legendaryPromise = fetchJson(LEGENDARY_API).then(getLoots).catch(error => {
-        console.warn('[Loot Bar] Osobne pobieranie legend nie powiodło się:', error);
-        return [];
-      });
+      const legendaryPromise = fetchJson(LEGENDARY_API)
+        .then(getLoots)
+        .catch(error => {
+          console.warn('[Loot Bar] Osobne pobieranie legend nie powiodło się:', error);
+          return [];
+        });
 
       const data = await recentPromise;
       const recentLoots = getLoots(data);
-
-      // Show latest regular results as soon as the first endpoint responds.
-      // Do not wait for the additional legendary query to finish.
       render(recentLoots);
 
       const legendaryLoots = await legendaryPromise;
@@ -4639,9 +4504,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         const key = loot?.id ?? loot?.uniqueId;
         if (key != null) byId.set(String(key), loot);
       }
-      const loots = byId.size
-        ? [...byId.values()]
-        : [...recentLoots, ...legendaryLoots];
+      const loots = byId.size ? [...byId.values()] : [...recentLoots, ...legendaryLoots];
 
       console.debug(
         '[Loot Bar] Wpisy zwykłego zapytania:', recentLoots.length,
@@ -4650,12 +4513,9 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       );
       render(loots);
 
-      if (!loots.length) {
-        console.warn('[Loot Bar] Nieznany format API:', data);
-      }
+      if (!loots.length) console.warn('[Loot Bar] Nieznany format API:', data);
     } catch (error) {
       console.error('[Loot Bar]', error);
-      // If cached items are already visible, retain them and append a small warning.
       const errorBox = document.createElement('div');
       errorBox.className = 'vl-empty';
       Object.assign(errorBox.style, {
@@ -4676,11 +4536,10 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       });
       retry.addEventListener('click', event => {
         event.stopPropagation();
-        loadLoots();
+        void loadLoots();
       });
       errorBox.append(message, retry);
-      const hasTiles = itemsBox.querySelector('.vl-item');
-      if (hasTiles) itemsBox.appendChild(errorBox);
+      if (itemsBox.querySelector('.vl-item')) itemsBox.appendChild(errorBox);
       else itemsBox.replaceChildren(errorBox);
     } finally {
       busy = false;
@@ -4697,6 +4556,11 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     if (cache && Array.isArray(cache.loots) &&
         Date.now() - Number(cache.savedAt || 0) < CACHE_TTL_MS && cache.loots.length) {
       render(cache.loots, false);
+    } else {
+      const loading = document.createElement('div');
+      loading.className = 'vl-empty';
+      loading.textContent = 'Ładowanie łupów…';
+      itemsBox.replaceChildren(loading);
     }
   } catch (error) {
     console.debug('[Loot Bar] Pominięto nieprawidłowy cache:', error);
@@ -4720,7 +4584,6 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
   window.addEventListener('scroll', hideTooltip, true);
 })();
-
 
 // =============================================================
 // TITAN TRACKER GOLD 5.0.2 — zintegrowany z panelem Vickness
@@ -5709,11 +5572,11 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      return label;
    }
 
-   function updateItem(item, team) {
+   function updateItem(item, team, lootWindowOpen, myProfession) {
      const r = getRarity(item);
 
      if (!settings.enabled || (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.lootChance) || !r || !settings.rarities[r] ||
-          !item.isConnected || !isLootWindowOpen()) {
+          !item.isConnected || !lootWindowOpen) {
        removeLabel(item);
        return false;
      }
@@ -5733,8 +5596,6 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      let title = 'Oczekiwanie na odczyt wymagań przedmiotu.';
 
      if (req !== undefined) {
-       const myProfession = getCurrentProfession();
-
        if (!myProfession) {
          text = '?';
          color = '#fff';
@@ -5835,16 +5696,19 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
      lastWindowOpen = true;
      const items = lootItems();
+     const itemsSet = new Set(items);
      const team = getTeam();
+     // Odczyt profesji i widoczności raz na skan zamiast ponownie dla każdego przedmiotu.
+     const myProfession = getCurrentProfession();
      let shown = 0;
 
      items.forEach(item => {
-       if (updateItem(item, team)) shown++;
+       if (updateItem(item, team, open, myProfession)) shown++;
        autoRead(item);
      });
 
      for (const [item, label] of labels) {
-       if (!item.isConnected || !items.includes(item)) {
+       if (!item.isConnected || !itemsSet.has(item)) {
          label.remove();
          labels.delete(item);
        }
@@ -5854,7 +5718,11 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
    }
 
    function scheduleScan(delay = 250) {
-     if (scanTimer) clearTimeout(scanTimer);
+     // Skany opóźnione są scalane: seria zmian DOM wywoła jeden skan, nie dziesiątki.
+     if (scanTimer) {
+       if (delay !== 0) return;
+       clearTimeout(scanTimer);
+     }
      scanTimer = setTimeout(scan, delay);
    }
 
@@ -6018,9 +5886,29 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      buildPanel();
      scheduleScan(0);
 
-     observer = new MutationObserver(() => {
-       // Obserwuj zmiany DOM, ale nie atrybuty całej strony.
-       scheduleScan(0);
+     const isLootRelevantNode = node => {
+       if (!node || node.nodeType !== 1) return false;
+       if (node.classList?.contains('mlc513-label')) return false;
+       const selector = '.loot-wnd, .loot-window, .c-window.loot-wnd, .loot-item-wrapper, .item[data-tip-type="t_item"], .item[data-item-type]';
+       if (node.matches?.(selector) || node.closest?.('.loot-wnd, .loot-window, .c-window.loot-wnd')) return true;
+       return !!node.querySelector?.(selector);
+     };
+
+     observer = new MutationObserver(records => {
+       // Pomijaj zwykłe mutacje interfejsu gry i własnych etykiet procentów.
+       for (const record of records) {
+         const target = record.target?.nodeType === 1 ? record.target : record.target?.parentElement;
+         if (isLootRelevantNode(target)) {
+           scheduleScan(80);
+           return;
+         }
+         for (const node of [...record.addedNodes, ...record.removedNodes]) {
+           if (isLootRelevantNode(node)) {
+             scheduleScan(80);
+             return;
+           }
+         }
+       }
      });
 
      observer.observe(document.body, {
@@ -6028,14 +5916,13 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        subtree: true
      });
 
-
-     // Sprawdza zamknięcie okna jako zabezpieczenie, gdy gra nie usuwa go z DOM.
+     // Zabezpieczenie przed oknem, które gra ukrywa zamiast usuwać z DOM.
      setInterval(() => {
        if (lastWindowOpen && !isLootWindowOpen()) {
          clearLootLabels();
          lastWindowOpen = false;
        }
-     }, 100);
+     }, 500);
    }
 
    if (document.readyState === 'loading') {
