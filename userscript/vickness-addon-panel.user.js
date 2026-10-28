@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.30
-// @description  Vickness Addons: zakładki, wygląd, złote przyciemnienie mapy i aktualizacje
+// @version      1.1.33
+// @description  Vickness Addons: motywy, przyciemnienie mapy, Titan Tracker 5.0.2 i The Crew Online 3.4.0
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -2480,7 +2480,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.30 — przyciemnienie mapy widoczne od razu w zakładce Wygląd
+// VICKNESS ADDON PANEL 1.1.31 — przyciemnienie mapy widoczne od razu w zakładce Wygląd
 // =============================================================
 (() => {
   'use strict';
@@ -2701,19 +2701,20 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     .vxAppearanceControl input[type="range"] { width:100%; accent-color:var(--vx-accent); }
     .vxAppearanceControl select { width:100%; padding:7px; background:#151515; color:#eee; border:1px solid var(--vx-accent-line); border-radius:4px; }
     .vxPageNote { color:#888; font-size:10px; line-height:1.45; }
-    .vxStandaloneRow { display:flex; align-items:flex-start; justify-content:space-between; gap:7px; margin:0; padding:7px; min-height:96px; border:1px solid rgba(95,75,32,.85); border-radius:5px; background:rgba(20,20,20,.76); }
-    .vxStandaloneRow > div:first-child { flex:1; min-width:0; }
-    .vxStandaloneName { color:#e0bd53; font-weight:bold; }
-    .vxStandaloneDesc { display:block; margin-top:4px; color:#999; font-size:10px; }
-    .vxStandaloneState { margin-top:4px; color:#aaa; font-size:9px; }
-    .vxOpenSettings,.vxNavBtn { margin-top:7px; padding:5px 8px; border:1px solid #806321; border-radius:4px; background:rgba(23,20,12,.88); color:#dfb943; font-size:10px; cursor:pointer; }
+    .vxStandaloneRow { display:flex; align-items:flex-start; justify-content:space-between; gap:4px; margin:0; padding:5px; min-height:70px; height:auto; min-width:0; max-width:100%; overflow:hidden; border:1px solid rgba(95,75,32,.85); border-radius:5px; background:rgba(20,20,20,.76); line-height:1.12; }
+    .vxStandaloneRow > div:first-child { flex:1 1 0%; width:0; min-width:0; max-width:100%; overflow-wrap:anywhere; word-break:normal; }
+    .vxStandaloneRow .vxStandaloneName,.vxStandaloneRow .vxStandaloneDesc { max-width:100%; min-width:0; }
+    .vxStandaloneName { display:block; max-width:100%; color:#e0bd53; font-size:9.5px; line-height:1.1; font-weight:bold; overflow-wrap:anywhere; word-break:normal; }
+    .vxStandaloneDesc { display:block; margin-top:2px; color:#999; font-size:8px; line-height:1.12; overflow-wrap:anywhere; word-break:normal; }
+    .vxStandaloneState { margin-top:2px; color:#aaa; font-size:7px; line-height:1.05; overflow-wrap:anywhere; }
+    .vxOpenSettings,.vxNavBtn { margin-top:3px; padding:3px 5px; max-width:100%; border:1px solid #806321; border-radius:4px; background:rgba(23,20,12,.88); color:#dfb943; font-size:8px; line-height:1.1; cursor:pointer; white-space:normal; }
     .vxOpenSettings:hover,.vxNavBtn:hover { background:rgba(48,37,11,.92); border-color:#d4af37; color:#ffe28a; }
-    .vxToggle { position:relative; width:42px; height:23px; flex:0 0 42px; margin-top:1px; }
+    .vxToggle { position:relative; width:29px; height:16px; flex:0 0 29px; margin-top:1px; margin-left:1px; }
     .vxToggle input { position:absolute; opacity:0; width:1px; height:1px; }
     .vxToggle span { position:absolute; inset:0; border-radius:20px; background:#4b2929; border:1px solid #8b4545; cursor:pointer; transition:.15s; }
-    .vxToggle span:before { content:''; position:absolute; left:2px; top:2px; width:17px; height:17px; border-radius:50%; background:#eee; transition:.15s; }
+    .vxToggle span:before { content:''; position:absolute; left:1px; top:1px; width:12px; height:12px; border-radius:50%; background:#eee; transition:.15s; }
     .vxToggle input:checked + span { background:#315b36; border-color:#69b875; }
-    .vxToggle input:checked + span:before { transform:translateX(19px); background:#dfffe2; }
+    .vxToggle input:checked + span:before { transform:translateX(13px); background:#dfffe2; }
     #vxStandaloneFooter { flex:0 0 auto; padding:7px; text-align:center; border-top:1px solid #3b3018; background:rgba(10,10,10,.86); color:#777; font-size:9px; }
     #vxSettingsView { display:none; flex:1 1 0%; flex-direction:column; min-height:0; max-height:none; overflow:auto; background:rgba(8,8,8,.36); }
     #vxSettingsToolbar { display:flex; gap:6px; align-items:center; padding:7px 8px; border-bottom:1px solid #4b3b17; background:rgba(17,17,17,.9); }
@@ -2731,14 +2732,14 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     #vxStandaloneMini { border-color:var(--vx-accent-line); }
     #vxSettingsToolbar { border-bottom-color:var(--vx-accent-line); }
     /* Widok główny jest przewijany wewnątrz okna; stopka zostaje na dole. */
-    #vxHomeView { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:minmax(92px,auto); align-content:start; gap:5px; padding:6px; flex:1 1 0%; height:0; min-height:0; max-height:none; overflow-y:auto; overflow-x:hidden; }
-    #vxHomeView.vxNarrow { grid-template-columns:minmax(0,1fr); grid-auto-rows:minmax(82px,auto); }
+    #vxHomeView { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:minmax(70px,auto); align-content:start; align-items:stretch; gap:4px; padding:5px; flex:1 1 0%; height:0; min-height:0; max-height:none; overflow-y:auto; overflow-x:hidden; }
+    #vxHomeView.vxNarrow { grid-template-columns:minmax(0,1fr); grid-auto-rows:minmax(68px,auto); }
     #vxHomeView, #vxSettingsView, #vxChangelogView, #vxAppearanceView { scrollbar-width:thin; scrollbar-color:rgba(201,162,39,.25) transparent; overscroll-behavior:contain; }
     #vxHomeView::-webkit-scrollbar, #vxSettingsView::-webkit-scrollbar, #vxChangelogView::-webkit-scrollbar, #vxAppearanceView::-webkit-scrollbar { width:4px; }
     #vxHomeView::-webkit-scrollbar-track, #vxSettingsView::-webkit-scrollbar-track, #vxChangelogView::-webkit-scrollbar-track, #vxAppearanceView::-webkit-scrollbar-track { background:transparent; }
     #vxHomeView::-webkit-scrollbar-thumb, #vxSettingsView::-webkit-scrollbar-thumb, #vxChangelogView::-webkit-scrollbar-thumb, #vxAppearanceView::-webkit-scrollbar-thumb { background:rgba(201,162,39,.22); border-radius:8px; }
     #vxHomeView::-webkit-scrollbar-thumb:hover, #vxSettingsView::-webkit-scrollbar-thumb:hover, #vxChangelogView::-webkit-scrollbar-thumb:hover, #vxAppearanceView::-webkit-scrollbar-thumb:hover { background:rgba(201,162,39,.42); }
-    @media (max-width:560px) { #vxStandalonePanel { max-width:calc(100vw - 12px); max-height:calc(100vh - 12px); left:6px; top:6px; } #vxSidebar { flex-basis:86px; width:86px; padding:6px 4px; } .vxSideTab { padding:6px 4px; gap:4px; } #vxHomeView { grid-template-columns:minmax(0,1fr); grid-auto-rows:minmax(82px,auto); } #vxSettingsView { max-height:none; } .vxStandaloneRow { min-height:0; } }
+    @media (max-width:560px) { #vxStandalonePanel { max-width:calc(100vw - 12px); max-height:calc(100vh - 12px); left:6px; top:6px; } #vxSidebar { flex-basis:86px; width:86px; padding:6px 4px; } .vxSideTab { padding:6px 4px; gap:4px; } #vxHomeView { grid-template-columns:minmax(0,1fr); grid-auto-rows:minmax(68px,auto); } #vxSettingsView { max-height:none; } .vxStandaloneRow { min-height:68px; padding:5px; } .vxStandaloneName { font-size:9px; } .vxStandaloneDesc { font-size:7.5px; } .vxStandaloneState { font-size:6.8px; } .vxOpenSettings { font-size:7.5px; padding:3px 5px; } }
     #vxSettingsLootChance #mlc513-panel { position:relative!important; left:auto!important; top:auto!important; right:auto!important; bottom:auto!important; width:100%!important; max-width:100%!important; margin:0!important; padding:3px!important; z-index:1!important; box-shadow:none!important; border:0!important; border-radius:0!important; background:transparent!important; display:block!important; }
     #mlc513-panel { display:none!important; }
     #vxSettingsLootChance #mlc513-panel .heading { display:none!important; }
@@ -2798,14 +2799,14 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       </div>
       <div id="vxSettingsLootChance" class="vxSettingsSlot" hidden></div>
       <div id="vxSettingsTitan" class="vxSettingsSlot" hidden>
-        <div class="vxLootlogInfo">Titan Tracker Gold działa na wybranych mapach. Pokazuje wykrytego tytana i listę graczy, a listę Top 10 może wysłać na Discord przez webhook. Panel trackera pozostaje osobnym oknem na ekranie gry.</div>
+        <div class="vxLootlogInfo">Titan Tracker Gold 5.0.2 działa na wybranych mapach. Zapisuje kolejność wejścia graczy, automatycznie rozwija się po wykryciu tytana i wysyła Top 10 na Discord przez webhook. Panel trackera pozostaje osobnym oknem na ekranie gry.</div>
         <div class="vxLootlogActions">
           <button type="button" id="vxTitanShow">POKAŻ TRACKER</button>
           <button type="button" id="vxTitanDiscord">USTAWIENIA DISCORDA</button>
         </div>
       </div>
       <div id="vxSettingsCrewOnline" class="vxSettingsSlot" hidden>
-        <div class="vxLootlogInfo">The Crew Online pokazuje klanowiczów online, poziom, profesję i mapę. Lista jest odświeżana z Lootloga co 5 sekund. Panel listy pozostaje osobnym oknem na ekranie gry.</div>
+        <div class="vxLootlogInfo">The Crew Online 3.4.0 pobiera listę członków z danych klanu i uzupełnia szczegóły z Lootloga, gdy są dostępne. Lista odświeża się co 5 sekund; panel pozostaje osobnym oknem na ekranie gry.</div>
         <div class="vxLootlogActions">
           <button type="button" id="vxCrewOnlineShow">POKAŻ PANEL</button>
           <button type="button" id="vxCrewOnlineRefresh">ODŚWIEŻ LISTĘ</button>
@@ -2817,7 +2818,10 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.30</span><span class="vxChangelogDate">bieżące wydanie</span><div>Przeniesiono Złote przyciemnienie mapy na początek zakładki Wygląd, aby przycisk i suwak były widoczne od razu. Poprawiono przewijanie zawartości kółkiem myszy.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.33</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano motyw czarno-czerwony i zaktualizowano Titan Tracker Gold do 5.0.2: kolejność wejścia graczy, komunikaty Discord inline oraz automatyczne rozwijanie po wykryciu tytana.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.32</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Podmieniono The Crew Online na 3.4.0. Zmniejszono czcionki, przełączniki i odstępy kart, żeby zawartość lepiej mieściła się w każdym polu.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.31</span><span class="vxChangelogDate">bieżące wydanie</span><div>Poprawiono karty dodatków: zmniejszono czcionki i odstępy, dopasowano przełączniki oraz przyciski, a długie nazwy i opisy mogą się zawijać bez wychodzenia poza kartę.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.30</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Przeniesiono Złote przyciemnienie mapy na początek zakładki Wygląd, aby przycisk i suwak były widoczne od razu. Poprawiono przewijanie zawartości kółkiem myszy.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.29</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Dodano wyraźny przycisk WŁĄCZ/WYŁĄCZ ZŁOTE PRZYCIEMNIENIE w zakładce Wygląd. Etykieta przycisku synchronizuje się ze stanem filtra.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.28</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Dodano Złote przyciemnienie mapy w zakładce Wygląd z suwakiem, przełącznikiem i przywracaniem jasności. Zaktualizowano The Crew Online do 3.3.9.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.27</span><div>Dodano zakładki Dodatki, Log zmian i Wygląd, sprawdzanie nowszej wersji z GitHuba oraz ustawienia przezroczystości, rozmycia i motywu.</div></div>
@@ -2844,7 +2848,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         <div class="vxPageNote">Zmiany zapisują się lokalnie w tej przeglądarce. Rozmiar panelu zmienisz, przeciągając jego prawy dolny róg; czcionka skaluje się proporcjonalnie.</div>
         <label class="vxAppearanceControl"><span><span>Krycie tła</span><output id="vxOpacityValue">88%</output></span><input id="vxOpacityRange" type="range" min="55" max="98" step="1" value="88"></label>
         <label class="vxAppearanceControl"><span><span>Rozmycie tła</span><output id="vxBlurValue">4 px</output></span><input id="vxBlurRange" type="range" min="0" max="12" step="1" value="4"></label>
-        <label class="vxAppearanceControl"><span><span>Motyw kolorystyczny</span></span><select id="vxThemeSelect"><option value="gold">Czarno-złoty</option><option value="turquoise">Czarno-turkusowy</option><option value="purple">Czarno-fioletowy</option></select></label>
+        <label class="vxAppearanceControl"><span><span>Motyw kolorystyczny</span></span><select id="vxThemeSelect"><option value="gold">Czarno-złoty</option><option value="turquoise">Czarno-turkusowy</option><option value="purple">Czarno-fioletowy</option><option value="redblack">Czarno-czerwony</option></select></label>
         <div class="vxLootlogActions"><button type="button" id="vxAppearanceReset" class="vxActionBtn">DOMYŚLNY WYGLĄD</button><button type="button" id="vxLayoutReset" class="vxActionBtn">RESETUJ ROZMIAR I POZYCJĘ</button></div>
       </div>
 
@@ -2992,7 +2996,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.30';
+  const CURRENT_PANEL_VERSION = '1.1.33';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -3065,7 +3069,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   const THEME_SETTINGS = {
     gold: { accent: '#dfb943', line: 'rgba(201,162,39,.72)', soft: 'rgba(46,35,8,.62)' },
     turquoise: { accent: '#50d6c8', line: 'rgba(80,214,200,.68)', soft: 'rgba(8,48,45,.62)' },
-    purple: { accent: '#bf96ff', line: 'rgba(191,150,255,.68)', soft: 'rgba(41,24,61,.62)' }
+    purple: { accent: '#bf96ff', line: 'rgba(191,150,255,.68)', soft: 'rgba(41,24,61,.62)' },
+    redblack: { accent: '#ff4545', line: 'rgba(235,48,48,.76)', soft: 'rgba(58,8,8,.64)' }
   };
   function getAppearance() {
     if (!layout.appearance || typeof layout.appearance !== 'object') layout.appearance = {};
@@ -4271,7 +4276,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// TITAN TRACKER GOLD 5.0.1 — podmieniony tracker, zintegrowany z panelem Vickness
+// TITAN TRACKER GOLD 5.0.2 — zintegrowany z panelem Vickness
 (() => {
     'use strict';
 
@@ -4309,7 +4314,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         hookedManager: null,
         seededManager: null,
         currentMap: null,
-        mapAllowed: false
+        mapAllowed: false,
+        nextJoinOrder: 1
     };
 
     const professions = {
@@ -4358,6 +4364,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
             // Zmiana mapy zawsze czyści listę poprzedniej lokacji.
             state.players.clear();
+            state.nextJoinOrder = 1;
             state.titan = null;
             state.titanKey = '';
             state.seededManager = null;
@@ -4425,6 +4432,16 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         if (key !== state.titanKey) {
             state.titanKey = key;
             state.titan = { ...found, detectedAt: timeNow() };
+
+            // Automatycznie rozwiń tracker po wykryciu tytana.
+            state.collapsed = false;
+            const panel = $('#rtt-panel');
+            if (panel) {
+                $('#rtt-body', panel).style.display = 'block';
+                $('#rtt-settings-panel', panel).style.display =
+                    state.settingsOpen ? 'block' : 'none';
+                $('#rtt-collapse', panel).textContent = '−';
+            }
         }
     }
 
@@ -4471,6 +4488,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
             level: d.lvl ?? source.lvl ?? '?',
             prof: professions[d.prof] || d.prof || '?',
             time: timeNow(),
+            joinOrder: state.nextJoinOrder++,
             isHero: false
         });
 
@@ -4509,6 +4527,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
             level: d.lvl ?? '?',
             prof: professions[d.prof] || d.prof || '?',
             time: timeNow(),
+            joinOrder: state.nextJoinOrder++,
             isHero: true
         });
     }
@@ -4756,6 +4775,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
                     <button id="rtt-send">Wyślij top 10</button>
                     <button id="rtt-reset">Wyczyść listę</button>
                 </div>
+                <div id="rtt-send-status" role="status" aria-live="polite"
+                    style="display:none;margin-top:6px;padding:5px;border:1px solid #6d5a20;border-radius:3px;color:#f5d778;overflow-wrap:anywhere"></div>
             </div>
             <div id="rtt-settings-panel" style="display:none">
                 <label for="rtt-webhook">Discord webhook URL</label>
@@ -4811,7 +4832,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
             event.stopPropagation();
             state.webhook = input.value.trim();
             localStorage.setItem(STORAGE_WEBHOOK, state.webhook);
-            alert('Webhook zapisany.');
+            setSendStatus('Webhook zapisany lokalnie.', true);
         });
 
         $('#rtt-test-webhook', panel).addEventListener('click', async event => {
@@ -4868,7 +4889,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
             return;
         }
 
-        const players = [...state.players.values()];
+        const players = [...state.players.values()].sort((a, b) => a.joinOrder - b.joinOrder);
 
         if (!players.length) {
             const row = document.createElement('tr');
@@ -4897,22 +4918,34 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         });
     }
 
+    // Komunikaty pod przyciskiem zamiast blokujących alertów.
+    function setSendStatus(message, success = false) {
+        const status = $('#rtt-send-status');
+        if (!status) return;
+        status.textContent = message;
+        status.style.display = 'block';
+        status.style.color = success ? '#b8f5c1' : '#ffb3a7';
+        status.style.borderColor = success ? '#347a42' : '#8a3b31';
+    }
+
     // -------------------- DISCORD --------------------
 
     async function sendDiscord(testOnly = false) {
         const webhook = state.webhook.trim();
 
         if (!/^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\//i.test(webhook)) {
-            alert('Otwórz ⚙ i wpisz poprawny adres webhooka Discord.');
+            setSendStatus('Wpisz poprawny adres webhooka Discord w ustawieniach.');
             return;
         }
 
         if (!testOnly && !state.mapAllowed) {
-            alert('Wysyłanie listy jest dostępne tylko na wybranych mapach.');
+            setSendStatus('Wysyłanie listy jest dostępne tylko na wybranych mapach.');
             return;
         }
 
-        const players = [...state.players.values()].slice(0, 10);
+        setSendStatus(testOnly ? 'Wysyłanie wiadomości testowej…' : 'Wysyłanie listy na Discord…', true);
+
+        const players = [...state.players.values()].sort((a, b) => a.joinOrder - b.joinOrder).slice(0, 10);
         const titan = state.titan;
 
         const content = testOnly
@@ -4943,25 +4976,27 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-            alert(testOnly
-                ? 'Wysłano wiadomość testową!'
-                : 'Wysłano listę na Discorda.');
+            setSendStatus(testOnly
+                ? '✓ Wiadomość testowa wysłana na Discord.'
+                : '✓ Lista graczy wysłana na Discord.', true);
         } catch (error) {
             console.error('[Titan Tracker] Discord:', error);
-            alert('Wysyłka nie powiodła się. Sprawdź webhook i konsolę F12.');
+            setSendStatus('✕ Wysyłka nie powiodła się. Sprawdź webhook i konsolę F12.');
         }
     }
 
     // -------------------- GŁÓWNA PĘTLA --------------------
 
     function tick() {
-        if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.titan) {
-            const panel = $('#rtt-panel');
-            if (panel) panel.style.setProperty('display', 'none', 'important');
+        // Integracja z głównym przełącznikiem Vickness Addons.
+        const addonFlags = window.__vicknessAddonEnabled;
+        const trackerPanel = $('#rtt-panel');
+        if (addonFlags && addonFlags.titan === false) {
+            if (trackerPanel) trackerPanel.style.setProperty('display', 'none', 'important');
             return;
         }
-        const panel = $('#rtt-panel');
-        if (panel) panel.style.removeProperty('display');
+        if (trackerPanel) trackerPanel.style.removeProperty('display');
+
         checkMap();
         hookPlayers();
 
@@ -5564,11 +5599,11 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
  })();
 
 // =============================================================
-// THE CREW ONLINE 3.3.9 — zaktualizowany moduł z załącznika, zintegrowany z Vickness
+// THE CREW ONLINE 3.4.0 — zaktualizowany moduł z załącznika, zintegrowany z Vickness
 (() => {
    'use strict';
 
-  const PAGE = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+   const PAGE = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
    if (window.top !== window.self) return;
    if (document.getElementById('tc-online-panel')) return;
@@ -5607,7 +5642,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
    style.textContent = `
      #tc-online-panel {
        position: fixed;
-       z-index: 900;
+       z-index: 100;
        display: flex;
        flex-direction: column;
        box-sizing: border-box;
@@ -5852,7 +5887,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
        position: fixed;
        left: var(--tc-open-left, calc(100vw - 155px));
        top: var(--tc-open-top, calc(100vh - 100px));
-       z-index: 900;
+       z-index: 100;
        padding: 6px 9px;
        font: 12px Arial, sans-serif;
        color: #e7c36e;
@@ -5923,10 +5958,10 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      panel.style.top = `${settings.top}px`;
      panel.style.width = `${settings.width}px`;
      panel.style.height = `${settings.height}px`;
-      const masterEnabled = !(window.__vicknessAddonEnabled && window.__vicknessAddonEnabled.crewOnline === false);
-      panel.style.display = (!masterEnabled || settings.hidden) ? 'none' : 'flex';
+     const masterEnabled = !(window.__vicknessAddonEnabled && window.__vicknessAddonEnabled.crewOnline === false);
+     panel.style.display = (!masterEnabled || settings.hidden) ? 'none' : 'flex';
 
-      openBtn.style.display = !masterEnabled ? 'none' : settings.hidden ? 'block' : 'none';
+     openBtn.style.display = !masterEnabled ? 'none' : settings.hidden ? 'block' : 'none';
      const openLeft = settings.openLeft == null
        ? Math.max(0, window.innerWidth - 155)
        : Number(settings.openLeft);
