@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.41
-// @description  Vickness Addons 1.1.41: integracja mechanizmu przyciemniania mapy v8.0 w zakładce Wygląd
+// @version      1.1.42
+// @description  Vickness Addons 1.1.42: poprawiona typografia bocznych zakładek panelu
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -2868,6 +2868,36 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       .vxPageTitle { font-size:14px; }
       #vxHomeView { grid-auto-rows:minmax(76px,auto); }
     }
+    /* Wymuś czytelną, spójną czcionkę w bocznych kafelkach niezależnie od CSS gry. */
+    #vicknessStandaloneRoot #vxStandalonePanel #vxSidebar .vxSideTab {
+      font-family:Arial,Helvetica,sans-serif!important;
+      font-size:12px!important;
+      font-weight:600!important;
+      font-style:normal!important;
+      line-height:1.2!important;
+      letter-spacing:0!important;
+      text-transform:none!important;
+      text-decoration:none!important;
+      white-space:normal!important;
+      -webkit-font-smoothing:antialiased;
+    }
+    #vicknessStandaloneRoot #vxStandalonePanel #vxSidebar .vxSideTab > span:not(.vxTabIcon):not(#vxUpdateDot) {
+      font-family:Arial,Helvetica,sans-serif!important;
+      font-size:12px!important;
+      font-weight:600!important;
+      font-style:normal!important;
+      line-height:1.2!important;
+      letter-spacing:0!important;
+      text-transform:none!important;
+    }
+    #vicknessStandaloneRoot #vxStandalonePanel #vxSidebar .vxSideTab .vxTabIcon {
+      font-family:Arial,Helvetica,sans-serif!important;
+      font-size:14px!important;
+      font-weight:400!important;
+      font-style:normal!important;
+      line-height:1!important;
+      letter-spacing:0!important;
+    }
   </style>
   <div id="vxStandalonePanel">
     <div id="vxStandaloneHeader"><div id="vxStandaloneBrand">Panel Dodatków</div><button id="vxStandaloneMin" type="button" title="Minimalizuj">−</button></div>
@@ -2927,6 +2957,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.42</span><span class="vxChangelogDate">bieżące wydanie</span><div>Poprawiono czcionkę bocznych kafelków Dodatki, Log zmian i Wygląd: wymuszono czytelną czcionkę bezszeryfową i ujednolicono rozmiar, grubość oraz odstępy, niezależnie od stylów strony gry.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.41</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono mechanizm Złotego przyciemnienia mapy na rdzeń ze skryptu v8.0. Pozostawiono sterowanie w zakładce Wygląd, dodano nakładanie filtra maksymalnie raz na klatkę podczas przeciągania suwaka oraz zachowano zapis ustawień i wykrywanie zmiany mapy/canvasu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.40</span><span class="vxChangelogDate">bieżące wydanie</span><div>Optymalizacja płynności: mniej kosztownych skanów DOM, ograniczenie zbędnych aktualizacji paneli, filtrowanie obserwatora mapy i rzadsze kontrole pomocnicze. Dodatki i ich funkcje pozostają zachowane.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.39</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono belkę na kod Loot Bar 4.4.7 z załącznika. Zachowano szybsze ładowanie: równoległe zapytania, odświeżanie co 3 minuty, limit żądania 12 sekund, lokalna pamięć podręczna i przycisk ponowienia po błędzie.</div></div>
@@ -3120,7 +3151,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.41';
+  const CURRENT_PANEL_VERSION = '1.1.42';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
