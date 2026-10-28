@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.33
-// @description  Vickness Addons: motywy, przyciemnienie mapy, Titan Tracker 5.0.2 i The Crew Online 3.4.0
+// @version      1.1.34
+// @description  Vickness Addons: spójne motywy kolorystyczne dla panelu i wbudowanych dodatków
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -2480,7 +2480,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.31 — przyciemnienie mapy widoczne od razu w zakładce Wygląd
+// VICKNESS ADDON PANEL 1.1.34 — spójna typografia i motywy dla wszystkich wbudowanych okien
 // =============================================================
 (() => {
   'use strict';
@@ -2759,6 +2759,43 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     .vxLootlogActions button:hover { background:rgba(48,37,11,.92); border-color:#d4af37; color:#ffe28a; }
     /* Sterowanie belką jest dostępne w panelu Vickness, bez osobnego pływającego menu. */
     #vickness-lootbar .vl-controls { display:none!important; }
+
+    /* Spójna, czytelna typografia we wszystkich trzech zakładkach. */
+    #vxStandalonePanel { font-family:Arial,sans-serif; }
+    #vxStandalonePanel .vxView,
+    #vxStandalonePanel .vxExtraView,
+    #vxStandalonePanel .vxPageCard,
+    #vxStandalonePanel .vxStandaloneRow { font-family:Arial,sans-serif; font-size:12px; line-height:1.35; }
+    #vxHomeView { grid-auto-rows:minmax(76px,auto); gap:5px; padding:6px; }
+    #vxHomeView.vxNarrow { grid-auto-rows:minmax(76px,auto); }
+    .vxStandaloneRow { min-height:76px; padding:6px; gap:6px; align-items:flex-start; }
+    .vxStandaloneRow > div:first-child { min-width:0; overflow-wrap:anywhere; }
+    .vxStandaloneName { font-size:12px; line-height:1.16; }
+    .vxStandaloneDesc { font-size:10px; line-height:1.24; margin-top:3px; }
+    .vxStandaloneState { font-size:9px; line-height:1.15; margin-top:3px; }
+    .vxOpenSettings,.vxNavBtn { font-size:10px; line-height:1.15; padding:4px 6px; margin-top:4px; }
+    .vxPageCard { font-size:12px; line-height:1.38; padding:10px; }
+    .vxPageTitle { font-size:15px; line-height:1.25; margin-bottom:6px; }
+    .vxChangelogEntry { font-size:12px; line-height:1.38; padding:7px 0; }
+    .vxChangelogEntry > div { font-size:12px; line-height:1.4; margin-top:4px; }
+    .vxChangelogVersion { font-size:13px; }
+    .vxChangelogDate { font-size:9px; }
+    .vxPageNote { font-size:10px; line-height:1.4; }
+    .vxAppearanceControl { font-size:12px; line-height:1.35; margin:8px 0; }
+    .vxAppearanceControl output { font-size:12px; }
+    .vxActionBtn,.vxLootlogActions button { font-size:10px; line-height:1.2; }
+    .vxLootlogInfo { font-size:11px; line-height:1.4; }
+    #vxSettingsToolbar { font-size:11px; }
+    #vxCurrentSetting { font-size:12px; }
+    @media (max-width:560px) {
+      .vxStandaloneName { font-size:11px; }
+      .vxStandaloneDesc { font-size:9px; }
+      .vxStandaloneState { font-size:8px; }
+      .vxOpenSettings,.vxNavBtn { font-size:9px; }
+      .vxPageCard,.vxChangelogEntry,.vxChangelogEntry > div { font-size:11px; }
+      .vxPageTitle { font-size:14px; }
+      #vxHomeView { grid-auto-rows:minmax(76px,auto); }
+    }
   </style>
   <div id="vxStandalonePanel">
     <div id="vxStandaloneHeader"><div id="vxStandaloneBrand">Panel Dodatków</div><button id="vxStandaloneMin" type="button" title="Minimalizuj">−</button></div>
@@ -2818,6 +2855,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.34</span><span class="vxChangelogDate">bieżące wydanie</span><div>Ujednolicono i powiększono czcionki w zakładkach Dodatki, Log zmian i Wygląd. Wybrany motyw zmienia teraz również akcenty, obramowania i tabelki w oknach Loot Glow, belki Lootlog, DC Wykrywacza, Titan Trackera i The Crew Online.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.33</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano motyw czarno-czerwony i zaktualizowano Titan Tracker Gold do 5.0.2: kolejność wejścia graczy, komunikaty Discord inline oraz automatyczne rozwijanie po wykryciu tytana.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.32</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Podmieniono The Crew Online na 3.4.0. Zmniejszono czcionki, przełączniki i odstępy kart, żeby zawartość lepiej mieściła się w każdym polu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.31</span><span class="vxChangelogDate">bieżące wydanie</span><div>Poprawiono karty dodatków: zmniejszono czcionki i odstępy, dopasowano przełączniki oraz przyciski, a długie nazwy i opisy mogą się zawijać bez wychodzenia poza kartę.</div></div>
@@ -2996,7 +3034,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.33';
+  const CURRENT_PANEL_VERSION = '1.1.34';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -3067,11 +3105,95 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   }
 
   const THEME_SETTINGS = {
-    gold: { accent: '#dfb943', line: 'rgba(201,162,39,.72)', soft: 'rgba(46,35,8,.62)' },
-    turquoise: { accent: '#50d6c8', line: 'rgba(80,214,200,.68)', soft: 'rgba(8,48,45,.62)' },
-    purple: { accent: '#bf96ff', line: 'rgba(191,150,255,.68)', soft: 'rgba(41,24,61,.62)' },
-    redblack: { accent: '#ff4545', line: 'rgba(235,48,48,.76)', soft: 'rgba(58,8,8,.64)' }
+    gold: {
+      accent: '#dfb943', light: '#f5d778', line: 'rgba(201,162,39,.78)',
+      soft: 'rgba(46,35,8,.72)', header: '#211b10', hover: '#30240b',
+      row: 'rgba(73,55,12,.94)', rowAlt: 'rgba(25,20,10,.96)',
+      tableFirst: 'rgba(65,48,9,.98)', tableOther: 'rgba(39,20,12,.98)',
+      tableText: '#fff0c2', secondary: '#e4d29b', glow: 'rgba(212,175,55,.26)'
+    },
+    turquoise: {
+      accent: '#50d6c8', light: '#a7fff7', line: 'rgba(80,214,200,.76)',
+      soft: 'rgba(8,48,45,.74)', header: '#0d2423', hover: '#17423e',
+      row: 'rgba(12,66,61,.96)', rowAlt: 'rgba(10,28,29,.96)',
+      tableFirst: 'rgba(10,65,60,.98)', tableOther: 'rgba(13,32,36,.98)',
+      tableText: '#e2fffd', secondary: '#a7eee7', glow: 'rgba(80,214,200,.25)'
+    },
+    purple: {
+      accent: '#bf96ff', light: '#ead8ff', line: 'rgba(191,150,255,.76)',
+      soft: 'rgba(41,24,61,.76)', header: '#21172f', hover: '#38234d',
+      row: 'rgba(57,35,86,.96)', rowAlt: 'rgba(27,17,37,.96)',
+      tableFirst: 'rgba(57,35,86,.98)', tableOther: 'rgba(35,19,42,.98)',
+      tableText: '#f4eaff', secondary: '#d6c0f5', glow: 'rgba(191,150,255,.25)'
+    },
+    redblack: {
+      accent: '#ff4545', light: '#ffaaaa', line: 'rgba(235,48,48,.8)',
+      soft: 'rgba(58,8,8,.76)', header: '#2a0c0c', hover: '#4a1717',
+      row: 'rgba(82,15,15,.96)', rowAlt: 'rgba(28,8,9,.96)',
+      tableFirst: 'rgba(91,13,13,.98)', tableOther: 'rgba(39,8,10,.98)',
+      tableText: '#ffe1e1', secondary: '#ffb6b6', glow: 'rgba(255,50,50,.25)'
+    }
   };
+
+  function installCrossAddonThemeStyles() {
+    if (document.getElementById('vickness-cross-addon-theme')) return;
+    const style = document.createElement('style');
+    style.id = 'vickness-cross-addon-theme';
+    style.textContent = `
+      /* Motyw ustawiony w Vickness dotyczy również samodzielnych okien dodatków. */
+      #margDc221Panel, #margDc221Mini {
+        border-color:var(--vx-widget-accent)!important;
+        box-shadow:0 5px 20px var(--vx-widget-glow)!important;
+      }
+      #margDc221Header { background:var(--vx-widget-header)!important; border-bottom:1px solid var(--vx-widget-line)!important; }
+      #margDc221Title, #margDc221Mini, .margDc221Gold, #margDc221Status.gold { color:var(--vx-widget-light)!important; }
+      .margDc221Btn { border-color:var(--vx-widget-line)!important; }
+      .margDc221Btn.margDc221Gold { border-color:var(--vx-widget-accent)!important; color:var(--vx-widget-light)!important; background:var(--vx-widget-soft)!important; }
+      #margDc221Webhook { border-color:var(--vx-widget-line)!important; }
+
+      #tmLootPanel { border-color:var(--vx-widget-accent)!important; box-shadow:0 0 0 1px #000,0 0 18px var(--vx-widget-glow),0 10px 35px #000b!important; }
+      #tmLootHeader { background:linear-gradient(180deg,var(--vx-widget-header),#090909)!important; border-bottom-color:var(--vx-widget-line)!important; }
+      #tmLootPanel .tmBrand, #tmLootCollapse { color:var(--vx-widget-light)!important; }
+      #tmLootPanel .tmDiamondIcon { border-color:var(--vx-widget-accent)!important; box-shadow:0 0 5px var(--vx-widget-glow),inset 0 0 8px var(--vx-widget-soft)!important; }
+      #tmLootPanel .tmTab, #tmLootPanel .tmRarityRow { border-color:var(--vx-widget-line)!important; }
+      #tmLootPanel .tmTab.active { color:var(--vx-widget-light)!important; border-color:var(--vx-widget-accent)!important; background:var(--vx-widget-soft)!important; }
+      #tmLootPanel #tmLootCollapse:hover { background:var(--vx-widget-soft)!important; }
+
+      #vickness-lootbar { color:var(--vx-widget-light)!important; border-color:var(--vx-widget-accent)!important; background:linear-gradient(180deg,var(--vx-widget-header),#090909)!important; box-shadow:0 0 0 1px #000,0 4px 16px var(--vx-widget-glow)!important; }
+      #vickness-lootbar .vl-settings-toggle, #vickness-lootbar .vl-refresh, #vickness-lootbar .vl-settings-panel button { color:var(--vx-widget-light)!important; border-color:var(--vx-widget-accent)!important; background:var(--vx-widget-panel)!important; }
+      #vickness-lootbar .vl-settings-toggle:hover, #vickness-lootbar .vl-refresh:hover, #vickness-lootbar .vl-settings-panel button:hover { color:var(--vx-widget-light)!important; border-color:var(--vx-widget-light)!important; background:var(--vx-widget-soft)!important; }
+      #vickness-lootbar .vl-item.heroic { border-color:var(--vx-widget-secondary)!important; box-shadow:inset 0 0 6px var(--vx-widget-glow)!important; }
+      #vickness-lootbar .vl-item.legendary { border-color:var(--vx-widget-accent)!important; box-shadow:inset 0 0 7px var(--vx-widget-glow)!important; }
+      #vickness-lootbar .vl-item .vl-letter { color:var(--vx-widget-light)!important; }
+      #vickness-lootbar .vl-item.legendary .vl-letter { color:var(--vx-widget-accent)!important; }
+
+      #rtt-panel { border-color:var(--vx-widget-accent)!important; box-shadow:0 0 12px var(--vx-widget-glow),0 4px 16px #000b!important; }
+      #rtt-head { background:var(--vx-widget-header)!important; border-bottom-color:var(--vx-widget-accent)!important; }
+      #rtt-head > span:first-child, #rtt-titan-level, .rtt-titan b, .rtt-count { color:var(--vx-widget-light)!important; }
+      #rtt-head button, #rtt-panel button { border-color:var(--vx-widget-line)!important; color:var(--vx-widget-light)!important; background:var(--vx-widget-panel)!important; }
+      #rtt-panel button:hover { border-color:var(--vx-widget-accent)!important; background:var(--vx-widget-hover)!important; }
+      #rtt-panel th { background:var(--vx-widget-header)!important; color:var(--vx-widget-light)!important; border-color:var(--vx-widget-accent)!important; }
+      #rtt-panel td { border-color:var(--vx-widget-line)!important; }
+      #rtt-panel tbody tr:nth-child(-n+10), #rtt-panel tbody tr:nth-child(-n+10) td { background:var(--vx-widget-table-first)!important; color:var(--vx-widget-table-text)!important; border-color:var(--vx-widget-line)!important; }
+      #rtt-panel tbody tr:nth-child(n+11), #rtt-panel tbody tr:nth-child(n+11) td { background:var(--vx-widget-table-other)!important; color:var(--vx-widget-table-text)!important; border-color:var(--vx-widget-line)!important; }
+      #rtt-panel tbody tr[style] { outline-color:var(--vx-widget-light)!important; }
+      #rtt-settings-panel { border-top-color:var(--vx-widget-accent)!important; }
+      #rtt-webhook { border-color:var(--vx-widget-line)!important; }
+
+      #tc-online-panel { border-color:var(--vx-widget-accent)!important; box-shadow:0 4px 18px var(--vx-widget-glow)!important; }
+      #tc-head { background:var(--vx-widget-header)!important; color:var(--vx-widget-light)!important; border-bottom-color:var(--vx-widget-line)!important; }
+      #tc-title, .tc-name, .tc-summary .tc-summary-level { color:var(--vx-widget-light)!important; }
+      .tc-btn, #tc-open { color:var(--vx-widget-light)!important; background:var(--vx-widget-panel)!important; border-color:var(--vx-widget-accent)!important; }
+      .tc-btn:hover, #tc-open:hover { background:var(--vx-widget-hover)!important; border-color:var(--vx-widget-light)!important; }
+      #tc-online-panel .tc-player:nth-child(even) { background:var(--vx-widget-row-alt)!important; }
+      #tc-online-panel .tc-player.tc-in-group { background:var(--vx-widget-row)!important; box-shadow:inset 3px 0 0 var(--vx-widget-accent)!important; }
+      #tc-online-panel .tc-player.tc-in-group .tc-name { color:var(--vx-widget-light)!important; }
+      .tc-summary .tc-summary-location { color:var(--vx-widget-secondary)!important; }
+      #tc-list { scrollbar-color:var(--vx-widget-line) transparent!important; }
+      #tc-list::-webkit-scrollbar-thumb { background:var(--vx-widget-line)!important; }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  }
   function getAppearance() {
     if (!layout.appearance || typeof layout.appearance !== 'object') layout.appearance = {};
     return {
@@ -3091,6 +3213,18 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     root.style.setProperty('--vx-accent', theme.accent);
     root.style.setProperty('--vx-accent-line', theme.line);
     root.style.setProperty('--vx-accent-soft', theme.soft);
+    installCrossAddonThemeStyles();
+    const html = document.documentElement;
+    html.dataset.vicknessTheme = appearance.theme;
+    const widgetVars = {
+      accent: theme.accent, light: theme.light, line: theme.line, soft: theme.soft,
+      header: theme.header, hover: theme.hover, row: theme.row, rowAlt: theme.rowAlt,
+      tableFirst: theme.tableFirst, tableOther: theme.tableOther, tableText: theme.tableText,
+      secondary: theme.secondary, glow: theme.glow,
+      panel: 'rgba(12,12,12,.96)'
+    };
+    Object.entries(widgetVars).forEach(([key, value]) => html.style.setProperty(`--vx-widget-${key.replace(/[A-Z]/g, m => '-' + m.toLowerCase())}`, value));
+    window.dispatchEvent(new CustomEvent('vickness-theme-change', { detail: { theme: appearance.theme, ...widgetVars } }));
     panel.style.background = `rgba(8,8,8,${alpha})`;
     panel.style.backdropFilter = `blur(${appearance.blur}px)`;
     panel.style.webkitBackdropFilter = `blur(${appearance.blur}px)`;
