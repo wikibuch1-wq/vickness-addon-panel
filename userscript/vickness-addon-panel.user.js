@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.40
-// @description  Vickness Addons 1.1.40: optymalizacja DOM, skanów i pętli dodatków dla płynniejszej gry
+// @version      1.1.41
+// @description  Vickness Addons 1.1.41: integracja mechanizmu przyciemniania mapy v8.0 w zakładce Wygląd
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -2480,7 +2480,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.40 — optymalizacja wydajności; zachowano wszystkie dodatki i cache Loot Bar
+// VICKNESS ADDON PANEL 1.1.41 — przyciemnianie mapy v8.0 zintegrowane z panelem
 // =============================================================
 (() => {
   'use strict';
@@ -2522,23 +2522,26 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function saveFlags() { try { localStorage.setItem(FLAGS_KEY, JSON.stringify(enabled)); } catch (_) {} }
   function saveLayout() { try { localStorage.setItem(KEY, JSON.stringify(layout)); } catch (_) {} }
 
-  // Złote przyciemnienie mapy — zaktualizowany mechanizm v7.0.
-  // Sterowanie pozostaje w zakładce Wygląd; nie twórzemy osobnego pływającego panelu.
+  // Złote przyciemnienie mapy — rdzeń z przesłanego skryptu v8.0,
+  // zintegrowany z zakładką Wygląd (bez tworzenia drugiego, pływającego panelu).
   const PAGE_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const MAP_DIMMER_KEYS = { amount: 'margonemDimAmount', enabled: 'margonemDimEnabled' };
-  const storedDimmerAmount = localStorage.getItem(MAP_DIMMER_KEYS.amount);
-  let mapDimmerAmount = storedDimmerAmount === null
-    ? 50
-    : Math.max(0, Math.min(100, Number(storedDimmerAmount) || 0));
-  let mapDimmerEnabled = localStorage.getItem(MAP_DIMMER_KEYS.enabled) !== '0';
+  let mapDimmerAmount = 50;
+  let mapDimmerEnabled = true;
+  try {
+    const storedAmount = localStorage.getItem(MAP_DIMMER_KEYS.amount);
+    mapDimmerAmount = storedAmount === null ? 50 : Math.max(0, Math.min(100, Number(storedAmount) || 0));
+    mapDimmerEnabled = localStorage.getItem(MAP_DIMMER_KEYS.enabled) !== '0';
+  } catch (_) {}
+
   let lastMapDimmerEngine = null;
   let lastMapDimmerMap = null;
   let lastMapDimmerMapId = null;
   let lastMapDimmerCanvas = null;
-  let lastMapDimmerWidth = 0;
-  let lastMapDimmerHeight = 0;
-  let lastMapDimmerPixelWidth = 0;
-  let lastMapDimmerPixelHeight = 0;
+  let lastMapDimmerWidth = -1;
+  let lastMapDimmerHeight = -1;
+  let lastMapDimmerPixelWidth = -1;
+  let lastMapDimmerPixelHeight = -1;
   let mapDimmerApplyQueued = false;
   let mapDimmerMonitorStarted = false;
   let mapDimmerResizeObserver = null;
@@ -2552,12 +2555,11 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function getMapDimmerDimensions() {
     const { canvas, layer } = getMapDimmerGameElements();
     const element = canvas || layer;
-    if (!element) return { canvas: null, width: 0, height: 0, pixelWidth: 0, pixelHeight: 0 };
-    const rect = element.getBoundingClientRect();
+    const rect = element?.getBoundingClientRect();
     return {
       canvas,
-      width: Math.round(rect.width),
-      height: Math.round(rect.height),
+      width: Math.round(rect?.width || 0),
+      height: Math.round(rect?.height || 0),
       pixelWidth: canvas?.width || 0,
       pixelHeight: canvas?.height || 0
     };
@@ -2566,6 +2568,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function applyMapDimmer(force = false) {
     const engine = PAGE_WINDOW.Engine || window.Engine;
     if (!engine?.canvasFilter || !engine?.map) return false;
+
     const dimensions = getMapDimmerDimensions();
     const mapId = engine.map.getId?.() ?? engine.map.d?.id ?? null;
     const changed = engine !== lastMapDimmerEngine || engine.map !== lastMapDimmerMap ||
@@ -2581,6 +2584,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       engine.canvasFilter.addObjectsFilter('MAP', null, filter);
       engine.map.updateFilterImage();
       engine.map.updateBackgroundOffsetImage();
+
       lastMapDimmerEngine = engine;
       lastMapDimmerMap = engine.map;
       lastMapDimmerMapId = mapId;
@@ -2591,19 +2595,19 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       lastMapDimmerPixelHeight = dimensions.pixelHeight;
       return true;
     } catch (error) {
-      console.warn('[Vickness — Złote przyciemnienie mapy]', error);
+      console.warn('[Vickness — Złote przyciemnienie mapy v8]', error);
       return false;
     }
   }
 
+  // Łącz wiele zdarzeń (np. przeciąganie suwaka) w jedno zastosowanie na klatkę.
   function scheduleMapDimmerApply() {
     if (mapDimmerApplyQueued) return;
     mapDimmerApplyQueued = true;
-    // Gra czasem przelicza canvas przez dwie klatki po resize/fullscreen.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
       mapDimmerApplyQueued = false;
       applyMapDimmer(true);
-    }));
+    });
   }
 
   function syncMapDimmerControls() {
@@ -2629,14 +2633,14 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     mapDimmerAmount = Math.max(0, Math.min(100, Number(value) || 0));
     try { localStorage.setItem(MAP_DIMMER_KEYS.amount, String(mapDimmerAmount)); } catch (_) {}
     syncMapDimmerControls();
-    applyMapDimmer(true);
+    scheduleMapDimmerApply();
   }
 
   function setMapDimmerEnabled(value) {
     mapDimmerEnabled = Boolean(value);
     try { localStorage.setItem(MAP_DIMMER_KEYS.enabled, mapDimmerEnabled ? '1' : '0'); } catch (_) {}
     syncMapDimmerControls();
-    applyMapDimmer(true);
+    scheduleMapDimmerApply();
   }
 
   function watchMapDimmerGameSize() {
@@ -2656,12 +2660,10 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     watchMapDimmerGameSize();
     applyMapDimmer(true);
 
-    // Celowo bez obserwatora całego body: ResizeObserver i kontrola co 500 ms
-    // wykrywają zmianę rozmiaru/canvasu bez kosztu obserwowania wszystkich mutacji interfejsu.
-
-    window.addEventListener('resize', watchMapDimmerGameSize);
+    // Obserwuj wyłącznie wymiary canvasu; nie skanuj mutacji całego dokumentu.
+    window.addEventListener('resize', watchMapDimmerGameSize, { passive: true });
     document.addEventListener('fullscreenchange', watchMapDimmerGameSize);
-    // Zabezpieczenie dla zmian mapy lub canvasu, których gra nie zgłasza zdarzeniem.
+    // Kontrola wykrywa zmianę mapy/canvasu, także gdy gra nie emituje zdarzenia.
     setInterval(() => {
       const engine = PAGE_WINDOW.Engine || window.Engine;
       if (!engine?.canvasFilter || !engine?.map) return;
@@ -2674,7 +2676,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         if (dimensions.canvas !== lastMapDimmerCanvas) watchMapDimmerGameSize();
         else scheduleMapDimmerApply();
       }
-    }, 500);
+    }, 250);
   }
 
   // Zmiana rozmiaru okna skaluje proporcjonalnie tekst i odstępy wizualne;
@@ -2925,6 +2927,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.41</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono mechanizm Złotego przyciemnienia mapy na rdzeń ze skryptu v8.0. Pozostawiono sterowanie w zakładce Wygląd, dodano nakładanie filtra maksymalnie raz na klatkę podczas przeciągania suwaka oraz zachowano zapis ustawień i wykrywanie zmiany mapy/canvasu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.40</span><span class="vxChangelogDate">bieżące wydanie</span><div>Optymalizacja płynności: mniej kosztownych skanów DOM, ograniczenie zbędnych aktualizacji paneli, filtrowanie obserwatora mapy i rzadsze kontrole pomocnicze. Dodatki i ich funkcje pozostają zachowane.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.39</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono belkę na kod Loot Bar 4.4.7 z załącznika. Zachowano szybsze ładowanie: równoległe zapytania, odświeżanie co 3 minuty, limit żądania 12 sekund, lokalna pamięć podręczna i przycisk ponowienia po błędzie.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.38</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono belkę na Loot Bar 4.4.9. Skrócono okres automatycznego odświeżania do 3 minut, równolegle pobierane są dane zwykłe i legendarne, a ostatnie łupy są pokazywane od razu z lokalnej pamięci podręcznej podczas odświeżania.</div></div>
@@ -3117,7 +3120,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.40';
+  const CURRENT_PANEL_VERSION = '1.1.41';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
