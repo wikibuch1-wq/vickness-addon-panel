@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.34
-// @description  Vickness Addons: spójne motywy kolorystyczne dla panelu i wbudowanych dodatków
+// @version      1.1.36
+// @description  Vickness Addons: Loot Bar 4.4.8, map dimmer v7 i dodatkowe motywy
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @grant        GM_getValue
@@ -2480,7 +2480,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.34 — spójna typografia i motywy dla wszystkich wbudowanych okien
+// VICKNESS ADDON PANEL 1.1.36 — Loot Bar 4.4.8; belka zachowuje własne kolory
 // =============================================================
 (() => {
   'use strict';
@@ -2521,7 +2521,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function saveFlags() { try { localStorage.setItem(FLAGS_KEY, JSON.stringify(enabled)); } catch (_) {} }
   function saveLayout() { try { localStorage.setItem(KEY, JSON.stringify(layout)); } catch (_) {} }
 
-  // Złote przyciemnienie mapy: ustawienia pozostają zgodne z samodzielnym dodatkiem v6.
+  // Złote przyciemnienie mapy — zaktualizowany mechanizm v7.0.
+  // Sterowanie pozostaje w zakładce Wygląd; nie twórzemy osobnego pływającego panelu.
   const PAGE_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const MAP_DIMMER_KEYS = { amount: 'margonemDimAmount', enabled: 'margonemDimEnabled' };
   const storedDimmerAmount = localStorage.getItem(MAP_DIMMER_KEYS.amount);
@@ -2532,15 +2533,47 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   let lastMapDimmerEngine = null;
   let lastMapDimmerMap = null;
   let lastMapDimmerMapId = null;
-  let lastMapDimmerApplyTime = 0;
+  let lastMapDimmerCanvas = null;
+  let lastMapDimmerWidth = 0;
+  let lastMapDimmerHeight = 0;
+  let lastMapDimmerPixelWidth = 0;
+  let lastMapDimmerPixelHeight = 0;
+  let mapDimmerApplyQueued = false;
   let mapDimmerMonitorStarted = false;
+  let mapDimmerResizeObserver = null;
+  let mapDimmerMutationObserver = null;
+
+  function getMapDimmerGameElements() {
+    const canvas = document.querySelector('#GAME_CANVAS');
+    const layer = canvas?.closest('.game-layer') || document.querySelector('.game-layer');
+    return { canvas, layer };
+  }
+
+  function getMapDimmerDimensions() {
+    const { canvas, layer } = getMapDimmerGameElements();
+    const element = canvas || layer;
+    if (!element) return { canvas: null, width: 0, height: 0, pixelWidth: 0, pixelHeight: 0 };
+    const rect = element.getBoundingClientRect();
+    return {
+      canvas,
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+      pixelWidth: canvas?.width || 0,
+      pixelHeight: canvas?.height || 0
+    };
+  }
 
   function applyMapDimmer(force = false) {
     const engine = PAGE_WINDOW.Engine || window.Engine;
     if (!engine?.canvasFilter || !engine?.map) return false;
+    const dimensions = getMapDimmerDimensions();
     const mapId = engine.map.getId?.() ?? engine.map.d?.id ?? null;
-    const changed = engine !== lastMapDimmerEngine || engine.map !== lastMapDimmerMap || mapId !== lastMapDimmerMapId;
-    if (!force && !changed && Date.now() - lastMapDimmerApplyTime < 2000) return true;
+    const changed = engine !== lastMapDimmerEngine || engine.map !== lastMapDimmerMap ||
+      mapId !== lastMapDimmerMapId || dimensions.canvas !== lastMapDimmerCanvas ||
+      dimensions.width !== lastMapDimmerWidth || dimensions.height !== lastMapDimmerHeight ||
+      dimensions.pixelWidth !== lastMapDimmerPixelWidth || dimensions.pixelHeight !== lastMapDimmerPixelHeight;
+    if (!force && !changed) return true;
+
     try {
       const filter = (!mapDimmerEnabled || mapDimmerAmount === 0)
         ? 'none'
@@ -2551,12 +2584,26 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       lastMapDimmerEngine = engine;
       lastMapDimmerMap = engine.map;
       lastMapDimmerMapId = mapId;
-      lastMapDimmerApplyTime = Date.now();
+      lastMapDimmerCanvas = dimensions.canvas;
+      lastMapDimmerWidth = dimensions.width;
+      lastMapDimmerHeight = dimensions.height;
+      lastMapDimmerPixelWidth = dimensions.pixelWidth;
+      lastMapDimmerPixelHeight = dimensions.pixelHeight;
       return true;
     } catch (error) {
       console.warn('[Vickness — Złote przyciemnienie mapy]', error);
       return false;
     }
+  }
+
+  function scheduleMapDimmerApply() {
+    if (mapDimmerApplyQueued) return;
+    mapDimmerApplyQueued = true;
+    // Gra czasem przelicza canvas przez dwie klatki po resize/fullscreen.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      mapDimmerApplyQueued = false;
+      applyMapDimmer(true);
+    }));
   }
 
   function syncMapDimmerControls() {
@@ -2592,19 +2639,48 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     applyMapDimmer(true);
   }
 
+  function watchMapDimmerGameSize() {
+    const { canvas, layer } = getMapDimmerGameElements();
+    if (mapDimmerResizeObserver) mapDimmerResizeObserver.disconnect();
+    if (typeof ResizeObserver === 'function') {
+      mapDimmerResizeObserver = new ResizeObserver(scheduleMapDimmerApply);
+      if (canvas) mapDimmerResizeObserver.observe(canvas);
+      if (layer && layer !== canvas) mapDimmerResizeObserver.observe(layer);
+    }
+    scheduleMapDimmerApply();
+  }
+
   function startMapDimmerMonitor() {
     if (mapDimmerMonitorStarted) return;
     mapDimmerMonitorStarted = true;
+    watchMapDimmerGameSize();
     applyMapDimmer(true);
-    // Nie obserwujemy całego DOM — lekki polling wykrywa zmianę silnika lub mapy.
+
+    if (typeof MutationObserver === 'function' && document.body) {
+      mapDimmerMutationObserver = new MutationObserver(() => {
+        const dimensions = getMapDimmerDimensions();
+        if (dimensions.canvas !== lastMapDimmerCanvas) watchMapDimmerGameSize();
+        else scheduleMapDimmerApply();
+      });
+      mapDimmerMutationObserver.observe(document.body, { childList: true, subtree: true });
+    }
+
+    window.addEventListener('resize', watchMapDimmerGameSize);
+    document.addEventListener('fullscreenchange', watchMapDimmerGameSize);
+    // Zabezpieczenie dla zmian mapy lub canvasu, których gra nie zgłasza zdarzeniem.
     setInterval(() => {
       const engine = PAGE_WINDOW.Engine || window.Engine;
       if (!engine?.canvasFilter || !engine?.map) return;
+      const dimensions = getMapDimmerDimensions();
       const mapId = engine.map.getId?.() ?? engine.map.d?.id ?? null;
-      if (engine !== lastMapDimmerEngine || engine.map !== lastMapDimmerMap || mapId !== lastMapDimmerMapId) {
-        applyMapDimmer(true);
+      if (engine !== lastMapDimmerEngine || engine.map !== lastMapDimmerMap ||
+          mapId !== lastMapDimmerMapId || dimensions.canvas !== lastMapDimmerCanvas ||
+          dimensions.width !== lastMapDimmerWidth || dimensions.height !== lastMapDimmerHeight ||
+          dimensions.pixelWidth !== lastMapDimmerPixelWidth || dimensions.pixelHeight !== lastMapDimmerPixelHeight) {
+        if (dimensions.canvas !== lastMapDimmerCanvas) watchMapDimmerGameSize();
+        else scheduleMapDimmerApply();
       }
-    }, 350);
+    }, 150);
   }
 
   // Zmiana rozmiaru okna skaluje proporcjonalnie tekst i odstępy wizualne;
@@ -2855,7 +2931,9 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.34</span><span class="vxChangelogDate">bieżące wydanie</span><div>Ujednolicono i powiększono czcionki w zakładkach Dodatki, Log zmian i Wygląd. Wybrany motyw zmienia teraz również akcenty, obramowania i tabelki w oknach Loot Glow, belki Lootlog, DC Wykrywacza, Titan Trackera i The Crew Online.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.36</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono belkę lootów na Loot Bar by Vickness 4.4.8 z załącznika. Pozostawiono osobną kolorystykę belki niezależną od motywu głównego panelu oraz zachowano jej sterowanie z zakładek Vickness.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.35</span><span class="vxChangelogDate">bieżące wydanie</span><div>Zaktualizowano mechanizm Złotego przyciemnienia mapy do wersji 7.0 z automatycznym dopasowaniem do rozmiaru gry i ponownym nakładaniem po zmianie canvasu. Dodano trzy motywy: czarno-niebieski, czarno-zielony i czarno-różowy. Belka Lootlog zachowuje własną kolorystykę niezależnie od motywu Vickness.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.34</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Ujednolicono i powiększono czcionki w zakładkach Dodatki, Log zmian i Wygląd. Wybrany motyw zmienia teraz również akcenty, obramowania i tabelki w oknach Loot Glow, belki Lootlog, DC Wykrywacza, Titan Trackera i The Crew Online.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.33</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano motyw czarno-czerwony i zaktualizowano Titan Tracker Gold do 5.0.2: kolejność wejścia graczy, komunikaty Discord inline oraz automatyczne rozwijanie po wykryciu tytana.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.32</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Podmieniono The Crew Online na 3.4.0. Zmniejszono czcionki, przełączniki i odstępy kart, żeby zawartość lepiej mieściła się w każdym polu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.31</span><span class="vxChangelogDate">bieżące wydanie</span><div>Poprawiono karty dodatków: zmniejszono czcionki i odstępy, dopasowano przełączniki oraz przyciski, a długie nazwy i opisy mogą się zawijać bez wychodzenia poza kartę.</div></div>
@@ -2886,7 +2964,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
         <div class="vxPageNote">Zmiany zapisują się lokalnie w tej przeglądarce. Rozmiar panelu zmienisz, przeciągając jego prawy dolny róg; czcionka skaluje się proporcjonalnie.</div>
         <label class="vxAppearanceControl"><span><span>Krycie tła</span><output id="vxOpacityValue">88%</output></span><input id="vxOpacityRange" type="range" min="55" max="98" step="1" value="88"></label>
         <label class="vxAppearanceControl"><span><span>Rozmycie tła</span><output id="vxBlurValue">4 px</output></span><input id="vxBlurRange" type="range" min="0" max="12" step="1" value="4"></label>
-        <label class="vxAppearanceControl"><span><span>Motyw kolorystyczny</span></span><select id="vxThemeSelect"><option value="gold">Czarno-złoty</option><option value="turquoise">Czarno-turkusowy</option><option value="purple">Czarno-fioletowy</option><option value="redblack">Czarno-czerwony</option></select></label>
+        <label class="vxAppearanceControl"><span><span>Motyw kolorystyczny</span></span><select id="vxThemeSelect"><option value="gold">Czarno-złoty</option><option value="turquoise">Czarno-turkusowy</option><option value="purple">Czarno-fioletowy</option><option value="redblack">Czarno-czerwony</option><option value="blue">Czarno-niebieski</option><option value="green">Czarno-zielony</option><option value="pink">Czarno-różowy</option></select></label>
         <div class="vxLootlogActions"><button type="button" id="vxAppearanceReset" class="vxActionBtn">DOMYŚLNY WYGLĄD</button><button type="button" id="vxLayoutReset" class="vxActionBtn">RESETUJ ROZMIAR I POZYCJĘ</button></div>
       </div>
 
@@ -3034,7 +3112,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.34';
+  const CURRENT_PANEL_VERSION = '1.1.36';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -3132,6 +3210,27 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       row: 'rgba(82,15,15,.96)', rowAlt: 'rgba(28,8,9,.96)',
       tableFirst: 'rgba(91,13,13,.98)', tableOther: 'rgba(39,8,10,.98)',
       tableText: '#ffe1e1', secondary: '#ffb6b6', glow: 'rgba(255,50,50,.25)'
+    },
+    blue: {
+      accent: '#4da3ff', light: '#b5d9ff', line: 'rgba(77,163,255,.8)',
+      soft: 'rgba(8,31,59,.76)', header: '#0c1928', hover: '#143653',
+      row: 'rgba(20,57,94,.94)', rowAlt: 'rgba(10,20,32,.96)',
+      tableFirst: 'rgba(12,54,101,.98)', tableOther: 'rgba(12,30,48,.98)',
+      tableText: '#e4f2ff', secondary: '#b9d7f4', glow: 'rgba(77,163,255,.25)'
+    },
+    green: {
+      accent: '#55d98e', light: '#b9ffd5', line: 'rgba(75,214,132,.8)',
+      soft: 'rgba(8,48,28,.76)', header: '#0d2115', hover: '#153b24',
+      row: 'rgba(14,75,39,.94)', rowAlt: 'rgba(10,27,16,.96)',
+      tableFirst: 'rgba(8,75,34,.98)', tableOther: 'rgba(13,39,24,.98)',
+      tableText: '#e0ffeb', secondary: '#a6efc1', glow: 'rgba(65,220,126,.24)'
+    },
+    pink: {
+      accent: '#ff69b4', light: '#ffc5e2', line: 'rgba(255,105,180,.78)',
+      soft: 'rgba(63,14,42,.78)', header: '#28101f', hover: '#47172f',
+      row: 'rgba(78,17,50,.94)', rowAlt: 'rgba(28,10,23,.96)',
+      tableFirst: 'rgba(87,14,49,.98)', tableOther: 'rgba(38,13,29,.98)',
+      tableText: '#ffe6f2', secondary: '#ffd0e7', glow: 'rgba(255,105,180,.25)'
     }
   };
 
@@ -3159,13 +3258,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       #tmLootPanel .tmTab.active { color:var(--vx-widget-light)!important; border-color:var(--vx-widget-accent)!important; background:var(--vx-widget-soft)!important; }
       #tmLootPanel #tmLootCollapse:hover { background:var(--vx-widget-soft)!important; }
 
-      #vickness-lootbar { color:var(--vx-widget-light)!important; border-color:var(--vx-widget-accent)!important; background:linear-gradient(180deg,var(--vx-widget-header),#090909)!important; box-shadow:0 0 0 1px #000,0 4px 16px var(--vx-widget-glow)!important; }
-      #vickness-lootbar .vl-settings-toggle, #vickness-lootbar .vl-refresh, #vickness-lootbar .vl-settings-panel button { color:var(--vx-widget-light)!important; border-color:var(--vx-widget-accent)!important; background:var(--vx-widget-panel)!important; }
-      #vickness-lootbar .vl-settings-toggle:hover, #vickness-lootbar .vl-refresh:hover, #vickness-lootbar .vl-settings-panel button:hover { color:var(--vx-widget-light)!important; border-color:var(--vx-widget-light)!important; background:var(--vx-widget-soft)!important; }
-      #vickness-lootbar .vl-item.heroic { border-color:var(--vx-widget-secondary)!important; box-shadow:inset 0 0 6px var(--vx-widget-glow)!important; }
-      #vickness-lootbar .vl-item.legendary { border-color:var(--vx-widget-accent)!important; box-shadow:inset 0 0 7px var(--vx-widget-glow)!important; }
-      #vickness-lootbar .vl-item .vl-letter { color:var(--vx-widget-light)!important; }
-      #vickness-lootbar .vl-item.legendary .vl-letter { color:var(--vx-widget-accent)!important; }
+      /* Belka Lootlog celowo zachowuje własną, niezależną kolorystykę. */
 
       #rtt-panel { border-color:var(--vx-widget-accent)!important; box-shadow:0 0 12px var(--vx-widget-glow),0 4px 16px #000b!important; }
       #rtt-head { background:var(--vx-widget-header)!important; border-bottom-color:var(--vx-widget-accent)!important; }
@@ -3453,7 +3546,21 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// BELKA LOOTÓW ZINTEGROWANA Z LOOTLOGIEM — kod dodatku 4.4.7 (z załącznika)
+// BELKA LOOTÓW ZINTEGROWANA Z LOOTLOGIEM — kod dodatku 4.4.8 (z załącznika)
+// ==UserScript==
+// @name         Loot Bar by Vickness - Riventia
+// @namespace    vickness.riventia.lootbar
+// @version      4.4.8
+// @description  Loot Bar Riventia - 10 najnowszych heroików Elity II i 5 najnowszych legend ze wszystkich źródeł
+// @match        https://riventia.margonem.pl/*
+// @run-at       document-idle
+// @grant        GM_xmlhttpRequest
+// @connect      api.lootlog.pl
+// @connect      lootlog.pl
+// @connect      micc.garmory-cdn.cloud
+// @connect      www.margonem.pl
+// ==/UserScript==
+
 (() => {
   'use strict';
 
@@ -3700,6 +3807,20 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     .vl-tip .vl-tip-item {
       margin-top: 3px;
       color: #b8dcff;
+      font-weight: bold;
+    }
+
+    .vl-tip .vl-tip-stats {
+      margin-top: 7px;
+      padding-top: 6px;
+      border-top: 1px solid #393939;
+      color: #dedede;
+      white-space: pre-line;
+      line-height: 1.45;
+    }
+
+    .vl-tip .vl-tip-stat {
+      margin: 2px 0;
     }
 
     #vickness-lootbar .vl-empty {
@@ -4092,6 +4213,24 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     itemLine.textContent = source.dataset.item || 'Nieznany przedmiot';
     tooltip.appendChild(itemLine);
 
+    const stats = safeParseStats(source.dataset.stats || '[]');
+    if (stats.length) {
+      const statsBox = document.createElement('div');
+      statsBox.className = 'vl-tip-stats';
+      for (const stat of stats) {
+        const line = document.createElement('div');
+        line.className = 'vl-tip-stat';
+        line.textContent = stat;
+        statsBox.appendChild(line);
+      }
+      tooltip.appendChild(statsBox);
+    } else {
+      const noStats = document.createElement('div');
+      noStats.className = 'vl-tip-stats';
+      noStats.textContent = 'Brak statystyk w danych Lootlog dla tego przedmiotu.';
+      tooltip.appendChild(noStats);
+    }
+
     tooltip.style.display = 'block';
     tooltip.style.visibility = 'hidden';
     tooltip.style.left = '0px';
@@ -4116,6 +4255,70 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     tooltip.style.visibility = 'visible';
   }
 
+  function safeParseStats(value) {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // Lootlog API versions may expose item parameters under different keys.
+  // Only display fields present on the item object; never invent values.
+  function extractItemStats(item) {
+    if (!item || typeof item !== 'object') return [];
+    const result = [];
+    const seen = new Set();
+    const ignored = /^(id|hid|uid|uniqueid|name|label|title|rarity|quality|grade|tier|icon|image|img|url|href|description|desc|type|code|level|lvl|owner|player|createdat|updatedat)$/i;
+    const statContainers = /^(stats|statistics|attributes|parameters|properties|bonuses|effects|itemstats|item_stats|statlines|statslist)$/i;
+    const niceName = key => String(key)
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/[_-]+/g, ' ')
+      .replace(/^./, c => c.toUpperCase());
+    const add = (label, value) => {
+      if (value == null || result.length >= 35) return;
+      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+        const text = String(value).trim();
+        if (text && !result.includes(`${label}: ${text}`)) result.push(`${label}: ${text}`);
+      }
+    };
+    function walk(value, depth = 0, prefix = '') {
+      if (value == null || depth > 4 || result.length >= 35) return;
+      if (typeof value !== 'object') { if (prefix) add(prefix, value); return; }
+      if (seen.has(value)) return;
+      seen.add(value);
+      if (Array.isArray(value)) {
+        for (const entry of value) {
+          if (entry && typeof entry === 'object') {
+            const label = entry.name ?? entry.label ?? entry.title ?? entry.stat ?? entry.key;
+            const amount = entry.value ?? entry.amount ?? entry.bonus ?? entry.total;
+            if (label != null && amount != null) add(label, amount);
+            else walk(entry, depth + 1, prefix);
+          } else if (prefix) add(prefix, entry);
+        }
+        return;
+      }
+      for (const [key, child] of Object.entries(value)) {
+        if (ignored.test(key)) continue;
+        if (statContainers.test(key)) { walk(child, depth + 1, ''); continue; }
+        if (child && typeof child === 'object') {
+          const label = child.name ?? child.label ?? child.title ?? child.stat ?? child.key;
+          const amount = child.value ?? child.amount ?? child.bonus ?? child.total;
+          if (label != null && amount != null) add(label, amount);
+          else walk(child, depth + 1, prefix || niceName(key));
+        } else if (/^(?:stat|bonus|attack|armor|defense|strength|agility|intelligence|life|mana|crit|speed|resistance|damage|power|accuracy|block|dodge|hp|mp|lvl|level|req|requirement)/i.test(key)) {
+          add(niceName(key), child);
+        }
+      }
+    }
+    // Prefer explicit stat containers; if none exist, scan the item for common stat fields.
+    const containers = Object.entries(item).filter(([key, value]) => statContainers.test(key) && value != null);
+    if (containers.length) containers.forEach(([key, value]) => walk(value, 0, niceName(key)));
+    else walk(item);
+    return result;
+  }
+
   function makeTile(entry) {
     const loot = entry.loot;
     const item = entry.item || getItem(loot);
@@ -4131,6 +4334,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     tipSource.dataset.npc = `${npc.name} - lvl ${npc.level}`;
     tipSource.dataset.player = player;
     tipSource.dataset.item = item?.name || 'Nieznany przedmiot';
+    tipSource.dataset.stats = JSON.stringify(extractItemStats(item));
     tile.appendChild(tipSource);
 
     tile.addEventListener('mouseenter', () => showTooltip(tile));
@@ -4408,2258 +4612,3 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
   window.addEventListener('scroll', hideTooltip, true);
 })();
-
-// =============================================================
-// TITAN TRACKER GOLD 5.0.2 — zintegrowany z panelem Vickness
-(() => {
-    'use strict';
-
-    const W = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
-    const MAX_PLAYERS = 15;
-    const STORAGE_WEBHOOK = 'rtt_webhook_v2';
-    const STORAGE_POSITION = 'rtt_position_v2';
-
-    // Tracker działa wyłącznie na tych mapach.
-    const ALLOWED_MAPS = new Set([
-        1800, // Migotliwa Pieczara
-        1745, // Grota Caerbannoga - leże bestii
-        6950, // Bandyckie Chowisko - skarbiec
-        7061, // Wulkan Politraki - Piekielne Czeluście
-        7478, // Lokum Złych Goblinów - pracownia
-        6058, // Źródło Wspomnień
-        5947, // Komnata Krwawych Obrzędów
-        7849, // Nora Jaszczurzych Koszmarów - źródło
-        5710, // Teotihuacan
-        3313, // Sala Zrujnowanej Świątyni
-        2758, // Sala Tronowa
-    ]);
-
-    const GOLD = '#d4af37';
-    const GOLD_LIGHT = '#f5d778';
-    const BLACK = '#080808';
-
-    const state = {
-        players: new Map(),
-        titan: null,
-        titanKey: '',
-        collapsed: true,
-        settingsOpen: false,
-        webhook: localStorage.getItem(STORAGE_WEBHOOK) || '',
-        hookedManager: null,
-        seededManager: null,
-        currentMap: null,
-        mapAllowed: false,
-        nextJoinOrder: 1
-    };
-
-    const professions = {
-        w: 'w', m: 'm', b: 'b', t: 't', h: 'h', p: 'p'
-    };
-
-    const $ = (selector, root = document) => root.querySelector(selector);
-
-    function engine() {
-        return W.Engine || window.Engine;
-    }
-
-    function timeNow() {
-        return new Date().toLocaleTimeString('pl-PL', { hour12: false });
-    }
-
-    // Odczytuje identyfikator aktualnej mapy z dostępnych pól silnika.
-    function getCurrentMapId() {
-        const E = engine();
-
-        const candidates = [
-            E?.map?.d?.id,
-            E?.map?.id,
-            E?.map?.d?.map,
-            E?.map?.mapId,
-            W.map?.id,
-            W.g?.world?.map?.id
-        ];
-
-        for (const value of candidates) {
-            if (value !== undefined && value !== null && value !== '') {
-                const id = Number(value);
-                if (Number.isFinite(id)) return id;
-            }
-        }
-
-        return null;
-    }
-
-    function checkMap() {
-        const mapId = getCurrentMapId();
-
-        if (mapId !== state.currentMap) {
-            state.currentMap = mapId;
-            state.mapAllowed = mapId !== null && ALLOWED_MAPS.has(mapId);
-
-            // Zmiana mapy zawsze czyści listę poprzedniej lokacji.
-            state.players.clear();
-            state.nextJoinOrder = 1;
-            state.titan = null;
-            state.titanKey = '';
-            state.seededManager = null;
-
-            if (state.mapAllowed) {
-                saveHero();
-            }
-
-            updateTable();
-        }
-
-        return state.mapAllowed;
-    }
-
-    // -------------------- TYTAN --------------------
-
-    function findTitan() {
-        const npcs = engine()?.npcs?.getDrawableList?.() || [];
-
-        const candidates = npcs.filter(npc => {
-            const d = npc?.d;
-            if (!d?.nick) return false;
-
-            const icon = String(d.icon || '').toLowerCase();
-            const nick = String(d.nick).toLowerCase();
-
-            return icon.includes('tyt/') ||
-                nick.includes('baulus') ||
-                (Number(d.wt) > 99 && Number(d.type) === 2);
-        });
-
-        candidates.sort((a, b) => {
-            const aTitan = String(a?.d?.icon || '').toLowerCase().includes('tyt/');
-            const bTitan = String(b?.d?.icon || '').toLowerCase().includes('tyt/');
-            return Number(bTitan) - Number(aTitan);
-        });
-
-        const npc = candidates[0];
-        if (!npc?.d) return null;
-
-        return {
-            id: String(npc.d.id ?? npc.d.tpl ?? npc.d.nick),
-            nick: npc.d.nick,
-            level: npc.d.lvl ?? npc.d.wt ?? '?'
-        };
-    }
-
-    function scanTitan() {
-        if (!state.mapAllowed) {
-            state.titan = null;
-            state.titanKey = '';
-            return;
-        }
-
-        const found = findTitan();
-
-        if (!found) {
-            state.titan = null;
-            state.titanKey = '';
-            return;
-        }
-
-        const key = `${found.id}|${found.nick}|${found.level}`;
-
-        if (key !== state.titanKey) {
-            state.titanKey = key;
-            state.titan = { ...found, detectedAt: timeNow() };
-
-            // Automatycznie rozwiń tracker po wykryciu tytana.
-            state.collapsed = false;
-            const panel = $('#rtt-panel');
-            if (panel) {
-                $('#rtt-body', panel).style.display = 'block';
-                $('#rtt-settings-panel', panel).style.display =
-                    state.settingsOpen ? 'block' : 'none';
-                $('#rtt-collapse', panel).textContent = '−';
-            }
-        }
-    }
-
-    // -------------------- GRACZE --------------------
-
-    function getHeroId() {
-        const id = engine()?.hero?.d?.id;
-        return id == null ? '' : String(id);
-    }
-
-    function savePlayer(id, input, character, redraw = true) {
-        if (!state.mapAllowed) return;
-
-        const d = character?.d || {};
-        const source = input?.d || input || {};
-        const nick = d.nick || source.nick;
-
-        if (!nick) return;
-
-        const playerId = String(d.id ?? source.id ?? id ?? '');
-        if (!playerId) return;
-
-        if (playerId === getHeroId()) {
-            if (redraw) updateTable();
-            return;
-        }
-
-        if (character && character.isPlayer !== true) return;
-
-        if (state.players.has(playerId)) {
-            const old = state.players.get(playerId);
-            old.nick = nick;
-            old.level = d.lvl ?? source.lvl ?? old.level;
-            old.prof = professions[d.prof] || d.prof || old.prof || '?';
-            if (redraw) updateTable();
-            return;
-        }
-
-        if (state.players.size >= MAX_PLAYERS) return;
-
-        state.players.set(playerId, {
-            id: playerId,
-            nick,
-            level: d.lvl ?? source.lvl ?? '?',
-            prof: professions[d.prof] || d.prof || '?',
-            time: timeNow(),
-            joinOrder: state.nextJoinOrder++,
-            isHero: false
-        });
-
-        if (redraw) updateTable();
-    }
-
-    function saveHero() {
-        if (!state.mapAllowed) return;
-
-        const d = engine()?.hero?.d;
-        if (!d?.nick || d.id == null) return;
-
-        const id = String(d.id);
-
-        if (state.players.has(id)) {
-            const player = state.players.get(id);
-            player.nick = d.nick;
-            player.level = d.lvl ?? player.level;
-            player.prof = professions[d.prof] || d.prof || player.prof || '?';
-            player.isHero = true;
-            return;
-        }
-
-        if (state.players.size >= MAX_PLAYERS) {
-            const lastOther = [...state.players.entries()]
-                .reverse()
-                .find(([, player]) => !player.isHero);
-
-            if (lastOther) state.players.delete(lastOther[0]);
-            else return;
-        }
-
-        state.players.set(id, {
-            id,
-            nick: d.nick,
-            level: d.lvl ?? '?',
-            prof: professions[d.prof] || d.prof || '?',
-            time: timeNow(),
-            joinOrder: state.nextJoinOrder++,
-            isHero: true
-        });
-    }
-
-    function removePlayer(id) {
-        if (id == null || String(id) === getHeroId()) return;
-        state.players.delete(String(id));
-    }
-
-    function seedExistingPlayers(manager) {
-        if (!state.mapAllowed || state.seededManager === manager) return;
-        state.seededManager = manager;
-
-        try {
-            const known = manager.check?.();
-            const ids = known instanceof Map
-                ? [...known.keys()]
-                : known && typeof known === 'object'
-                    ? Object.keys(known)
-                    : [];
-
-            for (const id of ids) {
-                const character = manager.getById(String(id));
-                if (character?.isPlayer && character.d?.nick) {
-                    savePlayer(id, character.d, character, false);
-                }
-            }
-
-            updateTable();
-        } catch (error) {
-            console.warn('[Titan Tracker] Odczyt graczy:', error);
-        }
-    }
-
-    function hookPlayers() {
-        const manager = engine()?.others;
-        if (!manager || typeof manager.updateData !== 'function') return;
-
-        if (state.hookedManager !== manager) {
-            const original = manager.updateData;
-
-            manager.updateData = function (data) {
-                const result = original.apply(this, arguments);
-
-                try {
-                    for (const id of Object.keys(data || {})) {
-                        const input = data[id];
-                        if (!input) continue;
-
-                        const source = input.d || input;
-                        const playerId = String(source.id ?? input.id ?? id);
-
-                        if (input.del || source.del) {
-                            removePlayer(playerId);
-                            continue;
-                        }
-
-                        if (!state.mapAllowed) continue;
-
-                        const character = this.getById(String(id));
-                        if (character?.isPlayer === true) {
-                            savePlayer(playerId, input, character, false);
-                        }
-                    }
-
-                    updateTable();
-                } catch (error) {
-                    console.error('[Titan Tracker] Błąd odczytu graczy:', error);
-                }
-
-                return result;
-            };
-
-            state.hookedManager = manager;
-        }
-
-        seedExistingPlayers(manager);
-    }
-
-    function cleanMissingPlayers() {
-        if (!state.mapAllowed) {
-            state.players.clear();
-            return;
-        }
-
-        const manager = engine()?.others;
-        if (!manager || typeof manager.getById !== 'function') return;
-
-        for (const [id, player] of state.players) {
-            if (player.isHero || id === getHeroId()) continue;
-
-            try {
-                const character = manager.getById(id);
-
-                if (!character || character.isPlayer !== true) {
-                    state.players.delete(id);
-                }
-            } catch (error) {
-                console.warn('[Titan Tracker] Sprawdzanie gracza:', error);
-            }
-        }
-    }
-
-    // -------------------- WYGLĄD --------------------
-
-    function installStyles() {
-        if ($('#rtt-styles')) return;
-
-        const style = document.createElement('style');
-        style.id = 'rtt-styles';
-        style.textContent = `
-            #rtt-panel {
-                position:fixed;z-index:2147483647;top:100px;left:15px;
-                width:280px;min-width:280px;max-width:280px;
-                height:auto;min-height:0;max-height:calc(100vh - 8px);
-                box-sizing:border-box;background:${BLACK};color:#f4e8bd;
-                border:1px solid ${GOLD};border-radius:5px;
-                box-shadow:0 0 12px #d4af3738,0 4px 16px #000b;
-                font:11px Arial,sans-serif;resize:none;overflow:auto;
-            }
-            #rtt-head {
-                display:flex;justify-content:space-between;align-items:center;
-                gap:6px;background:#111;padding:4px 7px;cursor:move;
-                border-bottom:1px solid ${GOLD};font-weight:bold;font-size:11px;
-                line-height:16px;user-select:none;position:sticky;top:0;z-index:2;
-            }
-            #rtt-head > span:first-child {color:${GOLD_LIGHT}}
-            #rtt-head button,#rtt-panel button {
-                cursor:pointer;border:1px solid ${GOLD};border-radius:3px;
-                padding:4px 6px;background:#17130a;color:${GOLD_LIGHT};
-                font-size:11px;
-            }
-            #rtt-head button {padding:1px 5px;line-height:15px}
-            #rtt-panel button:hover {background:#30240b;color:#fff0b3}
-            #rtt-body {padding:7px;overflow:auto}
-            .rtt-titan {display:flex;justify-content:space-between;gap:6px;margin-bottom:6px}
-            .rtt-titan b {color:${GOLD_LIGHT};overflow-wrap:anywhere}
-            #rtt-titan-level {color:#e4d29b}
-            .rtt-count {margin-bottom:5px;color:#d2c69c}
-            #rtt-panel table {width:100%;border-collapse:collapse;table-layout:auto}
-            #rtt-panel th {
-                background:#18140a;color:${GOLD_LIGHT};padding:5px 3px;
-                border:1px solid ${GOLD};
-            }
-            #rtt-panel td {
-                padding:4px 3px;border:1px solid #6d5a20;text-align:center;
-            }
-            #rtt-panel td:nth-child(2) {text-align:left;overflow-wrap:anywhere}
-            .rtt-actions {display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
-            .rtt-actions button {flex:1;min-width:120px}
-            #rtt-settings-panel {
-                padding:9px;background:#080808;border-top:1px solid ${GOLD};
-            }
-            #rtt-settings-panel label {display:block;margin-bottom:5px;color:${GOLD_LIGHT}}
-            #rtt-webhook {
-                display:block;box-sizing:border-box;width:100%;margin-bottom:7px;
-                padding:7px;background:#151515;color:#fff0b3;
-                border:1px solid ${GOLD};border-radius:3px;
-                user-select:text;pointer-events:auto;
-            }
-            #rtt-webhook:focus {outline:1px solid ${GOLD_LIGHT}}
-            .rtt-setting-buttons {display:flex;gap:6px;flex-wrap:wrap}
-            #rtt-settings-panel p {color:#c9b979;font-size:10px}
-        `;
-        document.head.appendChild(style);
-    }
-
-    function loadPosition(panel) {
-        try {
-            const pos = JSON.parse(localStorage.getItem(STORAGE_POSITION) || '{}');
-            if (pos.left) panel.style.left = pos.left;
-            if (pos.top) panel.style.top = pos.top;
-        } catch (_) {}
-    }
-
-    function savePosition(panel) {
-        localStorage.setItem(STORAGE_POSITION, JSON.stringify({
-            left: panel.style.left,
-            top: panel.style.top
-        }));
-    }
-
-    function makeDraggable(panel) {
-        const head = $('#rtt-head', panel);
-        if (!head) return;
-
-        head.onpointerdown = event => {
-            if (event.target.closest('button')) return;
-
-            const rect = panel.getBoundingClientRect();
-            const x = event.clientX;
-            const y = event.clientY;
-            const left = rect.left;
-            const top = rect.top;
-
-            function move(e) {
-                panel.style.left = Math.max(
-                    0, Math.min(innerWidth - panel.offsetWidth, left + e.clientX - x)
-                ) + 'px';
-                panel.style.top = Math.max(
-                    0, Math.min(innerHeight - 35, top + e.clientY - y)
-                ) + 'px';
-                panel.style.right = 'auto';
-            }
-
-            function up() {
-                document.removeEventListener('pointermove', move);
-                document.removeEventListener('pointerup', up);
-                savePosition(panel);
-            }
-
-            document.addEventListener('pointermove', move);
-            document.addEventListener('pointerup', up);
-        };
-    }
-
-    function createPanel() {
-        if ($('#rtt-panel')) return;
-
-        installStyles();
-
-        const panel = document.createElement('section');
-        panel.id = 'rtt-panel';
-        panel.innerHTML = `
-            <div id="rtt-head">
-                <span>💎Pierwsza dyszka</span>
-                <span>
-                    <button id="rtt-settings" title="Ustawienia Discord">⚙</button>
-                    <button id="rtt-collapse" title="Zwiń/rozwiń">−</button>
-                </span>
-            </div>
-            <div id="rtt-body">
-                <div class="rtt-titan">
-                    <b id="rtt-titan-name">Wyszukiwanie tytana…</b>
-                    <span id="rtt-titan-level"></span>
-                </div>
-                <div class="rtt-count" id="rtt-count">Gracze: 0/15</div>
-                <table>
-                    <thead><tr>
-                        <th>#</th><th>Nick</th><th>Lvl</th><th>Prof.</th><th>Wejście</th>
-                    </tr></thead>
-                    <tbody id="rtt-rows"></tbody>
-                </table>
-                <div class="rtt-actions">
-                    <button id="rtt-send">Wyślij top 10</button>
-                    <button id="rtt-reset">Wyczyść listę</button>
-                </div>
-                <div id="rtt-send-status" role="status" aria-live="polite"
-                    style="display:none;margin-top:6px;padding:5px;border:1px solid #6d5a20;border-radius:3px;color:#f5d778;overflow-wrap:anywhere"></div>
-            </div>
-            <div id="rtt-settings-panel" style="display:none">
-                <label for="rtt-webhook">Discord webhook URL</label>
-                <input id="rtt-webhook" type="text" autocomplete="off"
-                    spellcheck="false" placeholder="https://discord.com/api/webhooks/…">
-                <div class="rtt-setting-buttons">
-                    <button id="rtt-save-webhook">Zapisz webhook</button>
-                    <button id="rtt-test-webhook">Test</button>
-                </div>
-                <p>Webhook zapisany lokalnie w przeglądarce.</p>
-            </div>`;
-
-        document.body.appendChild(panel);
-        loadPosition(panel);
-        bindPanel(panel);
-
-        // Po każdym odświeżeniu gry tracker startuje zwinięty.
-        $('#rtt-body', panel).style.display = state.collapsed ? 'none' : 'block';
-        $('#rtt-settings-panel', panel).style.display =
-            !state.collapsed && state.settingsOpen ? 'block' : 'none';
-        $('#rtt-collapse', panel).textContent = state.collapsed ? '+' : '−';
-
-        updateTable();
-    }
-
-    function bindPanel(panel) {
-        $('#rtt-settings', panel).addEventListener('click', event => {
-            event.stopPropagation();
-            state.settingsOpen = !state.settingsOpen;
-            $('#rtt-settings-panel', panel).style.display =
-                state.settingsOpen ? 'block' : 'none';
-
-            if (state.settingsOpen) {
-                $('#rtt-webhook', panel).value = state.webhook;
-            }
-        });
-
-        $('#rtt-collapse', panel).addEventListener('click', event => {
-            event.stopPropagation();
-            state.collapsed = !state.collapsed;
-            $('#rtt-body', panel).style.display = state.collapsed ? 'none' : 'block';
-            $('#rtt-settings-panel', panel).style.display =
-                !state.collapsed && state.settingsOpen ? 'block' : 'none';
-            $('#rtt-collapse', panel).textContent = state.collapsed ? '+' : '−';
-        });
-
-        const input = $('#rtt-webhook', panel);
-        for (const name of ['pointerdown', 'mousedown', 'click', 'keydown']) {
-            input.addEventListener(name, event => event.stopPropagation());
-        }
-
-        $('#rtt-save-webhook', panel).addEventListener('click', event => {
-            event.stopPropagation();
-            state.webhook = input.value.trim();
-            localStorage.setItem(STORAGE_WEBHOOK, state.webhook);
-            setSendStatus('Webhook zapisany lokalnie.', true);
-        });
-
-        $('#rtt-test-webhook', panel).addEventListener('click', async event => {
-            event.stopPropagation();
-            state.webhook = input.value.trim();
-            localStorage.setItem(STORAGE_WEBHOOK, state.webhook);
-            await sendDiscord(true);
-        });
-
-        $('#rtt-send', panel).addEventListener('click', () => sendDiscord(false));
-
-        $('#rtt-reset', panel).addEventListener('click', () => {
-            if (!confirm('Wyczyścić listę graczy?')) return;
-            state.players.clear();
-            saveHero();
-            updateTable();
-        });
-
-        makeDraggable(panel);
-    }
-
-    function updateTable() {
-        const panel = $('#rtt-panel');
-        if (!panel) return;
-
-        if (!state.mapAllowed) {
-            $('#rtt-titan-name', panel).textContent =
-                'Mapa poza listą';
-            $('#rtt-titan-level', panel).textContent = '';
-            $('#rtt-count', panel).textContent = 'Gracze: 0/15';
-        } else if (state.titan) {
-            $('#rtt-titan-name', panel).textContent = state.titan.nick;
-            $('#rtt-titan-level', panel).textContent =
-                `Poziom ${state.titan.level}`;
-            $('#rtt-count', panel).textContent =
-                `Gracze: ${state.players.size}/${MAX_PLAYERS}`;
-        } else {
-            $('#rtt-titan-name', panel).textContent = 'Nie wykryto tytana';
-            $('#rtt-titan-level', panel).textContent = '';
-            $('#rtt-count', panel).textContent =
-                `Gracze: ${state.players.size}/${MAX_PLAYERS}`;
-        }
-
-        const tbody = $('#rtt-rows', panel);
-        tbody.replaceChildren();
-
-        if (!state.mapAllowed) {
-            const row = document.createElement('tr');
-            const cell = document.createElement('td');
-            cell.colSpan = 5;
-            cell.textContent = 'Tracker działa tylko na wybranych mapach.';
-            row.appendChild(cell);
-            tbody.appendChild(row);
-            return;
-        }
-
-        const players = [...state.players.values()].sort((a, b) => a.joinOrder - b.joinOrder);
-
-        if (!players.length) {
-            const row = document.createElement('tr');
-            const cell = document.createElement('td');
-            cell.colSpan = 5;
-            cell.textContent = 'Oczekiwanie na graczy…';
-            row.appendChild(cell);
-            tbody.appendChild(row);
-            return;
-        }
-
-        players.forEach((p, i) => {
-            const row = document.createElement('tr');
-            row.style.background = i < 10 ? '#164c24' : '#5b1717';
-            row.style.color = i < 10 ? '#d9ffdf' : '#ffe1e1';
-
-            if (p.isHero) row.style.outline = '1px solid #f5d778';
-
-            for (const value of [i + 1, p.nick, p.level, p.prof, p.time]) {
-                const cell = document.createElement('td');
-                cell.textContent = value;
-                row.appendChild(cell);
-            }
-
-            tbody.appendChild(row);
-        });
-    }
-
-    // Komunikaty pod przyciskiem zamiast blokujących alertów.
-    function setSendStatus(message, success = false) {
-        const status = $('#rtt-send-status');
-        if (!status) return;
-        status.textContent = message;
-        status.style.display = 'block';
-        status.style.color = success ? '#b8f5c1' : '#ffb3a7';
-        status.style.borderColor = success ? '#347a42' : '#8a3b31';
-    }
-
-    // -------------------- DISCORD --------------------
-
-    async function sendDiscord(testOnly = false) {
-        const webhook = state.webhook.trim();
-
-        if (!/^https:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\//i.test(webhook)) {
-            setSendStatus('Wpisz poprawny adres webhooka Discord w ustawieniach.');
-            return;
-        }
-
-        if (!testOnly && !state.mapAllowed) {
-            setSendStatus('Wysyłanie listy jest dostępne tylko na wybranych mapach.');
-            return;
-        }
-
-        setSendStatus(testOnly ? 'Wysyłanie wiadomości testowej…' : 'Wysyłanie listy na Discord…', true);
-
-        const players = [...state.players.values()].sort((a, b) => a.joinOrder - b.joinOrder).slice(0, 10);
-        const titan = state.titan;
-
-        const content = testOnly
-            ? 'Test Titan Tracker — webhook działa.'
-            : [
-                `**Mapa ID:** ${state.currentMap ?? '?'}`,
-                `**Tytan:** ${titan?.nick || 'Nie wykryto'}`,
-                `**Poziom:** ${titan?.level ?? '?'}`,
-                `**Czas wykrycia:** ${titan?.detectedAt || '?'}`,
-                '',
-                '**Top 10 graczy:**',
-                ...(players.length
-                    ? players.map((p, i) =>
-                        `${i + 1}. **${p.nick}** — ${p.level} lvl, ${p.prof}, ${p.time}`
-                    )
-                    : ['Brak zapisanych graczy.'])
-            ].join('\n');
-
-        try {
-            const response = await fetch(webhook, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: 'Titan Tracker',
-                    content: content.slice(0, 1900)
-                })
-            });
-
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-            setSendStatus(testOnly
-                ? '✓ Wiadomość testowa wysłana na Discord.'
-                : '✓ Lista graczy wysłana na Discord.', true);
-        } catch (error) {
-            console.error('[Titan Tracker] Discord:', error);
-            setSendStatus('✕ Wysyłka nie powiodła się. Sprawdź webhook i konsolę F12.');
-        }
-    }
-
-    // -------------------- GŁÓWNA PĘTLA --------------------
-
-    function tick() {
-        // Integracja z głównym przełącznikiem Vickness Addons.
-        const addonFlags = window.__vicknessAddonEnabled;
-        const trackerPanel = $('#rtt-panel');
-        if (addonFlags && addonFlags.titan === false) {
-            if (trackerPanel) trackerPanel.style.setProperty('display', 'none', 'important');
-            return;
-        }
-        if (trackerPanel) trackerPanel.style.removeProperty('display');
-
-        checkMap();
-        hookPlayers();
-
-        if (state.mapAllowed) {
-            saveHero();
-            scanTitan();
-            cleanMissingPlayers();
-        }
-
-        updateTable();
-    }
-
-    function start() {
-        if (!document.body) {
-            setTimeout(start, 500);
-            return;
-        }
-
-        createPanel();
-        tick();
-        setInterval(tick, 1000);
-    }
-
-    start();
-})();
-
-// =============================================================
-// PROCENT ŁUPU 5.11.0 (wewnętrzny moduł v513) — zintegrowany z panelem Vickness
-// =============================================================
-(() => {
-   'use strict';
-
-   // API Margonem odczytujemy z kontekstu strony gry, poza sandboxem userscriptu.
-   const PAGE = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
-   function getGameEngine() {
-     try {
-       if (typeof PAGE.getEngine === 'function') {
-         const engine = PAGE.getEngine();
-         if (engine) return engine;
-       }
-     } catch (_) {}
-     try {
-       return PAGE.Engine || PAGE.engine || PAGE.g?.Engine || PAGE.g?.engine || window.Engine || null;
-     } catch (_) { return null; }
-   }
-
-   if (window.__margonemLootChanceV513) return;
-   window.__margonemLootChanceV513 = true;
-
-   const STORE = 'mlcSettingsV513';
-   const PROFESSIONS = {
-     b: 'Tancerz ostrzy', h: 'Łowca', w: 'Wojownik',
-     t: 'Tropiciel', p: 'Paladyn', m: 'Mag'
-   };
-   const RARITIES = {
-     't-norm': 'common', 't-uni': 'unique',
-     't-her': 'heroic', 't-leg': 'legendary'
-   };
-   const RARITY_NAMES = {
-     common: 'Pospolity', unique: 'Unikatowy',
-     heroic: 'Heroiczny', legendary: 'Legendarny'
-   };
-   const DEFAULTS = {
-     enabled: true,
-     profession: 'p',
-     rarities: { common: false, unique: false, heroic: true, legendary: true }
-   };
-
-   let settings;
-   try {
-     const saved = JSON.parse(localStorage.getItem(STORE) || 'null') || {};
-     settings = {
-       ...DEFAULTS, ...saved,
-       rarities: { ...DEFAULTS.rarities, ...(saved.rarities || {}) }
-     };
-   } catch (_) {
-     settings = JSON.parse(JSON.stringify(DEFAULTS));
-   }
-
-   const requirements = new Map();
-   const labels = new Map();
-   const pendingReads = new WeakSet();
-   let panel = null;
-   let status = null;
-   let observer = null;
-   let scanTimer = null;
-   let lastWindowOpen = false;
-
-   const norm = s => String(s || '').normalize('NFD')
-     .replace(/[\u0300-\u036f]/g, '')
-     .toLowerCase().replace(/\s+/g, ' ').trim();
-
-   function save() {
-     try { localStorage.setItem(STORE, JSON.stringify(settings)); } catch (_) {}
-   }
-
-   function getCurrentProfession() {
-     // Kod profesji własnej postaci udostępniany przez Margonem.
-     try {
-       if (typeof PAGE.getHeroProf === 'function') {
-         const code = String(PAGE.getHeroProf() || '').toLowerCase();
-         if (PROFESSIONS[code]) return code;
-       }
-     } catch (_) {}
-     return null;
-   }
-
-   function getItem(wrapper) {
-     if (!wrapper) return null;
-     if (wrapper.matches?.('.item[data-tip-type="t_item"], .item[data-item-type]')) return wrapper;
-     return wrapper.querySelector('.item[data-tip-type="t_item"], .item[data-item-type]');
-   }
-
-   function itemKey(item) {
-     const c = String(item?.className || '');
-     const tpl = c.match(/\bitem-tpl-(\d+)\b/);
-     const id = c.match(/\bitem-id-(\d+)\b/);
-     if (tpl) return 'tpl:' + tpl[1];
-     if (id) return 'id:' + id[1];
-     return item?.getAttribute('title') || null;
-   }
-
-   function getRarity(item) {
-     const els = [item, item?.parentElement, item?.closest('.slot'),
-       item?.closest('.loot-item-wrapper')].filter(Boolean);
-
-     for (const el of els) {
-       const type = el.getAttribute?.('data-item-type');
-       if (type && RARITIES[type]) return RARITIES[type];
-
-       const m = String(el.className || '').match(/\bt-(?:norm|uni|her|leg)\b/);
-       if (m && RARITIES[m[0]]) return RARITIES[m[0]];
-     }
-     return null;
-   }
-
-   function lootItems() {
-     const found = new Set();
-
-     document.querySelectorAll(
-       '.loot-wnd .loot-item-wrapper, .loot-window .loot-item-wrapper'
-     ).forEach(wrapper => {
-       const item = getItem(wrapper);
-       if (item) found.add(item);
-     });
-
-     if (!found.size) {
-       document.querySelectorAll(
-         '.loot-wnd .item[data-tip-type="t_item"], ' +
-         '.loot-window .item[data-tip-type="t_item"]'
-       ).forEach(item => found.add(item));
-     }
-     return [...found];
-   }
-
-   function isWindowVisible(el) {
-     if (!el || !el.isConnected || !el.getClientRects().length) return false;
-     const s = getComputedStyle(el);
-     return s.display !== 'none' && s.visibility !== 'hidden' &&
-       Number(s.opacity || 1) > 0;
-   }
-
-   function isLootWindowOpen() {
-     const candidates = document.querySelectorAll(
-       '.loot-wnd, .loot-window, .c-window.loot-wnd'
-     );
-     return [...candidates].some(isWindowVisible);
-   }
-
-   function getTeam() {
-     try {
-       const engine = getGameEngine();
-       const members = engine?.party?.getMembers?.();
-       if (members instanceof Map) {
-         const team = [];
-         for (const member of members.values()) {
-           const code = String(member?.profession || '').toLowerCase();
-           if (!PROFESSIONS[code]) continue;
-           team.push({ code, name: String(member?.id ?? ''), isHero: !!member?.isHero });
-         }
-         if (team.length) return team.slice(0, 20);
-       }
-     } catch (_) {}
-
-     // Awaryjny odczyt z interfejsu drużyny, jeśli API silnika chwilowo nie jest dostępne.
-     const team = [], seen = new Set();
-     document.querySelectorAll('.party-member .character-info[prof]').forEach(el => {
-       const code = String(el.getAttribute('prof') || '').toLowerCase();
-       if (!PROFESSIONS[code]) return;
-       const member = el.closest('.party-member');
-       if (!member) return;
-       const nameEl = member.querySelector('.party-member-name, .character-name, [class*="name"]');
-       const name = norm(nameEl?.textContent || member.textContent || '');
-       const key = name + ':' + code;
-       if (seen.has(key)) return;
-       seen.add(key);
-       team.push({ code, name });
-     });
-     return team.slice(0, 20);
-   }
-
-
-
-
-
-
-
-   function readRequirements(item) {
-     const key = itemKey(item);
-     if (!key) return false;
-     if (requirements.has(key)) return true;
-
-     try {
-       const engine = getGameEngine();
-       const id = String(item.className || '').match(/\bitem-id-(\d+)\b/)?.[1];
-       const gameItem = id && engine?.items?.getItemById?.(id);
-       const stats = gameItem?._cachedStats;
-       if (!stats) return false;
-
-       const raw = String(stats.reqp || '').toLowerCase().trim();
-       const parsed = raw
-         ? [...new Set([...raw].filter(code => Object.prototype.hasOwnProperty.call(PROFESSIONS, code)))]
-         : [];
-
-       // Brak reqp oznacza brak wymogu konkretnej profesji.
-       requirements.set(key, parsed);
-       return true;
-     } catch (_) {
-       return false;
-     }
-   }
-
-   function removeLabel(item) {
-     const label = labels.get(item);
-     if (label) label.remove();
-     labels.delete(item);
-   }
-
-   function clearLootLabels() {
-     labels.forEach(label => label.remove());
-     labels.clear();
-
-     document.querySelectorAll(
-       '.mlc41-label, .mlc42-label, .mlc43-label, ' +
-       '.mlc44-label, .mlc45-label, .mlc46-label, .mlc513-label'
-     ).forEach(el => el.remove());
-   }
-
-   function makeLabel(item) {
-     let label = labels.get(item);
-
-     if (!label || !label.isConnected) {
-       label = document.createElement('span');
-       label.className = 'mlc513-label';
-       label.style.cssText =
-         'position:fixed;z-index:2147483647;display:none;pointer-events:none;' +
-         'margin:0;padding:0;background:transparent;border:0;white-space:nowrap;' +
-         'font:bold 12px/14px Arial,sans-serif;text-align:center;' +
-         'text-shadow:-1px -1px 2px #000,1px -1px 2px #000,-1px 1px 2px #000,1px 1px 2px #000;';
-       document.body.appendChild(label);
-       labels.set(item, label);
-     }
-     return label;
-   }
-
-   function updateItem(item, team) {
-     const r = getRarity(item);
-
-     if (!settings.enabled || (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.lootChance) || !r || !settings.rarities[r] ||
-          !item.isConnected || !isLootWindowOpen()) {
-       removeLabel(item);
-       return false;
-     }
-
-     const key = itemKey(item);
-     const req = key ? requirements.get(key) : undefined;
-
-     // Nie pokazuj znaku zapytania podczas odczytu. Etykieta pojawi się,
-     // gdy skrypt faktycznie pozna wymagania tego przedmiotu.
-     if (req === undefined) {
-       removeLabel(item);
-       return false;
-     }
-
-     let text = '';
-     let color = '#fff';
-     let title = 'Oczekiwanie na odczyt wymagań przedmiotu.';
-
-     if (req !== undefined) {
-       const myProfession = getCurrentProfession();
-
-       if (!myProfession) {
-         text = '?';
-         color = '#fff';
-         title = 'Nie udało się odczytać Twojej profesji z Margonem.';
-       } else {
-         const isSolo = team.length === 0;
-         const roster = isSolo ? [{ code: myProfession }] : team;
-         // Solo: każdy łup ma 100%, niezależnie od wymagań profesji.
-         // W grupie: jeśli są gracze spełniający wymagania, dzielimy szansę
-         // równo tylko między nich. Jeśli wymaganej profesji nie ma w grupie,
-         // szansa rozkłada się równo na wszystkich członków drużyny.
-         const matching = req.length
-           ? roster.filter(player => req.includes(player.code))
-           : roster;
-         const eligible = (!isSolo && req.length > 0 && matching.length === 0)
-           ? roster
-           : matching;
-         const myProfessionEligible = isSolo ||
-           eligible.some(player => player.code === myProfession);
-         const pct = myProfessionEligible && eligible.length
-           ? Math.round(100 / eligible.length)
-           : 0;
-
-         text = pct + '%';
-         color = pct === 100 ? '#76ff8b' :
-           pct === 0 ? '#ff7777' : '#ffd66b';
-
-         title = 'Twoja profesja: ' + PROFESSIONS[myProfession] +
-           '\\nWymagania: ' +
-           (req.length ? req.map(code => PROFESSIONS[code]).join(' lub ') : 'dowolna profesja') +
-           '\\nUprawnieni: ' + eligible.length;
-       }
-     }
-
-     const label = makeLabel(item);
-     label.textContent = text;
-     label.style.color = color;
-     label.title = title;
-
-     const rect = item.getBoundingClientRect();
-     if (!rect.width || !rect.height) {
-       label.style.display = 'none';
-       return true;
-     }
-
-     label.style.left = (rect.left + rect.width / 2) + 'px';
-     label.style.top = (rect.top - 15) + 'px';
-     label.style.transform = 'translateX(-50%)';
-     label.style.display = 'block';
-     return true;
-   }
-
-   function autoRead(item) {
-     const key = itemKey(item);
-     if (!key || requirements.has(key) || pendingReads.has(item)) return;
-
-     pendingReads.add(item);
-     let attempts = 0;
-
-     function retry() {
-       if (!settings.enabled || (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.lootChance) || !isLootWindowOpen() || !item.isConnected) {
-         pendingReads.delete(item);
-         return;
-       }
-
-       // Celowo NIE symulujemy pointerover/mouseover/mousemove.
-       // Takie zdarzenia powodowały otwieranie tooltipa w interfejsie gry.
-       // Odczytujemy wyłącznie tooltip już utworzony przez samą grę.
-       if (readRequirements(item)) {
-         pendingReads.delete(item);
-         scheduleScan(0);
-         return;
-       }
-
-       attempts++;
-       if (attempts < 5) {
-         setTimeout(retry, 300);
-       } else {
-         pendingReads.delete(item);
-       }
-     }
-
-     setTimeout(retry, 80);
-   }
-
-   function scan() {
-     scanTimer = null;
-
-     const open = isLootWindowOpen();
-
-     // Gdy okno się zamknie, etykiety znikają natychmiast.
-     if (!settings.enabled || (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.lootChance) || !open) {
-       clearLootLabels();
-       lastWindowOpen = false;
-       updateStatus(0, 0, getTeam().length);
-       return;
-     }
-
-     lastWindowOpen = true;
-     const items = lootItems();
-     const team = getTeam();
-     let shown = 0;
-
-     items.forEach(item => {
-       if (updateItem(item, team)) shown++;
-       autoRead(item);
-     });
-
-     for (const [item, label] of labels) {
-       if (!item.isConnected || !items.includes(item)) {
-         label.remove();
-         labels.delete(item);
-       }
-     }
-
-     updateStatus(items.length, shown, team.length || 1);
-   }
-
-   function scheduleScan(delay = 250) {
-     if (scanTimer) clearTimeout(scanTimer);
-     scanTimer = setTimeout(scan, delay);
-   }
-
-
-
-   function updateStatus(items, count, members) {
-     if (status) {
-       status.textContent =
-         'Przedmioty: ' + items +
-         ' | Etykiety: ' + count +
-         ' | Drużyna: ' + members;
-     }
-   }
-
-   function addStyles() {
-     if (document.getElementById('mlc513-style')) return;
-
-     const style = document.createElement('style');
-     style.id = 'mlc513-style';
-     style.textContent = `
-       #mlc513-panel {
-         position:fixed;z-index:2147483646;left:auto;top:auto;right:12px;bottom:12px;
-         width:190px;max-width:calc(100vw - 24px);padding:8px;color:#f5f0d5;
-         background:rgba(8,8,8,.97);border:1px solid #e4bd28;border-radius:5px;
-         box-shadow:0 2px 10px #000b;font:11px/1.35 Arial,sans-serif;
-       }
-       #mlc513-panel .heading {
-         display:flex;justify-content:space-between;align-items:center;
-         margin:-2px -2px 6px;padding:4px 5px;background:#17140a;
-         border-bottom:1px solid #8f751a;font-weight:bold;cursor:move;
-         user-select:none;touch-action:none;
-       }
-       #mlc513-panel .heading button {
-         width:25px;min-width:25px;margin:0;padding:1px 4px;
-         color:#f8e7a0;background:#171717;border:1px solid #c8a51e;border-radius:3px;
-         cursor:pointer;
-       }
-       #mlc513-panel label {display:block;margin:3px 0;cursor:pointer}
-       #mlc513-panel input[type="checkbox"] {accent-color:#e4bd28;transform:scale(.9);transform-origin:left center}
-       #mlc513-panel button:not(.heading button) {
-         width:100%;margin-top:5px;padding:5px 4px;color:#f8e7a0;
-         background:#19160a;border:1px solid #c8a51e;border-radius:3px;cursor:pointer;
-       }
-       #mlc513-panel button:hover {filter:brightness(1.2)}
-       #mlc513-panel .status {margin-top:6px;padding-top:5px;border-top:1px solid #574718;color:#cfc8a9;font-size:10px;overflow-wrap:anywhere}
-       #mlc513-panel .rarity-title {font-weight:bold;margin-top:6px}
-       #mlc513-panel .profession-info {margin:4px 0;color:#cfc8a9}
-     `;
-     document.head.appendChild(style);
-   }
-
-   function buildPanel() {
-     if (panel || !document.body) return;
-
-     panel = document.createElement('div');
-     panel.id = 'mlc513-panel';
-
-     const heading = document.createElement('div');
-     heading.className = 'heading';
-
-     const title = document.createElement('span');
-     title.textContent = 'Procent łupu';
-
-     const collapse = document.createElement('button');
-     collapse.style.width = '35px';
-     collapse.textContent = '—';
-
-     const content = document.createElement('div');
-     collapse.addEventListener('click', () => {
-       const hide = content.style.display !== 'none';
-       content.style.display = hide ? 'none' : '';
-       collapse.textContent = hide ? '+' : '—';
-     });
-
-     heading.append(title, collapse);
-     panel.append(heading, content);
-
-     // Panel ma być zwinięty po każdym uruchomieniu skryptu.
-     content.style.display = 'none';
-     collapse.textContent = '+';
-
-     // Przeciąganie panelu za pasek tytułu; nie przeciągaj po kliknięciu przycisku zwijania.
-     let drag = null;
-     heading.addEventListener('pointerdown', event => {
-       if (event.target.closest('button')) return;
-       const rect = panel.getBoundingClientRect();
-       drag = { x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
-       panel.style.left = rect.left + 'px';
-       panel.style.top = rect.top + 'px';
-       panel.style.right = 'auto';
-       panel.style.bottom = 'auto';
-       heading.setPointerCapture?.(event.pointerId);
-       event.preventDefault();
-     });
-     heading.addEventListener('pointermove', event => {
-       if (!drag) return;
-       const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
-       const maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
-       panel.style.left = Math.min(maxLeft, Math.max(0, drag.left + event.clientX - drag.x)) + 'px';
-       panel.style.top = Math.min(maxTop, Math.max(0, drag.top + event.clientY - drag.y)) + 'px';
-     });
-     const stopDrag = () => { drag = null; };
-     heading.addEventListener('pointerup', stopDrag);
-     heading.addEventListener('pointercancel', stopDrag);
-
-     const enabledLabel = document.createElement('label');
-     const enabled = document.createElement('input');
-     enabled.type = 'checkbox';
-     enabled.checked = settings.enabled;
-     enabled.addEventListener('change', () => {
-       settings.enabled = enabled.checked;
-       save();
-       scheduleScan(0);
-     });
-     enabledLabel.append(enabled, document.createTextNode(' Włącz dodatek'));
-     content.appendChild(enabledLabel);
-
-     const professionInfo = document.createElement('div');
-     professionInfo.className = 'profession-info';
-     professionInfo.style.margin = '4px 0';
-     professionInfo.style.color = '#ccc';
-     professionInfo.textContent = 'Twoja profesja: wykrywana automatycznie';
-     content.appendChild(professionInfo);
-
-     const rarityTitle = document.createElement('div');
-     rarityTitle.style.fontWeight = 'bold';
-     rarityTitle.className = 'rarity-title';
-     rarityTitle.style.marginTop = '6px';
-     rarityTitle.textContent = 'Pokazuj rzadkości:';
-     content.appendChild(rarityTitle);
-
-     // Panel udostępnia przełączniki tylko dla przedmiotów heroicznych i legendarnych.
-     // Pospolite i unikatowe pozostają wyłączone i nie można ich włączyć z panelu.
-     settings.rarities.common = false;
-     settings.rarities.unique = false;
-     ['heroic', 'legendary'].forEach(key => {
-       const label = document.createElement('label');
-       const checkbox = document.createElement('input');
-       checkbox.type = 'checkbox';
-       checkbox.checked = !!settings.rarities[key];
-       checkbox.addEventListener('change', () => {
-         settings.rarities[key] = checkbox.checked;
-         save();
-         scheduleScan(0);
-       });
-       label.append(checkbox, document.createTextNode(' ' + RARITY_NAMES[key]));
-       content.appendChild(label);
-     });
-
-     // Ustawienia dodatku są montowane wewnątrz głównego panelu Vickness.
-     const host = document.getElementById('vxSettingsLootChance') || document.body;
-     host.appendChild(panel);
-   }
-
-   function start() {
-     document.querySelectorAll(
-       '.mlc41-label, .mlc42-label, .mlc43-label, .mlc44-label, .mlc45-label, .mlc46-label, .mlc47-label, .mlc48-label, .mlc49-label, .mlc50-label, .mlc513-label, .mlc513-label'
-     ).forEach(el => el.remove());
-
-     addStyles();
-     buildPanel();
-     scheduleScan(0);
-
-     observer = new MutationObserver(() => {
-       // Obserwuj zmiany DOM, ale nie atrybuty całej strony.
-       scheduleScan(0);
-     });
-
-     observer.observe(document.body, {
-       childList: true,
-       subtree: true
-     });
-
-
-     // Sprawdza zamknięcie okna jako zabezpieczenie, gdy gra nie usuwa go z DOM.
-     setInterval(() => {
-       if (lastWindowOpen && !isLootWindowOpen()) {
-         clearLootLabels();
-         lastWindowOpen = false;
-       }
-     }, 100);
-   }
-
-   if (document.readyState === 'loading') {
-     document.addEventListener('DOMContentLoaded', start, { once: true });
-   } else {
-     start();
-   }
- })();
-
-// =============================================================
-// THE CREW ONLINE 3.4.0 — zaktualizowany moduł z załącznika, zintegrowany z Vickness
-(() => {
-   'use strict';
-
-   const PAGE = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
-
-   if (window.top !== window.self) return;
-   if (document.getElementById('tc-online-panel')) return;
-
-   const GUILD_ID = '1384811864235704372';
-   const WORLD = 'riventia';
-   const STORAGE_KEY = 'tc_online_panel_v2';
-   const REFRESH_MS = 5000;
-
-   const defaults = {
-     left: Math.max(10, window.innerWidth - 350),
-     top: 90,
-     width: 260,
-     height: 400,
-     collapsed: false,
-     hidden: false
-   };
-
-   let settings;
-   try {
-     settings = {
-       ...defaults,
-       ...JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-     };
-   } catch {
-     settings = { ...defaults };
-   }
-
-   const save = () => {
-     try {
-       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-     } catch {}
-   };
-
-   const style = document.createElement('style');
-   style.textContent = `
-     #tc-online-panel {
-       position: fixed;
-       z-index: 100;
-       display: flex;
-       flex-direction: column;
-       box-sizing: border-box;
-       min-width: 220px;
-       min-height: 42px;
-       background: #101010;
-       color: #eee;
-       border: 2px solid #d7ad52;
-       border-radius: 5px;
-       box-shadow: 0 4px 18px #000b;
-       font: 12px Arial, sans-serif;
-       resize: both;
-       overflow: hidden;
-     }
-
-     #tc-online-panel * {
-       box-sizing: border-box;
-     }
-
-     #tc-head {
-       display: flex;
-       align-items: center;
-       gap: 5px;
-       min-height: 35px;
-       padding: 5px 7px;
-       background: #211b10;
-       color: #e7c36e;
-       border-bottom: 1px solid #80652e;
-       cursor: move;
-       user-select: none;
-       flex-shrink: 0;
-     }
-
-     #tc-title {
-       flex: 1;
-       font-weight: bold;
-     }
-
-     .tc-btn {
-       border: 1px solid #8c6b2e;
-       border-radius: 3px;
-       background: #292216;
-       color: #e7c36e;
-       cursor: pointer;
-       padding: 4px 7px;
-     }
-
-     .tc-btn:hover {
-       background: #49381b;
-     }
-
-     #tc-content {
-       flex: 1;
-       min-height: 0;
-       display: flex;
-       flex-direction: column;
-     }
-
-     #tc-status {
-       padding: 7px;
-       color: #c6c6c6;
-       border-bottom: 1px solid #393126;
-       line-height: 1.5;
-       overflow-wrap: anywhere;
-       flex-shrink: 0;
-     }
-
-     /* Lista z cienkim, złotym paskiem przewijania */
-     #tc-list {
-       flex: 1;
-       min-height: 0;
-       overflow-y: auto;
-       overflow-x: hidden;
-       scrollbar-width: thin;
-       scrollbar-color: #80652e #101010;
-       overscroll-behavior: contain;
-       scrollbar-gutter: stable;
-     }
-
-     /* Chrome i Edge */
-     #tc-list::-webkit-scrollbar {
-       width: 5px;
-     }
-
-     #tc-list::-webkit-scrollbar-track {
-       background: #101010;
-     }
-
-     #tc-list::-webkit-scrollbar-thumb {
-       background: #80652e;
-       border-radius: 8px;
-     }
-
-     #tc-list::-webkit-scrollbar-thumb:hover {
-       background: #d7ad52;
-     }
-
-     .tc-player {
-       display: grid;
-       grid-template-columns: minmax(0, 1fr) 20px;
-       align-items: center;
-       gap: 5px;
-       padding: 4px 5px;
-       border-bottom: 1px solid #403626;
-     }
-
-     .tc-player:nth-child(even) {
-       background: #181818;
-     }
-
-     .tc-name {
-       color: #ffe09a;
-       font-size: 11px;
-       font-weight: 700;
-       overflow-wrap: anywhere;
-       line-height: 1.25;
-       letter-spacing: .1px;
-       text-shadow: 0 1px 1px #000;
-     }
-
-     .tc-summary {
-       margin-top: 2px;
-       color: #dedede;
-       font-size: 10px;
-       line-height: 1.25;
-       overflow-wrap: anywhere;
-       white-space: normal;
-     }
-
-     .tc-summary .tc-summary-level {
-       color: #ffe09a;
-       font-weight: 700;
-     }
-
-     .tc-summary .tc-summary-location {
-       color: #b9e6c5;
-     }
-
-     .tc-summary .tc-summary-missing {
-       color: #aaa;
-       font-style: italic;
-     }
-
-     .tc-player.tc-in-group {
-       background: #102b2b !important;
-       box-shadow: inset 3px 0 0 #35d6c8;
-     }
-
-     .tc-player.tc-in-group .tc-name {
-       color: #55e7dc;
-     }
-
-     .tc-level {
-       color: #d7ad52;
-       font-weight: bold;
-     }
-
-     .tc-info {
-       margin-top: 4px;
-       color: #e0e0e0;
-       line-height: 1.35;
-       overflow-wrap: anywhere;
-       white-space: normal;
-       font-size: 11px;
-     }
-
-     .tc-info-line {
-       display: flex;
-       flex-wrap: wrap;
-       align-items: flex-start;
-       column-gap: 5px;
-       row-gap: 5px;
-       min-width: 0;
-       width: 100%;
-     }
-
-     .tc-info-line span {
-       min-width: 0;
-     }
-
-     .tc-chip {
-       display: inline-flex;
-       align-items: center;
-       box-sizing: border-box;
-       max-width: 100%;
-       min-height: 20px;
-       padding: 3px 6px;
-       border: 1px solid #51442d;
-       border-radius: 3px;
-       background: #211d16;
-       color: #e5e5e5;
-       overflow-wrap: anywhere;
-     }
-
-     .tc-level {
-       color: #ffe09a;
-       font-weight: 700;
-       border-color: #8c6b2e;
-       background: #302515;
-     }
-
-     .tc-profession {
-       color: #bce9ff;
-       border-color: #31566b;
-       background: #14232b;
-     }
-
-     .tc-map {
-       color: #d7d7d7;
-       overflow-wrap: anywhere;
-     }
-
-     .tc-coords {
-       color: #8ee5b0;
-       border-color: #31583f;
-       background: #13251a;
-       white-space: nowrap;
-     }
-
-     .tc-missing {
-       color: #aaa;
-       border-style: dashed;
-       background: #171717;
-     }
-
-     .tc-invite {
-       min-width: 20px;
-       min-height: 20px;
-       width: 20px;
-       height: 20px;
-       padding: 1px;
-       font-size: 12px;
-       font-weight: bold;
-     }
-
-     .tc-invite:disabled {
-       opacity: .45;
-       cursor: wait;
-     }
-
-     #tc-open {
-       position: fixed;
-       left: var(--tc-open-left, calc(100vw - 155px));
-       top: var(--tc-open-top, calc(100vh - 100px));
-       z-index: 100;
-       padding: 6px 9px;
-       font: 12px Arial, sans-serif;
-       color: #e7c36e;
-       background: #101010;
-       border: 2px solid #d7ad52;
-       border-radius: 5px;
-       cursor: move;
-       user-select: none;
-       touch-action: none;
-     }
-   `;
-
-   document.head.appendChild(style);
-
-   const make = (tag, text, id) => {
-     const node = document.createElement(tag);
-     if (text !== undefined) node.textContent = text;
-     if (id) node.id = id;
-     return node;
-   };
-
-   const panel = make('div', undefined, 'tc-online-panel');
-   const head = make('div', undefined, 'tc-head');
-   const title = make('span', 'Klanowicze online: The Crew', 'tc-title');
-   const collapseBtn = make('button', '−');
-   const hideBtn = make('button', '×');
-
-   collapseBtn.className = hideBtn.className = 'tc-btn';
-   collapseBtn.title = 'Zwiń / rozwiń';
-   hideBtn.title = 'Ukryj panel';
-
-   head.append(title, collapseBtn, hideBtn);
-
-   const content = make('div', undefined, 'tc-content');
-   const status = make('div', 'Łączenie z Lootlogiem…', 'tc-status');
-   const list = make('div', undefined, 'tc-list');
-
-   // Przewijanie kółkiem myszy nad listą.
-   list.addEventListener('wheel', event => {
-     if (list.scrollHeight <= list.clientHeight) return;
-
-     event.preventDefault();
-     list.scrollTop += event.deltaY;
-   }, { passive: false });
-
-   content.append(status, list);
-   panel.append(head, content);
-   document.body.appendChild(panel);
-
-   const openBtn = make('button', 'Klanowicze online', 'tc-open');
-   document.body.appendChild(openBtn);
-
-   const applySettings = () => {
-     settings.width = Math.max(220, Number(settings.width) || defaults.width);
-     settings.height = Math.max(42, Number(settings.height) || defaults.height);
-
-     settings.left = Math.max(
-       0,
-       Math.min(Number(settings.left) || 0, window.innerWidth - 80)
-     );
-
-     settings.top = Math.max(
-       0,
-       Math.min(Number(settings.top) || 0, window.innerHeight - 40)
-     );
-
-     panel.style.left = `${settings.left}px`;
-     panel.style.top = `${settings.top}px`;
-     panel.style.width = `${settings.width}px`;
-     panel.style.height = `${settings.height}px`;
-     const masterEnabled = !(window.__vicknessAddonEnabled && window.__vicknessAddonEnabled.crewOnline === false);
-     panel.style.display = (!masterEnabled || settings.hidden) ? 'none' : 'flex';
-
-     openBtn.style.display = !masterEnabled ? 'none' : settings.hidden ? 'block' : 'none';
-     const openLeft = settings.openLeft == null
-       ? Math.max(0, window.innerWidth - 155)
-       : Number(settings.openLeft);
-     const openTop = settings.openTop == null
-       ? Math.max(0, window.innerHeight - 100)
-       : Number(settings.openTop);
-     openBtn.style.left = `${Math.max(0, Math.min(openLeft, window.innerWidth - 80))}px`;
-     openBtn.style.top = `${Math.max(0, Math.min(openTop, window.innerHeight - 35))}px`;
-     content.style.display = settings.collapsed ? 'none' : 'flex';
-     collapseBtn.textContent = settings.collapsed ? '+' : '−';
-   };
-
-   const saveGeometry = () => {
-     const rect = panel.getBoundingClientRect();
-
-     settings.left = rect.left;
-     settings.top = rect.top;
-     settings.width = rect.width;
-     settings.height = rect.height;
-
-     save();
-   };
-
-   collapseBtn.addEventListener('click', () => {
-     settings.collapsed = !settings.collapsed;
-     applySettings();
-     save();
-   });
-
-   hideBtn.addEventListener('click', () => {
-     settings.hidden = true;
-     applySettings();
-     save();
-   });
-
-   let draggedOpenButton = false;
-   openBtn.addEventListener('pointerdown', event => {
-     if (event.button !== 0) return;
-     const startX = event.clientX;
-     const startY = event.clientY;
-     const startLeft = openBtn.offsetLeft;
-     const startTop = openBtn.offsetTop;
-     let moved = false;
-
-     const move = e => {
-       const dx = e.clientX - startX;
-       const dy = e.clientY - startY;
-       if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
-       settings.openLeft = Math.max(0, Math.min(window.innerWidth - 80, startLeft + dx));
-       settings.openTop = Math.max(0, Math.min(window.innerHeight - 35, startTop + dy));
-       openBtn.style.left = `${settings.openLeft}px`;
-       openBtn.style.top = `${settings.openTop}px`;
-     };
-     const up = () => {
-       document.removeEventListener('pointermove', move);
-       document.removeEventListener('pointerup', up);
-       if (moved) {
-         draggedOpenButton = true;
-         save();
-       }
-     };
-     document.addEventListener('pointermove', move);
-     document.addEventListener('pointerup', up);
-     event.preventDefault();
-   });
-
-   openBtn.addEventListener('click', event => {
-     if (draggedOpenButton) {
-       draggedOpenButton = false;
-       event.preventDefault();
-       event.stopPropagation();
-       return;
-     }
-     settings.hidden = false;
-     applySettings();
-     save();
-   });
-
-   // Przeciąganie panelu za pasek tytułu.
-   head.addEventListener('pointerdown', event => {
-     if (event.target.closest('button') || event.button !== 0) return;
-
-     const startX = event.clientX;
-     const startY = event.clientY;
-     const startLeft = panel.offsetLeft;
-     const startTop = panel.offsetTop;
-
-     const move = e => {
-       settings.left = Math.max(
-         0,
-         Math.min(
-           window.innerWidth - 80,
-           startLeft + e.clientX - startX
-         )
-       );
-
-       settings.top = Math.max(
-         0,
-         Math.min(
-           window.innerHeight - 40,
-           startTop + e.clientY - startY
-         )
-       );
-
-       panel.style.left = `${settings.left}px`;
-       panel.style.top = `${settings.top}px`;
-     };
-
-     const up = () => {
-       document.removeEventListener('pointermove', move);
-       document.removeEventListener('pointerup', up);
-       saveGeometry();
-     };
-
-     document.addEventListener('pointermove', move);
-     document.addEventListener('pointerup', up);
-     event.preventDefault();
-   });
-
-   // Zapamiętywanie zmienionego rozmiaru.
-   let resizeTimer;
-
-   new ResizeObserver(() => {
-     if (!panel.isConnected || settings.hidden) return;
-
-     clearTimeout(resizeTimer);
-     resizeTimer = setTimeout(saveGeometry, 250);
-   }).observe(panel);
-
-   window.addEventListener('resize', () => {
-     applySettings();
-     save();
-   });
-
-   // Bezpieczny tryb pasywny: nie wysyłamy żądania clan&a=members
-   // i nigdy nie blokujemy natywnych handlerów gry. Dzięki temu ręczne
-   // otwieranie zakładki Klanowicze pozostaje dostępne.
-   let cachedRawMembers = null;
-   let cachedMembersAt = 0;
-   let pendingMembersRequest = null;
-   let membersDispatcherHooked = false;
-   let lastRoster = [];
-   const playerDetailsCache = new Map();
-   const REQUEST_TIMEOUT_MS = 10000;
-
-   const normalizeMembersPayload = (data) => {
-     if (Array.isArray(data)) return data.length >= 11 ? data : null;
-     if (!data || typeof data !== 'object') return null;
-     if (Array.isArray(data.members)) return data.members.length >= 11 ? data.members : null;
-
-     // Odpowiedź obserwowana w grze: 2563 klucze numeryczne = 233 rekordy po 11 pól.
-     const numericKeys = Object.keys(data).filter(key => /^(0|[1-9]\d*)$/.test(key));
-     if (numericKeys.length < 11) return null;
-     numericKeys.sort((a, b) => Number(a) - Number(b));
-     const flattened = numericKeys.map(key => data[key]);
-     return flattened.length >= 11 ? flattened : null;
-   };
-
-   const installMembersHook = () => {
-     const dispatcher = PAGE.Engine?.communication?.dispatcher;
-     if (membersDispatcherHooked || !dispatcher || typeof dispatcher.on_members !== 'function') return;
-
-     const originalOnMembers = dispatcher.on_members;
-     dispatcher.on_members = function(data, ...args) {
-       const members = normalizeMembersPayload(data);
-       if (members) {
-         cachedRawMembers = members;
-         cachedMembersAt = Date.now();
-         if (pendingMembersRequest) {
-           const pending = pendingMembersRequest;
-           pendingMembersRequest = null;
-           clearTimeout(pending.timeout);
-           pending.resolve(members);
-           // Pomijamy handler UI tylko dla odpowiedzi naszego żądania,
-           // gdy okno klanu jest zamknięte.
-           if (!PAGE.Engine?.clan) return;
-         }
-       }
-       return originalOnMembers.call(this, data, ...args);
-     };
-
-     membersDispatcherHooked = true;
-   };
-
-   const readMembersFromOpenClan = () => {
-     try {
-       const clan = PAGE.Engine?.clan;
-       if (!clan || typeof clan.getMemberList !== 'function') return null;
-       const memberList = clan.getMemberList();
-       if (!memberList || typeof memberList !== 'object') return null;
-       // getMemberList() is normally keyed by player ID; each value is an 11-field record.
-       const records = Array.isArray(memberList) ? memberList : Object.values(memberList);
-       const flattened = [];
-       for (const record of records) {
-         if (Array.isArray(record) && record.length >= 11) flattened.push(...record.slice(0, 11));
-       }
-       return flattened.length >= 11 ? flattened : null;
-     } catch (error) {
-       return null;
-     }
-   };
-
-   const requestMembers = () => new Promise((resolve, reject) => {
-     installMembersHook();
-     const liveRoster = readMembersFromOpenClan();
-     if (liveRoster) {
-       cachedRawMembers = liveRoster;
-       cachedMembersAt = Date.now();
-       resolve(liveRoster);
-       return;
-     }
-     if (Array.isArray(cachedRawMembers) && cachedRawMembers.length >= 11 &&
-         Date.now() - cachedMembersAt < 30000) {
-       resolve(cachedRawMembers);
-       return;
-     }
-     if (pendingMembersRequest) {
-       reject(new Error('Oczekiwanie na listę członków już trwa.'));
-       return;
-     }
-
-     const pending = { resolve, reject, timeout: null };
-     pendingMembersRequest = pending;
-     pending.timeout = window.setTimeout(() => {
-       if (pendingMembersRequest === pending) pendingMembersRequest = null;
-       reject(new Error('Serwer nie zwrócił listy. Jeśli automatyczne pobranie nie działa, otwórz Klanowicze ręcznie.'));
-     }, REQUEST_TIMEOUT_MS);
-
-     // Najpierw podpinamy przechwytywanie, dopiero potem wysyłamy żądanie.
-     try {
-       if (typeof PAGE._g === 'function') {
-         PAGE._g('clan&a=members');
-       } else {
-         clearTimeout(pending.timeout);
-         pendingMembersRequest = null;
-         reject(new Error('Nie znaleziono funkcji komunikacji gry.'));
-       }
-     } catch (error) {
-       clearTimeout(pending.timeout);
-       pendingMembersRequest = null;
-       reject(error);
-     }
-   });
-
-   // Odpowiedź members to spłaszczona tablica rekordów po 11 pól:
-   // id, nick, hp, maxhp, profesja, mapa, x, y, ranga, czas/status, grafika.
-   const getPlayers = async () => {
-     const rawMembers = await requestMembers();
-     if (!Array.isArray(rawMembers) || rawMembers.length < 11) {
-       throw new Error('Serwer zwrócił niepełną listę członków klanu.');
-     }
-
-     const roster = [];
-     for (let i = 0; i + 10 < rawMembers.length; i += 11) {
-       const id = String(rawMembers[i] ?? '');
-       const nick = String(rawMembers[i + 1] ?? '').trim();
-       if (!id || !nick) continue;
-       // Dane lokacji są już w rekordzie klanowym; nie polegaj wyłącznie na Lootlogu.
-      // Układ rekordu: id, nick, hp, maxhp, profesja, mapa, x, y, ranga, status, grafika.
-      const baseLevelValue = rawMembers[i + 2];
-      const baseLevel = baseLevelValue !== '' && baseLevelValue != null && Number.isFinite(Number(baseLevelValue))
-        ? Number(baseLevelValue)
-        : null;
-      const profession = String(rawMembers[i + 4] ?? '').trim();
-      const map = String(rawMembers[i + 5] ?? '').trim();
-      const xValue = rawMembers[i + 6];
-      const yValue = rawMembers[i + 7];
-      const x = xValue !== '' && xValue != null && Number.isFinite(Number(xValue)) ? Number(xValue) : null;
-      const y = yValue !== '' && yValue != null && Number.isFinite(Number(yValue)) ? Number(yValue) : null;
-      roster.push({
-        id, nick,
-        isOnline: Number(rawMembers[i + 9]) === 0,
-        baseLevel,
-        baseProfession: profession,
-        baseMap: map,
-        baseX: x,
-        baseY: y
-      });
-     }
-     if (!roster.length) throw new Error('Lista członków nie zawiera rozpoznawalnych rekordów.');
-     lastRoster = roster;
-
-     // Spróbuj pobrać dodatkowe dane z Lootloga, ale nie uzależniaj od niego listy.
-     const extrasByNick = new Map();
-     try {
-       const api = PAGE.lootlogGameClientApi;
-       if (api?.ready && typeof api.getOnlinePlayers === 'function') {
-         const result = await api.getOnlinePlayers({
-           guildId: GUILD_ID,
-           world: WORLD
-         });
-
-         if (result?.status === 'success' && result.players) {
-           for (const record of Object.values(result.players).flat()) {
-             const player = record?.player;
-             if (!player || record.status !== 'online' || player.world !== WORLD) continue;
-
-             const nick = String(player.name || '').trim().toLocaleLowerCase('pl');
-             if (!nick) continue;
-
-             const location = player.location || {};
-             const extra = {
-               level: player.lvl != null && player.lvl !== '' && Number.isFinite(Number(player.lvl)) ? Number(player.lvl) : null,
-               profession: player.prof || player.profession || '',
-               map: location.map || record.mapName || '',
-               x: location.x != null && location.x !== '' && Number.isFinite(Number(location.x)) ? Number(location.x) : null,
-               y: location.y != null && location.y !== '' && Number.isFinite(Number(location.y)) ? Number(location.y) : null,
-               afk: record.isAfk === true
-             };
-             const previous = playerDetailsCache.get(nick) || {};
-             const merged = {
-               level: extra.level ?? previous.level ?? null,
-               profession: extra.profession || previous.profession || '',
-               map: extra.map || previous.map || '',
-               x: extra.x ?? previous.x ?? null,
-               y: extra.y ?? previous.y ?? null,
-               afk: extra.afk || previous.afk === true
-             };
-             playerDetailsCache.set(nick, merged);
-             extrasByNick.set(nick, merged);
-           }
-         }
-       }
-     } catch (error) {
-       console.debug('[The Crew] Dodatkowe dane Lootloga niedostępne:', error);
-     }
-
-     // Podświetlanie członków aktualnej drużyny.
-     const partyMembers = PAGE.Engine?.party?.getMembers?.();
-     const partyIds = new Set();
-
-     if (partyMembers instanceof Map) {
-       for (const [memberId, member] of partyMembers.entries()) {
-         if (memberId != null) partyIds.add(String(memberId));
-         if (member?.id != null) partyIds.add(String(member.id));
-       }
-     } else if (Array.isArray(partyMembers)) {
-       for (const member of partyMembers) {
-         if (member?.id != null) partyIds.add(String(member.id));
-       }
-     } else if (partyMembers && typeof partyMembers === 'object') {
-       for (const [memberId, member] of Object.entries(partyMembers)) {
-         partyIds.add(String(memberId));
-         if (member?.id != null) partyIds.add(String(member.id));
-       }
-     }
-
-     return roster
-       .filter(player => player.isOnline)
-       .map(player => {
-         const nickKey = player.nick.toLocaleLowerCase('pl');
-         const extra = extrasByNick.get(nickKey) || playerDetailsCache.get(nickKey) || {};
-         return {
-           id: player.id,
-           nick: player.nick,
-           level: extra.level ?? player.baseLevel ?? null,
-           profession: extra.profession || player.baseProfession || '',
-           map: extra.map || player.baseMap || '',
-           x: extra.x ?? player.baseX ?? null,
-           y: extra.y ?? player.baseY ?? null,
-           isInGroup: partyIds.has(player.id),
-           afk: extra.afk === true
-         };
-       })
-       .sort((a, b) =>
-         (b.level ?? -1) - (a.level ?? -1) ||
-         a.nick.localeCompare(b.nick, 'pl')
-       );
-   };
-
-   // Aktualizuj DOM tylko wtedy, gdy dane rzeczywiście się zmieniły.
-   const render = players => {
-     const signature = JSON.stringify(players);
-
-     if (signature === render.lastSignature) return;
-     render.lastSignature = signature;
-
-     const fragment = document.createDocumentFragment();
-
-     if (!players.length) {
-       fragment.append(
-         make('div', 'Gra nie zgłasza obecnie członków klanu online.')
-       );
-     }
-
-     for (const player of players) {
-       const row = make('div');
-       row.className = player.isInGroup
-         ? 'tc-player tc-in-group'
-         : 'tc-player';
-
-       const details = make('div');
-       const name = make('div', player.nick + (player.afk ? ' (AFK)' : ''));
-       name.className = 'tc-name';
-
-       // Zwięzły układ: Nick, poziom+profesja, mapa (x,y).
-       const summary = make('div');
-       summary.className = 'tc-summary';
-
-       const levelText = player.level != null ? String(player.level) : '—';
-       const professionText = player.profession ? String(player.profession) : '';
-       const levelProfession = make('span', `${levelText}${professionText}`);
-       levelProfession.className = 'tc-summary-level';
-       summary.append(levelProfession);
-
-       const separator = make('span', ', ');
-       summary.append(separator);
-
-       const hasMap = Boolean(player.map);
-       const hasCoords = player.x != null && player.y != null;
-       let locationText = '';
-       if (hasMap) locationText = player.map;
-       else if (hasCoords) locationText = 'Nieznana mapa';
-       else locationText = 'Brak pozycji';
-
-       const location = make('span', locationText);
-       location.className = hasMap || hasCoords
-         ? 'tc-summary-location'
-         : 'tc-summary-missing';
-       summary.append(location);
-
-       if (hasCoords) {
-         summary.append(make('span', ` (${player.x},${player.y})`));
-       }
-
-       details.append(name, summary);
-
-       const inviteBtn = make('button', '+');
-       inviteBtn.className = 'tc-btn tc-invite';
-       inviteBtn.title = `Zaproś ${player.nick} do drużyny`;
-
-       if (!player.id) {
-         inviteBtn.disabled = true;
-         inviteBtn.title = 'Brak ID postaci w danych gry';
-       } else {
-         inviteBtn.addEventListener('click', () => {
-           inviteBtn.disabled = true;
-           inviteBtn.textContent = '…';
-
-           try {
-             if (typeof PAGE._g !== 'function') {
-               throw new Error(
-                 'Mechanizm zaproszeń nie jest dostępny.'
-               );
-             }
-
-             PAGE._g(
-               `party&a=inv&id=${encodeURIComponent(player.id)}`
-             );
-
-             status.textContent =
-               `Wysłano żądanie zaproszenia dla ${player.nick}. ` +
-               'Sprawdź wynik w grze.';
-           } catch (error) {
-             console.error('[The Crew] Invite error:', error);
-             status.textContent =
-               `Nie udało się zaprosić ${player.nick}.`;
-           } finally {
-             setTimeout(() => {
-               inviteBtn.disabled = false;
-               inviteBtn.textContent = '+';
-             }, 3000);
-           }
-         });
-       }
-
-       row.append(details, inviteBtn);
-       fragment.append(row);
-     }
-
-     list.replaceChildren(fragment);
-   };
-
-   let busy = false;
-   let refreshTimer;
-
-   const refresh = async () => {
-     if (busy) return;
-     busy = true;
-
-     try {
-       const players = await getPlayers();
-
-       render(players);
-
-       status.textContent =
-         `Online: ${players.length} · ` +
-         `Aktualizacja: ${new Date().toLocaleTimeString('pl-PL')}`;
-     } catch (error) {
-       console.warn('[The Crew] Refresh error:', error);
-
-       if (lastRoster.length) {
-         // Zachowaj ostatnie znane dane i jasno oznacz, że nie udało się ich odświeżyć.
-         const partyMembers = PAGE.Engine?.party?.getMembers?.();
-         const partyIds = new Set();
-         if (partyMembers instanceof Map) {
-           for (const [id, member] of partyMembers.entries()) {
-             if (id != null) partyIds.add(String(id));
-             if (member?.id != null) partyIds.add(String(member.id));
-           }
-         } else if (Array.isArray(partyMembers)) {
-           for (const member of partyMembers) if (member?.id != null) partyIds.add(String(member.id));
-         } else if (partyMembers && typeof partyMembers === 'object') {
-           for (const [id, member] of Object.entries(partyMembers)) {
-             partyIds.add(String(id));
-             if (member?.id != null) partyIds.add(String(member.id));
-           }
-         }
-         render(lastRoster.filter(p => p.isOnline).map(p => ({
-           id: p.id, nick: p.nick, level: null, profession: '', map: '', x: null, y: null,
-           isInGroup: partyIds.has(p.id), afk: false
-         })).sort((a, b) => a.nick.localeCompare(b.nick, 'pl')));
-         status.textContent = `Błąd odświeżania — pokazuję ostatnie dane · ${error.message || 'brak odpowiedzi'}`;
-       } else {
-         status.textContent = error.message || 'Błąd odczytu listy członków z gry.';
-       }
-     } finally {
-       busy = false;
-     }
-   };
-
-   // F8: ukrywanie i ponowne otwieranie panelu.
-   document.addEventListener('keydown', event => {
-     if (event.key !== 'F8' || event.repeat) return;
-
-     if (/INPUT|TEXTAREA|SELECT/.test(event.target.tagName)) return;
-
-     settings.hidden = !settings.hidden;
-     applySettings();
-     save();
-   });
-
-   // Integracja z przełącznikiem i przyciskami w głównym panelu Vickness.
-   window.__vicknessApplyCrewOnline = applySettings;
-   window.__vicknessCrewOnlineAction = action => {
-     if (action === 'show') {
-       settings.hidden = false;
-       applySettings();
-       save();
-     } else if (action === 'hide') {
-       settings.hidden = true;
-       applySettings();
-       save();
-     } else if (action === 'collapse') {
-       settings.collapsed = !settings.collapsed;
-       applySettings();
-       save();
-     } else if (action === 'refresh') {
-       void refresh();
-     }
-   };
-   if (window.__vicknessPendingCrewOnlineAction) {
-     const pendingAction = window.__vicknessPendingCrewOnlineAction;
-     window.__vicknessPendingCrewOnlineAction = null;
-     window.__vicknessCrewOnlineAction(pendingAction);
-   }
-
-   applySettings();
-   refresh();
-
-   refreshTimer = window.setInterval(refresh, REFRESH_MS);
-
-   window.addEventListener('pagehide', () => {
-     clearInterval(refreshTimer);
-     clearTimeout(resizeTimer);
-   });
- })();
