@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.28
+// @version      1.1.29
 // @description  Vickness Addons: zakładki, wygląd, złote przyciemnienie mapy i aktualizacje
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
@@ -2480,7 +2480,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.28 — zakładki, złote przyciemnienie mapy i sprawdzanie aktualizacji
+// VICKNESS ADDON PANEL 1.1.29 — widoczny przycisk złotego przyciemnienia mapy
 // =============================================================
 (() => {
   'use strict';
@@ -2564,7 +2564,12 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     const amountControl = root.querySelector('#vxMapDimmerRange');
     const amountValue = root.querySelector('#vxMapDimmerValue');
     const stateValue = root.querySelector('#vxMapDimmerState');
+    const toggleButton = root.querySelector('#vxMapDimmerToggleButton');
     if (enabledControl) enabledControl.checked = mapDimmerEnabled;
+    if (toggleButton) {
+      toggleButton.textContent = mapDimmerEnabled ? 'WYŁĄCZ ZŁOTE PRZYCIEMNIENIE' : 'WŁĄCZ ZŁOTE PRZYCIEMNIENIE';
+      toggleButton.setAttribute('aria-pressed', String(mapDimmerEnabled));
+    }
     if (amountControl) {
       amountControl.value = String(mapDimmerAmount);
       amountControl.disabled = !mapDimmerEnabled;
@@ -2809,7 +2814,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.28</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano Złote przyciemnienie mapy w zakładce Wygląd z suwakiem, przełącznikiem i przywracaniem jasności. Zaktualizowano The Crew Online do 3.3.9.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.29</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano wyraźny przycisk WŁĄCZ/WYŁĄCZ ZŁOTE PRZYCIEMNIENIE w zakładce Wygląd. Etykieta przycisku synchronizuje się ze stanem filtra.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.28</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Dodano Złote przyciemnienie mapy w zakładce Wygląd z suwakiem, przełącznikiem i przywracaniem jasności. Zaktualizowano The Crew Online do 3.3.9.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.27</span><div>Dodano zakładki Dodatki, Log zmian i Wygląd, sprawdzanie nowszej wersji z GitHuba oraz ustawienia przezroczystości, rozmycia i motywu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.26</span><div>The Crew Online 3.1.0; skrócony widok graczy i wyróżnianie członków drużyny.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.25</span><div>DC Wykrywacz działa w osobnym oknie po wykryciu NPC.</div></div>
@@ -2830,7 +2836,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       </div>
       <div class="vxPageCard">
         <span class="vxPageTitle">Złote przyciemnienie mapy</span>
-        <div class="vxPageNote">Filtr mapy zapisywany lokalnie. Możesz włączać i wyłączać przyciemnienie, zmienić jego siłę oraz jednym przyciskiem przywrócić pełną jasność.</div>
+        <div class="vxPageNote">Filtr mapy zapisywany lokalnie. Użyj przycisku, by natychmiast włączyć lub wyłączyć filtr. Suwak ustawia siłę przyciemnienia, a przywracanie jasności zeruje jego wartość.</div>
+        <div class="vxLootlogActions" style="margin:8px 0"><button type="button" id="vxMapDimmerToggleButton" class="vxActionBtn" style="width:100%;padding:8px 10px;font-weight:bold">WYŁĄCZ ZŁOTE PRZYCIEMNIENIE</button></div>
         <label class="vxAppearanceControl"><span><span>Aktywność filtra</span><output id="vxMapDimmerState">WŁĄCZONE</output></span><span style="display:flex;align-items:center;justify-content:flex-start;gap:8px"><input id="vxMapDimmerEnabled" type="checkbox" checked style="accent-color:var(--vx-accent)"> Włącz złote przyciemnienie</span></label>
         <label class="vxAppearanceControl"><span><span>Przyciemnienie mapy</span><output id="vxMapDimmerValue">50%</output></span><input id="vxMapDimmerRange" type="range" min="0" max="100" step="1" value="50"></label>
         <div class="vxLootlogActions"><button type="button" id="vxMapDimmerRestore" class="vxActionBtn">☀ PRZYWRÓĆ JASNOŚĆ</button><button type="button" id="vxMapDimmerApply" class="vxActionBtn">↻ ZASTOSUJ FILTR</button></div>
@@ -2980,7 +2987,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.28';
+  const CURRENT_PANEL_VERSION = '1.1.29';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -3218,6 +3225,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     root.querySelector('#vxBlurRange').addEventListener('input', e => saveAppearanceField('blur', Number(e.target.value)));
     root.querySelector('#vxThemeSelect').addEventListener('change', e => saveAppearanceField('theme', e.target.value));
     root.querySelector('#vxMapDimmerEnabled').addEventListener('change', e => setMapDimmerEnabled(e.target.checked));
+    root.querySelector('#vxMapDimmerToggleButton').addEventListener('click', () => setMapDimmerEnabled(!mapDimmerEnabled));
     root.querySelector('#vxMapDimmerRange').addEventListener('input', e => setMapDimmerAmount(Number(e.target.value)));
     root.querySelector('#vxMapDimmerRestore').addEventListener('click', () => setMapDimmerAmount(0));
     root.querySelector('#vxMapDimmerApply').addEventListener('click', () => applyMapDimmer(true));
