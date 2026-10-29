@@ -1,14 +1,17 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.44
-// @description  Vickness Addons 1.1.44: uproszczona sekcja aktualizacji
+// @version      1.1.45
+// @description  Vickness Addons 1.1.45: dodano Postacie online na profilach
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
+// @match        https://www.margonem.pl/profile/view,*
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        unsafeWindow
 // @grant        GM_xmlhttpRequest
+// @grant        GM_addValueChangeListener
+// @grant        GM_removeValueChangeListener
 // @updateURL     https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js
 // @downloadURL   https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js
 // @connect      discord.com
@@ -18,12 +21,13 @@
 // @connect      lootlog.pl
 // @connect      www.margonem.pl
 // @connect      raw.githubusercontent.com
+// @connect      staticinfo.margonem.pl
 // @run-at       document-idle
 // @noframes
 // ==/UserScript==
 
 // Wspólny stan przełączników dostępny dla obu wbudowanych dodatków.
-window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true };
+window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true };
 
 (function () {
     'use strict';
@@ -2507,7 +2511,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 
   const KEY = 'vickness_addon_panel_layout_v2';
   const FLAGS_KEY = 'vickness_addon_enabled_v1';
-  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true });
+  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true });
+  if (typeof enabled.profileFinder !== 'boolean') enabled.profileFinder = true;
   try {
     const saved = JSON.parse(localStorage.getItem(FLAGS_KEY) || '{}');
     if (typeof saved.loot === 'boolean') enabled.loot = saved.loot;
@@ -2525,6 +2530,13 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   if (typeof enabled.titan !== 'boolean') enabled.titan = true;
   if (typeof enabled.lootChance !== 'boolean') enabled.lootChance = true;
   if (typeof enabled.crewOnline !== 'boolean') enabled.crewOnline = true;
+  if (typeof enabled.profileFinder !== 'boolean') enabled.profileFinder = true;
+  const PROFILE_FINDER_GM_KEY = 'vickness_profileFinderEnabled';
+  try {
+    const storedProfileFinder = GM_getValue(PROFILE_FINDER_GM_KEY, undefined);
+    if (typeof storedProfileFinder === 'boolean') enabled.profileFinder = storedProfileFinder;
+    else GM_setValue(PROFILE_FINDER_GM_KEY, !!enabled.profileFinder);
+  } catch (_) {}
   let layout = {};
   try { layout = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (_) {}
 
@@ -2537,6 +2549,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   let lastCrewEnabledApplied = null;
 
   function saveFlags() { try { localStorage.setItem(FLAGS_KEY, JSON.stringify(enabled)); } catch (_) {} }
+  function saveProfileFinderFlag() { try { GM_setValue(PROFILE_FINDER_GM_KEY, !!enabled.profileFinder); } catch (_) {} }
   function saveLayout() { try { localStorage.setItem(KEY, JSON.stringify(layout)); } catch (_) {} }
 
   // Złote przyciemnienie mapy — rdzeń z przesłanego skryptu v8.0,
@@ -2936,6 +2949,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Titan Tracker Gold</span><span class="vxStandaloneDesc">Tytani i lista do 15 graczy na wybranych mapach</span><div class="vxStandaloneState" id="vxTitanState"></div><button type="button" class="vxOpenSettings" id="vxTitanOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxTitanSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Procent łupu</span><span class="vxStandaloneDesc">Szansa według profesji i uprawnionych graczy</span><div class="vxStandaloneState" id="vxLootChanceState"></div><button type="button" class="vxOpenSettings" id="vxLootChanceOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxLootChanceSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">The Crew Online</span><span class="vxStandaloneDesc">Lista klanowiczów online z Lootloga</span><div class="vxStandaloneState" id="vxCrewOnlineState"></div><button type="button" class="vxOpenSettings" id="vxCrewOnlineOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxCrewOnlineSwitch" type="checkbox"><span></span></label></div>
+      <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Postacie online na profilach</span><span class="vxStandaloneDesc">Wyszukuje postacie konta na światach i podświetla znaleziony profil</span><div class="vxStandaloneState" id="vxProfileFinderState"></div><button type="button" class="vxOpenSettings" id="vxProfileFinderOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxProfileFinderSwitch" type="checkbox"><span></span></label></div>
     </div>
     <div id="vxSettingsView">
       <div id="vxSettingsToolbar"><button class="vxNavBtn" id="vxBackHome" type="button">← WSTECZ</button><span id="vxCurrentSetting">USTAWIENIA</span><button class="vxNavBtn" id="vxSwitchAddon" type="button">DRUGI DODATEK →</button></div>
@@ -2969,11 +2983,15 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
           <button type="button" id="vxCrewOnlineCollapse">ZWIŃ / ROZWIŃ</button>
         </div>
       </div>
+      <div id="vxSettingsProfileFinder" class="vxSettingsSlot" hidden>
+        <div class="vxLootlogInfo">Dodatek działa na stronach profilu Margonem (www.margonem.pl/profile/view,...). Sprawdza listy postaci online na znanych światach, pokazuje znalezioną postać i podświetla jej kartę na profilu. Wyszukiwanie odświeża się co 30 sekund. Przełącznik w kafelku włącza lub wyłącza dodatek także na profilach otwartych w innych kartach.</div>
+      </div>
     </div>
     <div id="vxChangelogView" class="vxExtraView">
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.45</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano dodatek „Postacie online na profilach” do zakładki Dodatki. Na profilach Margonem wyszukuje postacie konta na światach, pokazuje status online i podświetla znalezioną kartę; przełącznik panelu steruje dodatkiem również między kartami.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.44</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto opis o harmonogramie aktualizacji z GitHuba. Po kliknięciu „SPRAWDŹ PONOWNIE” status wyświetla „Sprawdzam aktualizację...”.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.43</span><span class="vxChangelogDate">bieżące wydanie</span><div>Zmniejszono wyskakujące okno Margonem DC: węższy panel, niższy nagłówek i przyciski, mniejsze odstępy oraz czytelniejsza, ujednolicona czcionka informacji o wykryciu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.42</span><span class="vxChangelogDate">bieżące wydanie</span><div>Poprawiono czcionkę bocznych kafelków Dodatki, Log zmian i Wygląd: wymuszono czytelną czcionkę bezszeryfową i ujednolicono rozmiar, grubość oraz odstępy, niezależnie od stylów strony gry.</div></div>
@@ -3117,6 +3135,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     root.querySelector('#vxTitanSwitch').checked = !!enabled.titan;
     root.querySelector('#vxLootChanceSwitch').checked = !!enabled.lootChance;
     root.querySelector('#vxCrewOnlineSwitch').checked = !!enabled.crewOnline;
+    root.querySelector('#vxProfileFinderSwitch').checked = !!enabled.profileFinder;
+    root.querySelector('#vxProfileFinderState').textContent = enabled.profileFinder ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxTitanState').textContent = enabled.titan ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxLootChanceState').textContent = enabled.lootChance ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxCrewOnlineState').textContent = enabled.crewOnline ? 'WŁĄCZONY' : 'WYŁĄCZONY';
@@ -3144,13 +3164,14 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     if (tab === 'appearance') syncAppearanceControls();
   }
   function openSettings(which) {
-    if (!['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline'].includes(which)) which = 'dc';
+    if (!['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder'].includes(which)) which = 'dc';
     setActiveTab('addons');
     root.querySelector('#vxHomeView').style.display = 'none';
     root.querySelector('#vxChangelogView').style.display = 'none';
     root.querySelector('#vxAppearanceView').style.display = 'none';
     enabled[which] = true;
     saveFlags();
+    if (which === 'profileFinder') saveProfileFinderFlag();
     root.querySelector('#vxHomeView').style.display = 'none';
     root.querySelector('#vxSettingsView').style.display = 'flex';
     root.querySelector('#vxSettingsLoot').hidden = which !== 'loot';
@@ -3159,10 +3180,11 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     root.querySelector('#vxSettingsTitan').hidden = which !== 'titan';
     root.querySelector('#vxSettingsLootChance').hidden = which !== 'lootChance';
     root.querySelector('#vxSettingsCrewOnline').hidden = which !== 'crewOnline';
-    root.querySelector('#vxCurrentSetting').textContent = which === 'loot' ? 'LOOT GLOW' : which === 'dc' ? 'DC WYKRYWACZ' : which === 'lootlog' ? 'BELKA LOOTÓW' : which === 'titan' ? 'TITAN TRACKER GOLD' : which === 'lootChance' ? 'PROCENT ŁUPU' : 'THE CREW ONLINE';
-    const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline'];
+    root.querySelector('#vxSettingsProfileFinder').hidden = which !== 'profileFinder';
+    root.querySelector('#vxCurrentSetting').textContent = which === 'loot' ? 'LOOT GLOW' : which === 'dc' ? 'DC WYKRYWACZ' : which === 'lootlog' ? 'BELKA LOOTÓW' : which === 'titan' ? 'TITAN TRACKER GOLD' : which === 'lootChance' ? 'PROCENT ŁUPU' : which === 'crewOnline' ? 'THE CREW ONLINE' : 'POSTACIE ONLINE NA PROFILACH';
+    const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder'];
     const next = order[(order.indexOf(which) + 1) % order.length];
-    root.querySelector('#vxSwitchAddon').textContent = next === 'loot' ? 'LOOT GLOW →' : next === 'dc' ? 'DC WYKRYWACZ →' : next === 'lootlog' ? 'BELKA LOOTÓW →' : next === 'titan' ? 'TITAN TRACKER →' : next === 'lootChance' ? 'PROCENT ŁUPU →' : 'THE CREW ONLINE →';
+    root.querySelector('#vxSwitchAddon').textContent = next === 'loot' ? 'LOOT GLOW →' : next === 'dc' ? 'DC WYKRYWACZ →' : next === 'lootlog' ? 'BELKA LOOTÓW →' : next === 'titan' ? 'TITAN TRACKER →' : next === 'lootChance' ? 'PROCENT ŁUPU →' : next === 'crewOnline' ? 'THE CREW ONLINE →' : 'POSTACIE ONLINE →';
     applyToggles();
     setTimeout(dockWidgets, 100);
     setTimeout(dockWidgets, 600);
@@ -3170,7 +3192,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.44';
+  const CURRENT_PANEL_VERSION = '1.1.45';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -3493,6 +3515,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     root.querySelector('#vxTitanSwitch').addEventListener('change', e => { enabled.titan = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxLootChanceSwitch').addEventListener('change', e => { enabled.lootChance = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxCrewOnlineSwitch').addEventListener('change', e => { enabled.crewOnline = e.target.checked; saveFlags(); applyToggles(); });
+    root.querySelector('#vxProfileFinderSwitch').addEventListener('change', e => { enabled.profileFinder = e.target.checked; saveFlags(); saveProfileFinderFlag(); applyToggles(); });
     root.querySelector('#vxLootOpen').addEventListener('click', () => openSettings('loot'));
     root.querySelector('#vxDcOpen').addEventListener('click', () => {
       if (dcWindowDetached) openDCWindow();
@@ -3503,6 +3526,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     root.querySelector('#vxTitanOpen').addEventListener('click', () => openSettings('titan'));
     root.querySelector('#vxLootChanceOpen').addEventListener('click', () => openSettings('lootChance'));
     root.querySelector('#vxCrewOnlineOpen').addEventListener('click', () => openSettings('crewOnline'));
+    root.querySelector('#vxProfileFinderOpen').addEventListener('click', () => openSettings('profileFinder'));
     root.querySelector('#vxTitanShow').addEventListener('click', () => { enabled.titan = true; saveFlags(); applyToggles(); const p = getPanel('rtt-panel'); if (p) p.style.setProperty('display', 'block', 'important'); });
     root.querySelector('#vxTitanDiscord').addEventListener('click', () => { enabled.titan = true; saveFlags(); applyToggles(); const p = getPanel('rtt-panel'); if (p) p.style.setProperty('display', 'block', 'important'); const settings = getPanel('rtt-settings-panel'); if (settings && settings.style.display === 'none') getPanel('rtt-settings')?.click(); });
     const crewAction = action => { if (typeof window.__vicknessCrewOnlineAction === 'function') window.__vicknessCrewOnlineAction(action); else window.__vicknessPendingCrewOnlineAction = action; };
@@ -3531,8 +3555,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     });
     root.querySelector('#vxLayoutReset').addEventListener('click', resetPanelLayout);
     root.querySelector('#vxSwitchAddon').addEventListener('click', () => {
-      const current = !root.querySelector('#vxSettingsLoot').hidden ? 'loot' : !root.querySelector('#vxSettingsDc').hidden ? 'dc' : !root.querySelector('#vxSettingsLootlog').hidden ? 'lootlog' : !root.querySelector('#vxSettingsTitan').hidden ? 'titan' : !root.querySelector('#vxSettingsLootChance').hidden ? 'lootChance' : 'crewOnline';
-      const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline'];
+      const current = !root.querySelector('#vxSettingsLoot').hidden ? 'loot' : !root.querySelector('#vxSettingsDc').hidden ? 'dc' : !root.querySelector('#vxSettingsLootlog').hidden ? 'lootlog' : !root.querySelector('#vxSettingsTitan').hidden ? 'titan' : !root.querySelector('#vxSettingsLootChance').hidden ? 'lootChance' : !root.querySelector('#vxSettingsCrewOnline').hidden ? 'crewOnline' : 'profileFinder';
+      const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder'];
       openSettings(order[(order.indexOf(current) + 1) % order.length]);
     });
     root.querySelector('#vxLootlogRefresh').addEventListener('click', () => getPanel('vickness-lootbar')?.querySelector('.vl-refresh')?.click());
@@ -3577,7 +3601,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
     // Zachowaj dotychczasową nawigację ustawień, ale nie używaj jej przy samym wykryciu.
     window.__vicknessOpenAddonSettings = function(which) {
       restore();
-      openSettings(which === 'loot' ? 'loot' : 'dc');
+      openSettings(['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder'].includes(which) ? which : 'dc');
     };
 
     // Obsłuż wykrycie, które nastąpiło przed uruchomieniem menedżera Vickness.
@@ -6916,3 +6940,467 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      clearTimeout(resizeTimer);
    });
  })();
+
+// =============================================================
+// POSTACIE ONLINE NA PROFILACH — zintegrowane z przełącznikiem Vickness
+// =============================================================
+(() => {
+  'use strict';
+  if (window.top !== window.self) return;
+  if (location.hostname !== 'www.margonem.pl' || !/\/profile\/view,\d+/i.test(location.pathname)) return;
+
+  const ENABLE_KEY = 'vickness_profileFinderEnabled';
+  let cleanupProfileFinder = null;
+  let valueListenerId;
+
+  function isEnabled() {
+    try { return typeof GM_getValue === 'function' ? GM_getValue(ENABLE_KEY, true) !== false : true; }
+    catch (_) { return true; }
+  }
+  function activate() {
+    if (cleanupProfileFinder || !isEnabled()) return;
+    cleanupProfileFinder = startProfileFinder();
+  }
+  function deactivate() {
+    if (!cleanupProfileFinder) return;
+    try { cleanupProfileFinder(); } catch (error) { console.warn('[Vickness Postacie online]', error); }
+    cleanupProfileFinder = null;
+  }
+
+  try {
+    if (typeof GM_addValueChangeListener === 'function') {
+      valueListenerId = GM_addValueChangeListener(ENABLE_KEY, (_key, _oldValue, newValue) => {
+        if (newValue === false) deactivate();
+        else activate();
+      });
+    }
+  } catch (_) {}
+
+  activate();
+  window.addEventListener('pagehide', () => {
+    deactivate();
+    try { if (valueListenerId !== undefined && typeof GM_removeValueChangeListener === 'function') GM_removeValueChangeListener(valueListenerId); } catch (_) {}
+  }, { once: true });
+
+  function startProfileFinder() {
+
+   'use strict';
+
+   if (document.getElementById('mg-player-finder')) return () => {};
+
+   const REFRESH_MS = 30000;
+   const CACHE_MS = 30000;
+   const TIMEOUT_MS = 4000;
+   const MAX_PARALLEL = 8;
+
+   const WORLDS = [
+     'luvia','berufs','gefion','majuna','nomada','lupus',
+     'riventia','syberia','aether','aldous','brutal','classic',
+     'fobos','gordion','hutena','jaruna','katahha','lelwani',
+     'perkun','tarhuna','telawel','tempest','zemyna','zorza',
+     'alcatraz','arkantes','asylum','ataentsic','badzior',
+     'dionizos','dream','elizjum','ertill','eternia','hades',
+     'helios','inferno','latimar','legion','mordor','narwhals',
+     'navis','nerthus','nexos','nubes','nyras','odysea',
+     'orchidea','pandora','regros','solphyr','stark','stoners',
+     'thantos','unia','valhalla','whisper'
+   ];
+
+   const accountId = location.pathname.match(/profile\/view,(\d+)/i)?.[1];
+   const cache = new Map();
+   const inFlight = new Map();
+
+   let busy = false;
+   let lastSearch = 0;
+   let highlighted = null;
+   let disposed = false;
+
+   // ---------- WYGLĄD ----------
+   const style = document.createElement('style');
+
+   style.textContent = `
+     #mg-player-finder {
+       position: fixed;
+       top: 14px;
+       right: 14px;
+       z-index: 999999;
+       width: 245px;
+       max-width: calc(100vw - 28px);
+       max-height: 70vh;
+       overflow: auto;
+       box-sizing: border-box;
+       padding: 10px 12px;
+       color: #eee5d2;
+       background: linear-gradient(145deg, #22232a, #17181e);
+       border: 1px solid #9b8050;
+       border-radius: 8px;
+       box-shadow: 0 4px 16px #0007, inset 0 1px #ffffff0a;
+       font: 12px/1.4 Arial, sans-serif;
+     }
+
+     #mg-player-finder .head {
+       display: flex;
+       align-items: center;
+       gap: 6px;
+       font-size: 13px;
+       font-weight: 700;
+       color: #f2dfb4;
+       margin-bottom: 7px;
+       padding-bottom: 6px;
+       border-bottom: 1px solid #ffffff18;
+     }
+
+     #mg-player-finder .head::before {
+       content: "";
+       width: 7px;
+       height: 7px;
+       flex: 0 0 7px;
+       border-radius: 50%;
+       background: #65e879;
+       box-shadow: 0 0 6px #65e87988;
+     }
+
+     #mg-player-finder .status {
+       color: #c9b991;
+       font-size: 11px;
+       margin-bottom: 5px;
+     }
+
+     #mg-player-finder .nick {
+       color: #8fe9a0;
+       font-size: 15px;
+       font-weight: 700;
+       overflow-wrap: anywhere;
+       line-height: 1.3;
+     }
+
+     #mg-player-finder .details {
+       margin-top: 3px;
+       color: #e4ded1;
+       font-size: 12px;
+     }
+
+     #mg-player-finder .muted {
+       color: #98979a;
+       font-size: 10px;
+       margin-top: 6px;
+     }
+
+     #mg-player-finder button {
+       display: block;
+       width: 100%;
+       margin-top: 8px;
+       padding: 6px 8px;
+       color: #f1e5ca;
+       background: linear-gradient(#454047, #302d34);
+       border: 1px solid #77684f;
+       border-radius: 5px;
+       font: 11px Arial, sans-serif;
+       cursor: pointer;
+       transition: background 150ms ease, border-color 150ms ease;
+     }
+
+     #mg-player-finder button:hover {
+       background: linear-gradient(#5a5042, #3b342b);
+       border-color: #c6a76c;
+     }
+
+     /* Jedna zewnętrzna ramka i zielone zacienienie całej karty */
+     .mg-pf-highlight {
+       position: relative !important;
+       box-sizing: border-box !important;
+       outline: none !important;
+       border: 3px solid #65e879 !important;
+       border-radius: 7px !important;
+       background: rgba(47, 160, 65, 0.42) !important;
+       box-shadow:
+         inset 0 0 18px rgba(65, 255, 95, 0.28),
+         0 0 12px rgba(65, 255, 95, 0.45) !important;
+       z-index: 2;
+     }
+
+     .mg-pf-highlight::after {
+       content: "ONLINE";
+       position: absolute;
+       top: 4px;
+       right: 5px;
+       padding: 2px 5px;
+       border: 1px solid #a6edac;
+       border-radius: 4px;
+       background: #176b36;
+       color: #f2fff3;
+       font: bold 9px/1.2 Arial, sans-serif;
+       letter-spacing: .4px;
+       box-shadow: 0 1px 3px #0005;
+       pointer-events: none;
+     }
+   `;
+
+   document.head.appendChild(style);
+
+   // ---------- PANEL ----------
+   const panel = document.createElement('aside');
+   panel.id = 'mg-player-finder';
+
+   panel.innerHTML = `
+     <div class="head">Margonem — gdzie gra gracz?</div>
+     <div class="status">Odczytuję profil…</div>
+     <div class="result"></div>
+     <div class="muted">Światy z profilu · odświeżanie co 30 s</div>
+     <button type="button">Szukaj ponownie</button>
+   `;
+
+   document.body.appendChild(panel);
+
+   const statusEl = panel.querySelector('.status');
+   const resultEl = panel.querySelector('.result');
+   const button = panel.querySelector('button');
+
+   // ---------- ŚWIATY Z PROFILU ----------
+   function getProfileWorlds() {
+     const text = document.body.innerText || '';
+     const found = new Set();
+
+     for (const match of text.matchAll(/Świat:\s*([^\r\n]+)/gi)) {
+       const value = match[1].trim().toLowerCase();
+
+       for (const world of WORLDS) {
+         if (
+           value === world ||
+           value.split(/[\s,;/|]+/).includes(world)
+         ) {
+           found.add(world);
+         }
+       }
+     }
+
+     const hash = location.hash.match(/#char_\d+,([a-z0-9_-]+)/i);
+
+     if (hash) {
+       const world = hash[1].toLowerCase();
+       if (WORLDS.includes(world)) found.add(world);
+     }
+
+     return [...found];
+   }
+
+   // ---------- POBIERANIE DANYCH ----------
+   function fetchWorld(world) {
+     const cached = cache.get(world);
+
+     if (cached && Date.now() - cached.time < CACHE_MS) {
+       return Promise.resolve(cached.data);
+     }
+
+     if (inFlight.has(world)) return inFlight.get(world);
+
+     const promise = new Promise(resolve => {
+       let finished = false;
+       let request;
+
+       const timer = setTimeout(() => {
+         try { request?.abort(); } catch {}
+         finish(null);
+       }, TIMEOUT_MS + 300);
+
+       function finish(data) {
+         if (finished) return;
+         finished = true;
+         clearTimeout(timer);
+         resolve(data);
+       }
+
+       try {
+         request = GM_xmlhttpRequest({
+           method: 'GET',
+           url: `https://staticinfo.margonem.pl/online/${encodeURIComponent(world)}.json`,
+           timeout: TIMEOUT_MS,
+
+           onload(response) {
+             try {
+               if (response.status < 200 || response.status >= 300) {
+                 finish(null);
+                 return;
+               }
+
+               const data = JSON.parse(response.responseText);
+
+               if (!Array.isArray(data)) {
+                 finish(null);
+                 return;
+               }
+
+               cache.set(world, { time: Date.now(), data });
+               finish(data);
+             } catch {
+               finish(null);
+             }
+           },
+
+           onerror() { finish(null); },
+           ontimeout() { finish(null); }
+         });
+       } catch {
+         finish(null);
+       }
+     }).finally(() => inFlight.delete(world));
+
+     inFlight.set(world, promise);
+     return promise;
+   }
+
+   // ---------- PODŚWIETLANIE KARTY ----------
+   function clearHighlight() {
+     if (highlighted) {
+       highlighted.classList.remove('mg-pf-highlight');
+       highlighted = null;
+     }
+   }
+
+   function highlightCharacter(name, world) {
+     clearHighlight();
+
+     if (!name || !world) return;
+
+     const candidates = [...document.querySelectorAll('body *')]
+       .filter(el => {
+         if (panel.contains(el) || el.children.length > 8) return false;
+
+         const text = (el.innerText || '').trim();
+
+         if (!text || text.length > 350) return false;
+
+         return text.includes(name) &&
+           new RegExp(`Świat:\\s*${world}\\b`, 'i').test(text);
+       })
+       .sort((a, b) => a.innerText.length - b.innerText.length);
+
+     if (candidates.length) {
+       highlighted = candidates[0];
+       highlighted.classList.add('mg-pf-highlight');
+     }
+   }
+
+   // ---------- WYNIK ----------
+   function showCharacter(character, world) {
+     resultEl.replaceChildren();
+
+     const nick = document.createElement('div');
+     nick.className = 'nick';
+     nick.textContent = character.n || 'Nieznany nick';
+
+     const details = document.createElement('div');
+     details.className = 'details';
+     details.textContent = `Poziom ${character.l ?? '?'} · ${world}`;
+
+     resultEl.append(nick, details);
+     highlightCharacter(character.n, world);
+   }
+
+   // ---------- WYSZUKIWANIE ----------
+   async function search(force = false) {
+     if (busy || disposed) return;
+
+     if (!force && Date.now() - lastSearch < REFRESH_MS) return;
+
+     busy = true;
+     lastSearch = Date.now();
+     clearHighlight();
+     resultEl.replaceChildren();
+
+     try {
+       if (!accountId) {
+         statusEl.textContent = 'Nie udało się odczytać ID profilu.';
+         return;
+       }
+
+       const worlds = getProfileWorlds();
+
+       if (!worlds.length) {
+         statusEl.textContent = 'Nie znaleziono światów na profilu.';
+         return;
+       }
+
+       statusEl.textContent = `Sprawdzam ${worlds.length} światów…`;
+
+       const found = [];
+       let next = 0;
+       let completed = 0;
+       let failed = 0;
+
+       async function worker() {
+         while (next < worlds.length) {
+           const world = worlds[next++];
+
+           try {
+             const data = await fetchWorld(world);
+             if (disposed) return;
+
+             if (data === null) {
+               failed++;
+             } else {
+               const match = data.find(
+                 character => String(character.a) === String(accountId)
+               );
+
+               if (match) {
+                 found.push({ character: match, world });
+
+                 // Pokazuj pierwsze trafienie bez czekania na resztę.
+                 if (found.length === 1) {
+                   showCharacter(match, world);
+                   statusEl.textContent = 'Znaleziono postać online.';
+                 }
+               }
+             }
+           } catch {
+             failed++;
+           }
+
+           completed++;
+
+           if (!found.length) {
+             statusEl.textContent =
+               `Sprawdzono ${completed}/${worlds.length} światów…`;
+           }
+         }
+       }
+
+       await Promise.all(
+         Array.from(
+           { length: Math.min(MAX_PARALLEL, worlds.length) },
+           () => worker()
+         )
+       );
+       if (disposed) return;
+
+       if (!found.length) {
+         statusEl.textContent = failed === worlds.length
+           ? 'Nie udało się pobrać list online.'
+           : 'Nie znaleziono postaci online.';
+       } else {
+         showCharacter(found[0].character, found[0].world);
+         statusEl.textContent = 'Znaleziono postać online.';
+       }
+     } catch (error) {
+       statusEl.textContent = 'Błąd wyszukiwania.';
+       console.error('[Margonem Finder]', error);
+     } finally {
+       busy = false;
+     }
+   }
+
+   button.addEventListener('click', () => search(true));
+
+    search();
+    const refreshTimer = window.setInterval(() => search(), REFRESH_MS);
+    return () => {
+      disposed = true;
+      window.clearInterval(refreshTimer);
+      clearHighlight();
+      panel.remove();
+      style.remove();
+    };
+  
+  }
+})();
