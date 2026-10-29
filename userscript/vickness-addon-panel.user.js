@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.45
-// @description  Vickness Addons 1.1.45: dodano Postacie online na profilach
+// @version      1.1.46
+// @description  Vickness Addons 1.1.46: dodatki ograniczone do Riventii; wyszukiwarka profili tylko na profilach Margonem
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -26,8 +26,13 @@
 // @noframes
 // ==/UserScript==
 
-// Wspólny stan przełączników dostępny dla obu wbudowanych dodatków.
-window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true };
+// Stan dodatków gry istnieje wyłącznie na Riventii.
+if (location.hostname === 'riventia.margonem.pl') {
+    window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true };
+}
+
+// Wszystkie moduły gry, panel oraz belki działają wyłącznie na Riventii.
+if (location.hostname === 'riventia.margonem.pl') {
 
 (function () {
     'use strict';
@@ -2501,7 +2506,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.44 — uproszczona sekcja aktualizacji
+// VICKNESS ADDON PANEL 1.1.46 — poprawione zakresy działania dodatków
 // =============================================================
 (() => {
   'use strict';
@@ -2991,6 +2996,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.46</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono zakres działania: Loot Glow, DC, Loot Bar, Lootlog, Titan Tracker, Procent Łupu, The Crew Online, panel i wygląd uruchamiają się wyłącznie na riventia.margonem.pl. „Postacie online na profilach” działa wyłącznie na www.margonem.pl/profile/view,...</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.45</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano dodatek „Postacie online na profilach” do zakładki Dodatki. Na profilach Margonem wyszukuje postacie konta na światach, pokazuje status online i podświetla znalezioną kartę; przełącznik panelu steruje dodatkiem również między kartami.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.44</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto opis o harmonogramie aktualizacji z GitHuba. Po kliknięciu „SPRAWDŹ PONOWNIE” status wyświetla „Sprawdzam aktualizację...”.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.43</span><span class="vxChangelogDate">bieżące wydanie</span><div>Zmniejszono wyskakujące okno Margonem DC: węższy panel, niższy nagłówek i przyciski, mniejsze odstępy oraz czytelniejsza, ujednolicona czcionka informacji o wykryciu.</div></div>
@@ -3192,7 +3198,7 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.45';
+  const CURRENT_PANEL_VERSION = '1.1.46';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -6940,6 +6946,8 @@ window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, d
      clearTimeout(resizeTimer);
    });
  })();
+
+}
 
 // =============================================================
 // POSTACIE ONLINE NA PROFILACH — zintegrowane z przełącznikiem Vickness
