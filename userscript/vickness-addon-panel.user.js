@@ -1,11 +1,14 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.46
-// @description  Vickness Addons 1.1.46: dodatki ograniczone do Riventii; wyszukiwarka profili tylko na profilach Margonem
+// @version      1.1.47
+// @description  Vickness Addons 1.1.47: dodatki gry tylko na Riventii, izolacja paneli na profilach Margonem
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
+// @match        http://www.margonem.pl/profile/view,*
+// @match        https://margonem.pl/profile/view,*
+// @match        http://margonem.pl/profile/view,*
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        unsafeWindow
@@ -25,6 +28,39 @@
 // @run-at       document-idle
 // @noframes
 // ==/UserScript==
+
+// Izolacja stron profili: jeśli w Tampermonkey pozostała starsza kopia dodatków,
+// jej panele nie powinny zasłaniać profilu. Moduły nowej wersji i tak nie uruchamiają się tutaj.
+(() => {
+  const hostIsProfile = /^(?:www\.)?margonem\.pl$/i.test(location.hostname)
+    && /^\/profile(?:\/|$)/i.test(location.pathname);
+  if (!hostIsProfile) return;
+  const installIsolationStyle = () => {
+    if (document.getElementById('__vicknessProfileIsolationStyle')) return;
+    const style = document.createElement('style');
+    style.id = '__vicknessProfileIsolationStyle';
+    style.textContent = `
+      #vicknessStandaloneRoot, #vxStandalonePanel, #vxStandaloneMini,
+      #margDc221Panel, #margDc221Mini, #tmLootPanel,
+      #vickness-lootbar, #rtt-panel, #mlc513-panel, #tc-online-panel,
+      #margonem-map-dimmer-panel, #vicknessStandalonePanel,
+      #vicknessAddonPanel, #vickness-addon-panel, #vickness-loot-glow-panel {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+      }
+    `;
+    (document.head || document.documentElement)?.appendChild(style);
+  };
+  installIsolationStyle();
+  // Strona może doładowywać elementy dynamicznie; CSS przykrywa także panele
+  // tworzone później przez starsze kopie skryptów.
+  if (document.documentElement && typeof MutationObserver !== 'undefined') {
+    const observer = new MutationObserver(installIsolationStyle);
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    window.addEventListener('pagehide', () => observer.disconnect(), { once: true });
+  }
+})();
 
 // Stan dodatków gry istnieje wyłącznie na Riventii.
 if (location.hostname === 'riventia.margonem.pl') {
@@ -2506,7 +2542,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.46 — poprawione zakresy działania dodatków
+// VICKNESS ADDON PANEL 1.1.47 — izolacja dodatków na stronach profili
 // =============================================================
 (() => {
   'use strict';
@@ -2996,7 +3032,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.46</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono zakres działania: Loot Glow, DC, Loot Bar, Lootlog, Titan Tracker, Procent Łupu, The Crew Online, panel i wygląd uruchamiają się wyłącznie na riventia.margonem.pl. „Postacie online na profilach” działa wyłącznie na www.margonem.pl/profile/view,...</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.47</span><span class="vxChangelogDate">bieżące wydanie</span><div>Wzmocniono izolację domen: dodatki gry działają tylko na Riventii, a na profilach Margonem ukrywane są również panele pozostawione przez starsze kopie skryptów. Wyszukiwarka profili obsługuje adresy z www i bez www.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.46</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Naprawiono zakres działania dodatków do Riventii, a wyszukiwarkę profili ograniczono do stron profili Margonem.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.45</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano dodatek „Postacie online na profilach” do zakładki Dodatki. Na profilach Margonem wyszukuje postacie konta na światach, pokazuje status online i podświetla znalezioną kartę; przełącznik panelu steruje dodatkiem również między kartami.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.44</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto opis o harmonogramie aktualizacji z GitHuba. Po kliknięciu „SPRAWDŹ PONOWNIE” status wyświetla „Sprawdzam aktualizację...”.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.43</span><span class="vxChangelogDate">bieżące wydanie</span><div>Zmniejszono wyskakujące okno Margonem DC: węższy panel, niższy nagłówek i przyciski, mniejsze odstępy oraz czytelniejsza, ujednolicona czcionka informacji o wykryciu.</div></div>
@@ -3198,7 +3234,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.46';
+  const CURRENT_PANEL_VERSION = '1.1.47';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -6955,7 +6991,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 (() => {
   'use strict';
   if (window.top !== window.self) return;
-  if (location.hostname !== 'www.margonem.pl' || !/\/profile\/view,\d+/i.test(location.pathname)) return;
+  if (!/^(?:www\.)?margonem\.pl$/i.test(location.hostname) || !/\/profile\/view,\d+/i.test(location.pathname)) return;
 
   const ENABLE_KEY = 'vickness_profileFinderEnabled';
   let cleanupProfileFinder = null;
