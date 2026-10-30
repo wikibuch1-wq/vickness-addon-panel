@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.52
-// @description  Vickness Addons 1.1.52: automatyczni Klanowicze co 10 s bez blokowania handlera gry; bezpieczne odświeżanie i ochrona podczas przeładowania postaci
+// @version      1.1.53
+// @description  Vickness Addons 1.1.53: Klanowicze online z Lootlog co 10 s bez otwierania listy klanu; bezpieczne przelogowanie
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2542,7 +2542,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.52 — automatyczne Klanowicze co 10 s z zachowaniem handlera gry
+// VICKNESS ADDON PANEL 1.1.53 — Klanowicze online z Lootlog bez otwierania listy klanu
 // =============================================================
 (() => {
   'use strict';
@@ -3024,7 +3024,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         </div>
       </div>
       <div id="vxSettingsCrewOnline" class="vxSettingsSlot" hidden>
-        <div class="vxLootlogInfo">The Crew Online automatycznie pobiera listę klanu co 10 sekund, bez otwierania zakładki Klanowicze. W czasie przełączania postaci wstrzymuje żądania, a odpowiedź zawsze obsługuje oryginalny handler gry. Szczegóły Lootloga cache’uje przez 2 minuty; panel pozostaje osobnym oknem na ekranie gry.</div>
+        <div class="vxLootlogInfo">The Crew Online pobiera listę online bezpośrednio z API Lootloga co 10 sekund. Nie wysyła polecenia clan&amp;a=members do gry, nie otwiera listy klanu i nie przechwytuje handlerów komunikacji. Panel pozostaje osobnym oknem na ekranie gry.</div>
         <div class="vxLootlogActions">
           <button type="button" id="vxCrewOnlineShow">POKAŻ PANEL</button>
           <button type="button" id="vxCrewOnlineRefresh">ODŚWIEŻ LISTĘ</button>
@@ -3053,6 +3053,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.53</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono automatyczne Klanowicze online: lista jest pobierana z API klienta Lootlog co 10 sekund. Usunięto wywołanie PAGE._g(&quot;clan&amp;a=members&quot;), które otwierało listę klanu w interfejsie gry, oraz całkowicie usunięto przechwytywanie dispatcher.on_members. Przy błędzie API panel pokazuje ostatnią poprawną listę zamiast wywoływać komunikację gry. Belka Lootów pozostaje ustawiona na 10 minut.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.52</span><span class="vxChangelogDate">bieżące wydanie</span><div>Klanowicze online automatycznie pobierają listę klanu co 10 sekund bez otwierania zakładki klanu. Żądanie jest wykonywane dopiero po ustabilizowaniu obiektu postaci; w czasie zaniku/zmiany postaci jest wstrzymywane. Odpowiedź zawsze przechodzi przez oryginalny handler gry — dodatek nie pomija ani nie zastępuje jego działania. Zachowano Loot Bar co 10 minut, pamięć podręczną i dotychczasowe optymalizacje panelu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.51</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Optymalizacja całego panelu i dodatków: Loot Bar odświeża się co 10 minut (cache i ręczne odświeżanie pozostają), Klanowicze online odświeżają widok co 10 sekund na podstawie pasywnych danych gry bez automatycznych żądań clan&amp;a=members. Ograniczono zbędne pętle panelu i przyciemniania mapy; Titan Tracker pracuje co 2 s i całkowicie wstrzymuje timer po wyłączeniu lub ukryciu karty, a Procent łupu rzadziej wykonuje kontrolę zapasową. Wróg na mapie skanuje co 1 sekundę i wstrzymuje skanowanie w tle. Cięższe odświeżanie jest pomijane, gdy karta nie jest widoczna.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.50</span><span class="vxChangelogDate">bieżące wydanie</span><div>Optymalizacja Loot Bar i The Crew Online pod kątem bezpiecznego przelogowywania: The Crew nie wysyła już automatycznie clan&amp;a=members i nie blokuje natywnego handlera gry; listę klanu odczytuje pasywnie. Odświeżanie Klanowiczów ograniczono do 30 s, dane uzupełniające Lootloga są cache’owane przez 2 minuty. Loot Bar odświeża się co 5 minut i wstrzymuje zapytania, gdy dodatek jest wyłączony lub karta działa w tle.</div></div>
@@ -3272,7 +3273,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.52';
+  const CURRENT_PANEL_VERSION = '1.1.53';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -6714,285 +6715,123 @@ if (location.hostname === 'riventia.margonem.pl') {
      save();
    });
 
-   // Automatyczny odczyt listy klanu co 10 s. Żądanie jest wstrzymywane
-   // podczas zaniku/zmiany postaci, a oryginalny handler gry zawsze dostaje odpowiedź.
-   let cachedRawMembers = null;
-   let cachedMembersAt = 0;
-   let hookedDispatcher = null;
-   let wrappedMembersHandler = null;
-   let pendingMembersRequest = null;
+   // Klanowicze online są pobierani bezpośrednio przez API klienta Lootlog.
+   // Celowo NIE wywołujemy PAGE._g('clan&a=members') i nie przechwytujemy
+   // dispatcher.on_members, ponieważ żądanie gry otwiera widok/listę klanu.
+   const LOOTLOG_ROSTER_TIMEOUT_MS = 9000;
+   let lootlogRosterPromise = null;
    let lastRoster = [];
-   let onRosterCaptured = null;
-   let lastHeroKey = null;
-   let heroStableSince = 0;
-   const MEMBERS_CACHE_MS = 8000;
-   const MEMBERS_REQUEST_TIMEOUT_MS = 8000;
-   const playerDetailsCache = new Map();
-   const LOOTLOG_DETAILS_CACHE_MS = 120000;
-   let lootlogDetailsAt = 0;
-   let lootlogDetailsPromise = null;
+   let hasRosterSnapshot = false;
 
-   const normalizeMembersPayload = (data) => {
-     if (Array.isArray(data)) return data.length >= 11 ? data : null;
-     if (!data || typeof data !== 'object') return null;
-     if (Array.isArray(data.members)) return data.members.length >= 11 ? data.members : null;
-
-     const numericKeys = Object.keys(data).filter(key => /^(0|[1-9]\d*)$/.test(key));
-     if (numericKeys.length < 11) return null;
-     numericKeys.sort((a, b) => Number(a) - Number(b));
-     const flattened = numericKeys.map(key => data[key]);
-     return flattened.length >= 11 ? flattened : null;
+   const toFiniteNumber = value => {
+     if (value === '' || value === null || value === undefined) return null;
+     const number = Number(value);
+     return Number.isFinite(number) ? number : null;
    };
 
-   // W czasie przeładowania Engine/hero potrafi chwilowo zniknąć.
-   // Po pojawieniu się nowej postaci czekamy 8 s stabilności, zanim wyślemy żądanie.
-   const isGameReadyForMembersRequest = () => {
-     const engine = PAGE.Engine;
-     const hero = engine?.hero?.d || engine?.hero;
-     const communication = engine?.communication;
-     const membersHandlerReady = typeof communication?.dispatcher?.on_members === 'function';
-     if (document.visibilityState === 'hidden' || !hero || !communication || !membersHandlerReady || typeof PAGE._g !== 'function') {
-       lastHeroKey = null;
-       heroStableSince = 0;
-       return false;
-     }
-
-     const heroKey = String(hero.id ?? hero.nick ?? '');
-     if (!heroKey) return false;
-     if (heroKey !== lastHeroKey) {
-       lastHeroKey = heroKey;
-       heroStableSince = Date.now();
-       return false;
-     }
-     return Date.now() - heroStableSince >= 8000;
-   };
-
-   const installMembersHook = () => {
-     const dispatcher = PAGE.Engine?.communication?.dispatcher;
-     if (!dispatcher || typeof dispatcher.on_members !== 'function') return false;
-     if (dispatcher === hookedDispatcher && dispatcher.on_members === wrappedMembersHandler) return true;
-
-     const originalOnMembers = dispatcher.on_members;
-     const wrappedOnMembers = function(data, ...args) {
-       let members = null;
-       try { members = normalizeMembersPayload(data); } catch (_) {}
-
-       // Najpierw i zawsze wywołujemy natywną obsługę Margonem z oryginalnym this/argumentami.
-       // Capture wykonujemy w finally, więc nawet błąd oryginalnego handlera nie blokuje cache.
-       try {
-         return originalOnMembers.apply(this, [data, ...args]);
-       } finally {
-         if (members) {
-           cachedRawMembers = members;
-           cachedMembersAt = Date.now();
-           const pending = pendingMembersRequest;
-           if (pending) {
-             pendingMembersRequest = null;
-             clearTimeout(pending.timeout);
-             pending.resolve(members);
-           }
-           window.setTimeout(() => onRosterCaptured?.(), 50);
-         }
-       }
-     };
-
-     dispatcher.on_members = wrappedOnMembers;
-     hookedDispatcher = dispatcher;
-     wrappedMembersHandler = wrappedOnMembers;
-     return true;
-   };
-
-   const readMembersFromOpenClan = () => {
-     try {
-       const clan = PAGE.Engine?.clan;
-       if (!clan || typeof clan.getMemberList !== 'function') return null;
-       const memberList = clan.getMemberList();
-       if (!memberList || typeof memberList !== 'object') return null;
-       const records = Array.isArray(memberList) ? memberList : Object.values(memberList);
-       const flattened = [];
-       for (const record of records) {
-         if (Array.isArray(record) && record.length >= 11) flattened.push(...record.slice(0, 11));
-       }
-       return flattened.length >= 11 ? flattened : null;
-     } catch {
-       return null;
-     }
-   };
-
-   const requestMembers = () => {
-     installMembersHook();
-
-     if (Array.isArray(cachedRawMembers) && cachedRawMembers.length >= 11 &&
-         Date.now() - cachedMembersAt < MEMBERS_CACHE_MS) {
-       return Promise.resolve(cachedRawMembers);
-     }
-
-     if (pendingMembersRequest) return pendingMembersRequest.promise;
-
-     if (!isGameReadyForMembersRequest()) {
-       // Jeśli okno klanu jest już otwarte, można bezpiecznie pokazać jego model bez nowego żądania.
-       const liveRoster = readMembersFromOpenClan();
-       if (liveRoster) {
-         cachedRawMembers = liveRoster;
-         cachedMembersAt = Date.now();
-         return Promise.resolve(liveRoster);
-       }
-       if (Array.isArray(cachedRawMembers) && cachedRawMembers.length >= 11) {
-         return Promise.resolve(cachedRawMembers);
-       }
-       return Promise.reject(new Error('Oczekuję na pełne załadowanie postaci — automatyczne pobieranie wznowi się samo.'));
-     }
-
-     let resolveRequest;
-     let rejectRequest;
-     const promise = new Promise((resolve, reject) => {
-       resolveRequest = resolve;
-       rejectRequest = reject;
-     });
-     const pending = { resolve: resolveRequest, reject: rejectRequest, timeout: null, promise };
-     pendingMembersRequest = pending;
-     pending.timeout = window.setTimeout(() => {
-       if (pendingMembersRequest === pending) pendingMembersRequest = null;
-       pending.reject(new Error('Serwer nie odpowiedział na automatyczne pobranie listy klanu. Ponowię próbę za 10 sekund.'));
-     }, MEMBERS_REQUEST_TIMEOUT_MS);
-
-     try {
-       // To standardowe żądanie gry. Odpowiedź jest przekazywana bez zmian do oryginalnego handlera.
-       PAGE._g('clan&a=members');
-     } catch (error) {
-       clearTimeout(pending.timeout);
-       if (pendingMembersRequest === pending) pendingMembersRequest = null;
-       pending.reject(error);
-     }
-     return promise;
-   };
-
-   const loadLootlogPlayerDetails = async () => {
-     if (Date.now() - lootlogDetailsAt < LOOTLOG_DETAILS_CACHE_MS) return playerDetailsCache;
-     if (lootlogDetailsPromise) return lootlogDetailsPromise;
+   const loadLootlogRoster = async () => {
+     if (lootlogRosterPromise) return lootlogRosterPromise;
 
      const api = PAGE.lootlogGameClientApi;
-     if (!api?.ready || typeof api.getOnlinePlayers !== 'function') return playerDetailsCache;
+     if (!api?.ready || typeof api.getOnlinePlayers !== 'function') {
+       throw new Error('API Lootloga nie jest jeszcze gotowe. Ponowię próbę za 10 sekund.');
+     }
 
-     lootlogDetailsPromise = (async () => {
+     lootlogRosterPromise = (async () => {
+       let timeoutId = null;
        try {
-         const result = await api.getOnlinePlayers({ guildId: GUILD_ID, world: WORLD });
-         if (result?.status === 'success' && result.players) {
-           for (const record of Object.values(result.players).flat()) {
-             const player = record?.player;
-             if (!player || record.status !== 'online' || player.world !== WORLD) continue;
-             const nick = String(player.name || '').trim().toLocaleLowerCase('pl');
-             if (!nick) continue;
-             const location = player.location || {};
-             const extra = {
-               level: player.lvl != null && player.lvl !== '' && Number.isFinite(Number(player.lvl)) ? Number(player.lvl) : null,
-               profession: player.prof || player.profession || '',
-               map: location.map || record.mapName || '',
-               x: location.x != null && location.x !== '' && Number.isFinite(Number(location.x)) ? Number(location.x) : null,
-               y: location.y != null && location.y !== '' && Number.isFinite(Number(location.y)) ? Number(location.y) : null,
-               afk: record.isAfk === true
-             };
-             const previous = playerDetailsCache.get(nick) || {};
-             playerDetailsCache.set(nick, {
-               level: extra.level ?? previous.level ?? null,
-               profession: extra.profession || previous.profession || '',
-               map: extra.map || previous.map || '',
-               x: extra.x ?? previous.x ?? null,
-               y: extra.y ?? previous.y ?? null,
-               afk: extra.afk || previous.afk === true
-             });
-           }
+         const request = Promise.resolve().then(() => api.getOnlinePlayers({
+           guildId: GUILD_ID,
+           world: WORLD
+         }));
+         const timeout = new Promise((_, reject) => {
+           timeoutId = window.setTimeout(
+             () => reject(new Error('Lootlog nie odpowiedział w ciągu 9 sekund.')),
+             LOOTLOG_ROSTER_TIMEOUT_MS
+           );
+         });
+         const result = await Promise.race([request, timeout]);
+
+         if (result?.status !== 'success') {
+           throw new Error(result?.message || 'Lootlog nie zwrócił listy klanowiczów.');
          }
-       } catch (error) {
-         console.debug('[The Crew] Dodatkowe dane Lootloga niedostępne:', error);
+
+         const source = result.players ?? [];
+         const records = Array.isArray(source)
+           ? source
+           : source && typeof source === 'object'
+             ? Object.values(source).flat()
+             : [];
+
+         const roster = [];
+         const seen = new Set();
+
+         for (const record of records) {
+           const player = record?.player;
+           if (!player || record.status !== 'online') continue;
+
+           const playerWorld = String(player.world ?? record.world ?? WORLD).toLowerCase();
+           if (playerWorld !== WORLD) continue;
+
+           const nick = String(player.name || player.nick || '').trim();
+           if (!nick) continue;
+           const nickKey = nick.toLocaleLowerCase('pl');
+           if (seen.has(nickKey)) continue;
+           seen.add(nickKey);
+
+           const location = player.location || {};
+           const idValue = player.id ?? player.charId ?? player.characterId ?? null;
+           roster.push({
+             id: idValue == null ? '' : String(idValue),
+             nick,
+             level: toFiniteNumber(player.lvl ?? player.level),
+             profession: String(player.prof || player.profession || ''),
+             map: String(location.map || record.mapName || ''),
+             x: toFiniteNumber(location.x),
+             y: toFiniteNumber(location.y),
+             afk: record.isAfk === true,
+             isOnline: true
+           });
+         }
+
+         lastRoster = roster;
+         hasRosterSnapshot = true;
+         return roster;
        } finally {
-         lootlogDetailsAt = Date.now();
-         lootlogDetailsPromise = null;
+         if (timeoutId !== null) clearTimeout(timeoutId);
+         lootlogRosterPromise = null;
        }
-       return playerDetailsCache;
      })();
 
-     return lootlogDetailsPromise;
+     return lootlogRosterPromise;
    };
 
-   // Odpowiedź members to spłaszczona tablica rekordów po 11 pól:
-   // id, nick, hp, maxhp, profesja, mapa, x, y, ranga, czas/status, grafika.
    const getPlayers = async () => {
-     const rawMembers = await requestMembers();
-     if (!Array.isArray(rawMembers) || rawMembers.length < 11) {
-       throw new Error('Serwer zwrócił niepełną listę członków klanu.');
-     }
+     const roster = await loadLootlogRoster();
 
-     const roster = [];
-     for (let i = 0; i + 10 < rawMembers.length; i += 11) {
-       const id = String(rawMembers[i] ?? '');
-       const nick = String(rawMembers[i + 1] ?? '').trim();
-       if (!id || !nick) continue;
-       // Dane lokacji są już w rekordzie klanowym; nie polegaj wyłącznie na Lootlogu.
-      // Układ rekordu: id, nick, hp, maxhp, profesja, mapa, x, y, ranga, status, grafika.
-      const baseLevelValue = rawMembers[i + 2];
-      const baseLevel = baseLevelValue !== '' && baseLevelValue != null && Number.isFinite(Number(baseLevelValue))
-        ? Number(baseLevelValue)
-        : null;
-      const profession = String(rawMembers[i + 4] ?? '').trim();
-      const map = String(rawMembers[i + 5] ?? '').trim();
-      const xValue = rawMembers[i + 6];
-      const yValue = rawMembers[i + 7];
-      const x = xValue !== '' && xValue != null && Number.isFinite(Number(xValue)) ? Number(xValue) : null;
-      const y = yValue !== '' && yValue != null && Number.isFinite(Number(yValue)) ? Number(yValue) : null;
-      roster.push({
-        id, nick,
-        isOnline: Number(rawMembers[i + 9]) === 0,
-        baseLevel,
-        baseProfession: profession,
-        baseMap: map,
-        baseX: x,
-        baseY: y
-      });
-     }
-     if (!roster.length) throw new Error('Lista członków nie zawiera rozpoznawalnych rekordów.');
-     lastRoster = roster;
-
-     // Szczegóły z Lootloga są pobierane najwyżej raz na 2 minuty i cache’owane.
-     const extrasByNick = await loadLootlogPlayerDetails();
-
-     // Podświetlanie członków aktualnej drużyny.
-     const partyMembers = PAGE.Engine?.party?.getMembers?.();
+     // Podświetlanie członków aktualnej drużyny — odczyt lokalny, bez żądania do gry.
      const partyIds = new Set();
-
-     if (partyMembers instanceof Map) {
-       for (const [memberId, member] of partyMembers.entries()) {
-         if (memberId != null) partyIds.add(String(memberId));
-         if (member?.id != null) partyIds.add(String(member.id));
+     try {
+       const partyMembers = PAGE.Engine?.party?.getMembers?.();
+       if (partyMembers instanceof Map) {
+         for (const [memberId, member] of partyMembers.entries()) {
+           if (memberId != null) partyIds.add(String(memberId));
+           if (member?.id != null) partyIds.add(String(member.id));
+         }
+       } else if (Array.isArray(partyMembers)) {
+         for (const member of partyMembers) {
+           if (member?.id != null) partyIds.add(String(member.id));
+         }
+       } else if (partyMembers && typeof partyMembers === 'object') {
+         for (const [memberId, member] of Object.entries(partyMembers)) {
+           partyIds.add(String(memberId));
+           if (member?.id != null) partyIds.add(String(member.id));
+         }
        }
-     } else if (Array.isArray(partyMembers)) {
-       for (const member of partyMembers) {
-         if (member?.id != null) partyIds.add(String(member.id));
-       }
-     } else if (partyMembers && typeof partyMembers === 'object') {
-       for (const [memberId, member] of Object.entries(partyMembers)) {
-         partyIds.add(String(memberId));
-         if (member?.id != null) partyIds.add(String(member.id));
-       }
-     }
+     } catch (_) {}
 
      return roster
-       .filter(player => player.isOnline)
-       .map(player => {
-         const nickKey = player.nick.toLocaleLowerCase('pl');
-         const extra = extrasByNick.get(nickKey) || playerDetailsCache.get(nickKey) || {};
-         return {
-           id: player.id,
-           nick: player.nick,
-           level: extra.level ?? player.baseLevel ?? null,
-           profession: extra.profession || player.baseProfession || '',
-           map: extra.map || player.baseMap || '',
-           x: extra.x ?? player.baseX ?? null,
-           y: extra.y ?? player.baseY ?? null,
-           isInGroup: partyIds.has(player.id),
-           afk: extra.afk === true
-         };
-       })
+       .map(player => ({ ...player, isInGroup: player.id ? partyIds.has(player.id) : false }))
        .sort((a, b) =>
          (b.level ?? -1) - (a.level ?? -1) ||
          a.nick.localeCompare(b.nick, 'pl')
@@ -7139,27 +6978,9 @@ if (location.hostname === 'riventia.margonem.pl') {
        if (!isCrewRunnable()) return;
        console.warn('[The Crew] Refresh error:', error);
 
-       if (lastRoster.length) {
-         // Zachowaj ostatnie znane dane i jasno oznacz, że nie udało się ich odświeżyć.
-         const partyMembers = PAGE.Engine?.party?.getMembers?.();
-         const partyIds = new Set();
-         if (partyMembers instanceof Map) {
-           for (const [id, member] of partyMembers.entries()) {
-             if (id != null) partyIds.add(String(id));
-             if (member?.id != null) partyIds.add(String(member.id));
-           }
-         } else if (Array.isArray(partyMembers)) {
-           for (const member of partyMembers) if (member?.id != null) partyIds.add(String(member.id));
-         } else if (partyMembers && typeof partyMembers === 'object') {
-           for (const [id, member] of Object.entries(partyMembers)) {
-             partyIds.add(String(id));
-             if (member?.id != null) partyIds.add(String(member.id));
-           }
-         }
-         render(lastRoster.filter(p => p.isOnline).map(p => ({
-           id: p.id, nick: p.nick, level: null, profession: '', map: '', x: null, y: null,
-           isInGroup: partyIds.has(p.id), afk: false
-         })).sort((a, b) => a.nick.localeCompare(b.nick, 'pl')));
+       if (hasRosterSnapshot) {
+         // Zachowaj ostatnią poprawną listę z Lootloga, bez dotykania interfejsu klanu.
+         render(lastRoster);
          status.textContent = `Błąd odświeżania — pokazuję ostatnie dane · ${error.message || 'brak odpowiedzi'}`;
        } else {
          status.textContent = error.message || 'Błąd odczytu listy członków z gry.';
@@ -7205,11 +7026,6 @@ if (location.hostname === 'riventia.margonem.pl') {
      window.__vicknessCrewOnlineAction(pendingAction);
    }
 
-   installMembersHook();
-   onRosterCaptured = () => {
-     if (isCrewRunnable()) void refresh();
-   };
-
    applySettings();
    document.addEventListener('visibilitychange', syncCrewRefreshTimer);
 
@@ -7217,11 +7033,6 @@ if (location.hostname === 'riventia.margonem.pl') {
      if (refreshTimer !== null) clearInterval(refreshTimer);
      refreshTimer = null;
      clearTimeout(resizeTimer);
-     if (pendingMembersRequest) {
-       clearTimeout(pendingMembersRequest.timeout);
-       pendingMembersRequest.reject(new Error('Strona została zamknięta.'));
-       pendingMembersRequest = null;
-     }
      document.removeEventListener('visibilitychange', syncCrewRefreshTimer);
    }, { once: true });
  })();
