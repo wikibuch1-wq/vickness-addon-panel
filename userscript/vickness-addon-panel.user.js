@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.49
-// @description  Vickness Addons 1.1.49: aktualizacja Wróg na mapie 2.7, dodano piąty dźwięk alarmu
+// @version      1.1.51
+// @description  Vickness Addons 1.1.51: płynniejsza praca dodatków, Loot Bar co 10 min i Klanowicze co 10 s
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2542,7 +2542,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.49 — Wróg na mapie 2.7 zintegrowany z panelem
+// VICKNESS ADDON PANEL 1.1.51 — optymalizacja całego panelu i dodatków
 // =============================================================
 (() => {
   'use strict';
@@ -2590,6 +2590,8 @@ if (location.hostname === 'riventia.margonem.pl') {
   // Po wykryciu NPC panel DC odpinamy z widoku ustawień i pokazujemy jako samodzielne okno.
   let dcWindowDetached = false;
   let lastCrewEnabledApplied = null;
+  let lastLootlogEnabledApplied = null;
+  let lastTitanEnabledApplied = null;
 
   function saveFlags() { try { localStorage.setItem(FLAGS_KEY, JSON.stringify(enabled)); } catch (_) {} }
   function saveProfileFinderFlag() { try { GM_setValue(PROFILE_FINDER_GM_KEY, !!enabled.profileFinder); } catch (_) {} }
@@ -2749,7 +2751,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         if (dimensions.canvas !== lastMapDimmerCanvas) watchMapDimmerGameSize();
         else scheduleMapDimmerApply();
       }
-    }, 250);
+    }, 1000);
   }
 
   // Zmiana rozmiaru okna skaluje proporcjonalnie tekst i odstępy wizualne;
@@ -3022,7 +3024,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         </div>
       </div>
       <div id="vxSettingsCrewOnline" class="vxSettingsSlot" hidden>
-        <div class="vxLootlogInfo">The Crew Online 3.4.0 pobiera listę członków z danych klanu i uzupełnia szczegóły z Lootloga, gdy są dostępne. Lista odświeża się co 5 sekund; panel pozostaje osobnym oknem na ekranie gry.</div>
+        <div class="vxLootlogInfo">The Crew Online pobiera listę pasywnie z odpowiedzi gry (bez automatycznego żądania clan&amp;a=members), a szczegóły Lootloga cache’uje przez 2 minuty. Odświeżanie widoku co 10 sekund; panel pozostaje osobnym oknem na ekranie gry.</div>
         <div class="vxLootlogActions">
           <button type="button" id="vxCrewOnlineShow">POKAŻ PANEL</button>
           <button type="button" id="vxCrewOnlineRefresh">ODŚWIEŻ LISTĘ</button>
@@ -3051,6 +3053,8 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.51</span><span class="vxChangelogDate">bieżące wydanie</span><div>Optymalizacja całego panelu i dodatków: Loot Bar odświeża się co 10 minut (cache i ręczne odświeżanie pozostają), Klanowicze online odświeżają widok co 10 sekund na podstawie pasywnych danych gry bez automatycznych żądań clan&amp;a=members. Ograniczono zbędne pętle panelu i przyciemniania mapy; Titan Tracker pracuje co 2 s i całkowicie wstrzymuje timer po wyłączeniu lub ukryciu karty, a Procent łupu rzadziej wykonuje kontrolę zapasową. Wróg na mapie skanuje co 1 sekundę i wstrzymuje skanowanie w tle. Cięższe odświeżanie jest pomijane, gdy karta nie jest widoczna.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.50</span><span class="vxChangelogDate">bieżące wydanie</span><div>Optymalizacja Loot Bar i The Crew Online pod kątem bezpiecznego przelogowywania: The Crew nie wysyła już automatycznie clan&amp;a=members i nie blokuje natywnego handlera gry; listę klanu odczytuje pasywnie. Odświeżanie Klanowiczów ograniczono do 30 s, dane uzupełniające Lootloga są cache’owane przez 2 minuty. Loot Bar odświeża się co 5 minut i wstrzymuje zapytania, gdy dodatek jest wyłączony lub karta działa w tle.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.49</span><span class="vxChangelogDate">bieżące wydanie</span><div>Zaktualizowano „Wróg na mapie” do wersji 2.7. Dodano piąty dźwięk alarmu, zachowano dotychczasowe ustawienia i test dźwięku w głównym panelu. Moduł nadal działa wyłącznie na Riventii.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.48</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Dodano „Wróg na mapie 2.6” do zakładki Dodatki. Alarm wykrywa wrogów i graczy bez klanu, ma ustawienia dźwięku, koloru, czasu powiadomienia oraz testy alarmu. Moduł działa wyłącznie na Riventii i nie tworzy drugiego panelu ustawień.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.47</span><span class="vxChangelogDate">bieżące wydanie</span><div>Wzmocniono izolację domen: dodatki gry działają tylko na Riventii, a na profilach Margonem ukrywane są również panele pozostawione przez starsze kopie skryptów. Wyszukiwarka profili obsługuje adresy z www i bez www.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.46</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Naprawiono zakres działania dodatków do Riventii, a wyszukiwarkę profili ograniczono do stron profili Margonem.</div></div>
@@ -3135,8 +3139,16 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
     const lootbar = getPanel('vickness-lootbar');
     if (lootbar) lootbar.style.setProperty('display', enabled.lootlog ? 'flex' : 'none', 'important');
+    if (typeof window.__vicknessSetLootBarEnabled === 'function' && lastLootlogEnabledApplied !== !!enabled.lootlog) {
+      lastLootlogEnabledApplied = !!enabled.lootlog;
+      window.__vicknessSetLootBarEnabled(!!enabled.lootlog);
+    }
     const titanPanel = getPanel('rtt-panel');
     if (titanPanel) titanPanel.style.setProperty('display', enabled.titan ? 'block' : 'none', 'important');
+    if (typeof window.__vicknessSetTitanEnabled === 'function' && lastTitanEnabledApplied !== !!enabled.titan) {
+      lastTitanEnabledApplied = !!enabled.titan;
+      window.__vicknessSetTitanEnabled(!!enabled.titan);
+    }
     const lootChancePanel = getPanel('mlc513-panel');
     const lootChanceSlot = root.querySelector('#vxSettingsLootChance');
     if (lootChancePanel && lootChanceSlot && !lootChanceSlot.contains(lootChancePanel)) lootChanceSlot.appendChild(lootChancePanel);
@@ -3259,7 +3271,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.49';
+  const CURRENT_PANEL_VERSION = '1.1.51';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -3713,7 +3725,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
 
     // Zmiany przełączników i tak stosują się natychmiast; ten timer jest tylko zabezpieczeniem dla paneli ładowanych później.
-    setInterval(applyToggles, 1500);
+    setInterval(() => { if (document.visibilityState !== 'hidden') applyToggles(); }, 5000);
     window.addEventListener('resize', () => {
       // Nie zapisuj pozycji elementu ukrytego (getBoundingClientRect zwróci wtedy 0,0).
       if (getComputedStyle(panel).display !== 'none') {
@@ -3731,7 +3743,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 })();
 
 // =============================================================
-// BELKA LOOTÓW ZINTEGROWANA Z LOOTLOGIEM — Loot Bar 4.4.7 (z załącznika), zachowane szybsze ładowanie
+// BELKA LOOTÓW ZINTEGROWANA Z LOOTLOGIEM — Loot Bar 4.4.7, odświeżanie co 10 minut
 // ==UserScript==
 // @name         Loot Bar by Vickness - Riventia
 // @namespace    vickness.riventia.lootbar
@@ -3758,7 +3770,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   const GUILD_URL = 'https://lootlog.pl/thecrew';
   const LEGENDARY_URL =
     'https://lootlog.pl/thecrew?lootbarFilter=legendary&rarities=LEGENDARY';
-  const REFRESH_MS = 3 * 60 * 1000;
+  const REFRESH_MS = 10 * 60 * 1000;
   const REQUEST_TIMEOUT_MS = 12000;
   const STORAGE_KEY = 'vicknessRiventiaLootBar';
   const CACHE_KEY = `${STORAGE_KEY}:fast-cache`;
@@ -3781,6 +3793,57 @@ if (location.hostname === 'riventia.margonem.pl') {
   let scale = Number(saved.scale) || 1;
   let vertical = Boolean(saved.vertical);
   let busy = false;
+  let moduleEnabled = window.__vicknessAddonEnabled?.lootlog !== false;
+  let lifecycleActive = moduleEnabled && document.visibilityState !== 'hidden';
+  let autoRefreshTimer = null;
+  let refreshEpoch = 0;
+  let refreshAgainWhenIdle = false;
+  let pageDisposed = false;
+
+  function canRefreshLootBar() {
+    return !pageDisposed && lifecycleActive && bar.isConnected;
+  }
+
+  function clearLootBarTimer() {
+    if (autoRefreshTimer !== null) {
+      clearTimeout(autoRefreshTimer);
+      autoRefreshTimer = null;
+    }
+  }
+
+  function scheduleLootBarRefresh() {
+    clearLootBarTimer();
+    if (!canRefreshLootBar()) return;
+    autoRefreshTimer = window.setTimeout(() => {
+      autoRefreshTimer = null;
+      void loadLoots();
+    }, REFRESH_MS);
+  }
+
+  function syncLootBarLifecycle() {
+    const shouldRun = !pageDisposed && moduleEnabled && document.visibilityState !== 'hidden';
+    if (shouldRun === lifecycleActive) return;
+    lifecycleActive = shouldRun;
+    refreshEpoch++;
+    clearLootBarTimer();
+    if (lifecycleActive) {
+      if (busy) refreshAgainWhenIdle = true;
+      else void loadLoots();
+    }
+  }
+
+  window.__vicknessSetLootBarEnabled = value => {
+    moduleEnabled = Boolean(value);
+    syncLootBarLifecycle();
+  };
+
+  document.addEventListener('visibilitychange', syncLootBarLifecycle);
+  window.addEventListener('pagehide', () => {
+    pageDisposed = true;
+    lifecycleActive = false;
+    refreshEpoch++;
+    clearLootBarTimer();
+  }, { once: true });
 
   const css = document.createElement('style');
   css.id = 'vickness-lootbar-style';
@@ -4660,24 +4723,30 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   async function loadLoots() {
-    if (busy) return;
+    if (busy || !canRefreshLootBar()) return;
     busy = true;
+    const runEpoch = refreshEpoch;
 
     try {
-      // Pobierz oba źródła równolegle; standardowy feed pokazujemy od razu.
+      // Oba zapytania do Lootloga są zewnętrzne; nie korzystają z komunikacji gry.
       const recentPromise = fetchJson(API);
       const legendaryPromise = fetchJson(LEGENDARY_API)
         .then(getLoots)
         .catch(error => {
-          console.warn('[Loot Bar] Osobne pobieranie legend nie powiodło się:', error);
+          if (runEpoch === refreshEpoch && canRefreshLootBar()) {
+            console.warn('[Loot Bar] Osobne pobieranie legend nie powiodło się:', error);
+          }
           return [];
         });
 
       const data = await recentPromise;
       const recentLoots = getLoots(data);
+      if (runEpoch !== refreshEpoch || !canRefreshLootBar()) return;
       render(recentLoots);
 
       const legendaryLoots = await legendaryPromise;
+      if (runEpoch !== refreshEpoch || !canRefreshLootBar()) return;
+
       const byId = new Map();
       for (const loot of [...recentLoots, ...legendaryLoots]) {
         const key = loot?.id ?? loot?.uniqueId;
@@ -4694,6 +4763,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
       if (!loots.length) console.warn('[Loot Bar] Nieznany format API:', data);
     } catch (error) {
+      if (runEpoch !== refreshEpoch || !canRefreshLootBar()) return;
       console.error('[Loot Bar]', error);
       const errorBox = document.createElement('div');
       errorBox.className = 'vl-empty';
@@ -4722,6 +4792,13 @@ if (location.hostname === 'riventia.margonem.pl') {
       else itemsBox.replaceChildren(errorBox);
     } finally {
       busy = false;
+      if (refreshAgainWhenIdle && canRefreshLootBar()) {
+        refreshAgainWhenIdle = false;
+        window.setTimeout(() => { if (canRefreshLootBar()) void loadLoots(); }, 250);
+      } else {
+        refreshAgainWhenIdle = false;
+        scheduleLootBarRefresh();
+      }
     }
   }
 
@@ -4745,8 +4822,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     console.debug('[Loot Bar] Pominięto nieprawidłowy cache:', error);
   }
 
-  loadLoots();
-  setInterval(loadLoots, REFRESH_MS);
+  if (canRefreshLootBar()) void loadLoots();
 
   window.addEventListener('resize', () => {
     const maxX = Math.max(0, window.innerWidth - bar.offsetWidth * scale);
@@ -5498,15 +5574,41 @@ if (location.hostname === 'riventia.margonem.pl') {
         updateTable();
     }
 
+    let titanTickTimer = null;
+
+    function syncTitanTimer() {
+        const shouldRun = window.__vicknessAddonEnabled?.titan !== false &&
+            document.visibilityState !== 'hidden';
+        if (!shouldRun) {
+            if (titanTickTimer !== null) clearInterval(titanTickTimer);
+            titanTickTimer = null;
+            return;
+        }
+        if (titanTickTimer === null) {
+            tick();
+            titanTickTimer = window.setInterval(tick, 2000);
+        }
+    }
+
+    window.__vicknessSetTitanEnabled = value => {
+        if (window.__vicknessAddonEnabled) window.__vicknessAddonEnabled.titan = !!value;
+        syncTitanTimer();
+    };
+    document.addEventListener('visibilitychange', syncTitanTimer);
+    window.addEventListener('pagehide', () => {
+        if (titanTickTimer !== null) clearInterval(titanTickTimer);
+        titanTickTimer = null;
+        document.removeEventListener('visibilitychange', syncTitanTimer);
+        delete window.__vicknessSetTitanEnabled;
+    }, { once: true });
+
     function start() {
         if (!document.body) {
             setTimeout(start, 500);
             return;
         }
-
         createPanel();
-        tick();
-        setInterval(tick, 1000);
+        syncTitanTimer();
     }
 
     start();
@@ -6101,7 +6203,7 @@ if (location.hostname === 'riventia.margonem.pl') {
          clearLootLabels();
          lastWindowOpen = false;
        }
-     }, 500);
+     }, 1000);
    }
 
    if (document.readyState === 'loading') {
@@ -6124,7 +6226,8 @@ if (location.hostname === 'riventia.margonem.pl') {
    const GUILD_ID = '1384811864235704372';
    const WORLD = 'riventia';
    const STORAGE_KEY = 'tc_online_panel_v2';
-   const REFRESH_MS = 5000;
+   // Co 10 s odświeżamy widok z pasywnie przechwyconych danych gry; bez PAGE._g('clan&a=members').
+   const REFRESH_MS = 10000;
 
    const defaults = {
      left: Math.max(10, window.innerWidth - 350),
@@ -6485,6 +6588,7 @@ if (location.hostname === 'riventia.margonem.pl') {
      openBtn.style.top = `${Math.max(0, Math.min(openTop, window.innerHeight - 35))}px`;
      content.style.display = settings.collapsed ? 'none' : 'flex';
      collapseBtn.textContent = settings.collapsed ? '+' : '−';
+     syncCrewRefreshTimer();
    };
 
    const saveGeometry = () => {
@@ -6609,23 +6713,24 @@ if (location.hostname === 'riventia.margonem.pl') {
      save();
    });
 
-   // Bezpieczny tryb pasywny: nie wysyłamy żądania clan&a=members
-   // i nigdy nie blokujemy natywnych handlerów gry. Dzięki temu ręczne
-   // otwieranie zakładki Klanowicze pozostaje dostępne.
+   // Pasywny odczyt listy klanu: nigdy nie wysyłamy automatycznie
+   // PAGE._g('clan&a=members') i nigdy nie pomijamy oryginalnego handlera gry.
    let cachedRawMembers = null;
    let cachedMembersAt = 0;
-   let pendingMembersRequest = null;
-   let membersDispatcherHooked = false;
+   let hookedDispatcher = null;
+   let wrappedMembersHandler = null;
    let lastRoster = [];
+   let onRosterCaptured = null;
    const playerDetailsCache = new Map();
-   const REQUEST_TIMEOUT_MS = 10000;
+   const LOOTLOG_DETAILS_CACHE_MS = 120000;
+   let lootlogDetailsAt = 0;
+   let lootlogDetailsPromise = null;
 
    const normalizeMembersPayload = (data) => {
      if (Array.isArray(data)) return data.length >= 11 ? data : null;
      if (!data || typeof data !== 'object') return null;
      if (Array.isArray(data.members)) return data.members.length >= 11 ? data.members : null;
 
-     // Odpowiedź obserwowana w grze: 2563 klucze numeryczne = 233 rekordy po 11 pól.
      const numericKeys = Object.keys(data).filter(key => /^(0|[1-9]\d*)$/.test(key));
      if (numericKeys.length < 11) return null;
      numericKeys.sort((a, b) => Number(a) - Number(b));
@@ -6635,28 +6740,26 @@ if (location.hostname === 'riventia.margonem.pl') {
 
    const installMembersHook = () => {
      const dispatcher = PAGE.Engine?.communication?.dispatcher;
-     if (membersDispatcherHooked || !dispatcher || typeof dispatcher.on_members !== 'function') return;
+     if (!dispatcher || typeof dispatcher.on_members !== 'function') return false;
+     if (dispatcher === hookedDispatcher && dispatcher.on_members === wrappedMembersHandler) return true;
 
      const originalOnMembers = dispatcher.on_members;
-     dispatcher.on_members = function(data, ...args) {
+     const wrappedOnMembers = function(data, ...args) {
        const members = normalizeMembersPayload(data);
        if (members) {
          cachedRawMembers = members;
          cachedMembersAt = Date.now();
-         if (pendingMembersRequest) {
-           const pending = pendingMembersRequest;
-           pendingMembersRequest = null;
-           clearTimeout(pending.timeout);
-           pending.resolve(members);
-           // Pomijamy handler UI tylko dla odpowiedzi naszego żądania,
-           // gdy okno klanu jest zamknięte.
-           if (!PAGE.Engine?.clan) return;
-         }
+         // Po zakończeniu natywnej obsługi odpowiedzi odśwież widok dodatku.
+         window.setTimeout(() => onRosterCaptured?.(), 50);
        }
-       return originalOnMembers.call(this, data, ...args);
+       // Zawsze przekazuj oryginalną odpowiedź bez zmian do gry.
+       return originalOnMembers.apply(this, [data, ...args]);
      };
 
-     membersDispatcherHooked = true;
+     dispatcher.on_members = wrappedOnMembers;
+     hookedDispatcher = dispatcher;
+     wrappedMembersHandler = wrappedOnMembers;
+     return true;
    };
 
    const readMembersFromOpenClan = () => {
@@ -6665,59 +6768,80 @@ if (location.hostname === 'riventia.margonem.pl') {
        if (!clan || typeof clan.getMemberList !== 'function') return null;
        const memberList = clan.getMemberList();
        if (!memberList || typeof memberList !== 'object') return null;
-       // getMemberList() is normally keyed by player ID; each value is an 11-field record.
        const records = Array.isArray(memberList) ? memberList : Object.values(memberList);
        const flattened = [];
        for (const record of records) {
          if (Array.isArray(record) && record.length >= 11) flattened.push(...record.slice(0, 11));
        }
        return flattened.length >= 11 ? flattened : null;
-     } catch (error) {
+     } catch {
        return null;
      }
    };
 
-   const requestMembers = () => new Promise((resolve, reject) => {
+   const requestMembers = async () => {
      installMembersHook();
      const liveRoster = readMembersFromOpenClan();
      if (liveRoster) {
        cachedRawMembers = liveRoster;
        cachedMembersAt = Date.now();
-       resolve(liveRoster);
-       return;
+       return liveRoster;
      }
-     if (Array.isArray(cachedRawMembers) && cachedRawMembers.length >= 11 &&
-         Date.now() - cachedMembersAt < 30000) {
-       resolve(cachedRawMembers);
-       return;
+     // Zwracamy ostatnią listę otrzymaną naturalnie przez grę, także gdy jest starsza.
+     // Nie generujemy dodatkowego ruchu w komunikacji gry, gdy cache nie istnieje.
+     if (Array.isArray(cachedRawMembers) && cachedRawMembers.length >= 11) {
+       return cachedRawMembers;
      }
-     if (pendingMembersRequest) {
-       reject(new Error('Oczekiwanie na listę członków już trwa.'));
-       return;
-     }
+     throw new Error('Brak zapisanej listy klanu. Otwórz w grze okno Klanowicze, aby pobrać ją bezpiecznie.');
+   };
 
-     const pending = { resolve, reject, timeout: null };
-     pendingMembersRequest = pending;
-     pending.timeout = window.setTimeout(() => {
-       if (pendingMembersRequest === pending) pendingMembersRequest = null;
-       reject(new Error('Serwer nie zwrócił listy. Jeśli automatyczne pobranie nie działa, otwórz Klanowicze ręcznie.'));
-     }, REQUEST_TIMEOUT_MS);
+   const loadLootlogPlayerDetails = async () => {
+     if (Date.now() - lootlogDetailsAt < LOOTLOG_DETAILS_CACHE_MS) return playerDetailsCache;
+     if (lootlogDetailsPromise) return lootlogDetailsPromise;
 
-     // Najpierw podpinamy przechwytywanie, dopiero potem wysyłamy żądanie.
-     try {
-       if (typeof PAGE._g === 'function') {
-         PAGE._g('clan&a=members');
-       } else {
-         clearTimeout(pending.timeout);
-         pendingMembersRequest = null;
-         reject(new Error('Nie znaleziono funkcji komunikacji gry.'));
+     const api = PAGE.lootlogGameClientApi;
+     if (!api?.ready || typeof api.getOnlinePlayers !== 'function') return playerDetailsCache;
+
+     lootlogDetailsPromise = (async () => {
+       try {
+         const result = await api.getOnlinePlayers({ guildId: GUILD_ID, world: WORLD });
+         if (result?.status === 'success' && result.players) {
+           for (const record of Object.values(result.players).flat()) {
+             const player = record?.player;
+             if (!player || record.status !== 'online' || player.world !== WORLD) continue;
+             const nick = String(player.name || '').trim().toLocaleLowerCase('pl');
+             if (!nick) continue;
+             const location = player.location || {};
+             const extra = {
+               level: player.lvl != null && player.lvl !== '' && Number.isFinite(Number(player.lvl)) ? Number(player.lvl) : null,
+               profession: player.prof || player.profession || '',
+               map: location.map || record.mapName || '',
+               x: location.x != null && location.x !== '' && Number.isFinite(Number(location.x)) ? Number(location.x) : null,
+               y: location.y != null && location.y !== '' && Number.isFinite(Number(location.y)) ? Number(location.y) : null,
+               afk: record.isAfk === true
+             };
+             const previous = playerDetailsCache.get(nick) || {};
+             playerDetailsCache.set(nick, {
+               level: extra.level ?? previous.level ?? null,
+               profession: extra.profession || previous.profession || '',
+               map: extra.map || previous.map || '',
+               x: extra.x ?? previous.x ?? null,
+               y: extra.y ?? previous.y ?? null,
+               afk: extra.afk || previous.afk === true
+             });
+           }
+         }
+       } catch (error) {
+         console.debug('[The Crew] Dodatkowe dane Lootloga niedostępne:', error);
+       } finally {
+         lootlogDetailsAt = Date.now();
+         lootlogDetailsPromise = null;
        }
-     } catch (error) {
-       clearTimeout(pending.timeout);
-       pendingMembersRequest = null;
-       reject(error);
-     }
-   });
+       return playerDetailsCache;
+     })();
+
+     return lootlogDetailsPromise;
+   };
 
    // Odpowiedź members to spłaszczona tablica rekordów po 11 pól:
    // id, nick, hp, maxhp, profesja, mapa, x, y, ranga, czas/status, grafika.
@@ -6757,50 +6881,8 @@ if (location.hostname === 'riventia.margonem.pl') {
      if (!roster.length) throw new Error('Lista członków nie zawiera rozpoznawalnych rekordów.');
      lastRoster = roster;
 
-     // Spróbuj pobrać dodatkowe dane z Lootloga, ale nie uzależniaj od niego listy.
-     const extrasByNick = new Map();
-     try {
-       const api = PAGE.lootlogGameClientApi;
-       if (api?.ready && typeof api.getOnlinePlayers === 'function') {
-         const result = await api.getOnlinePlayers({
-           guildId: GUILD_ID,
-           world: WORLD
-         });
-
-         if (result?.status === 'success' && result.players) {
-           for (const record of Object.values(result.players).flat()) {
-             const player = record?.player;
-             if (!player || record.status !== 'online' || player.world !== WORLD) continue;
-
-             const nick = String(player.name || '').trim().toLocaleLowerCase('pl');
-             if (!nick) continue;
-
-             const location = player.location || {};
-             const extra = {
-               level: player.lvl != null && player.lvl !== '' && Number.isFinite(Number(player.lvl)) ? Number(player.lvl) : null,
-               profession: player.prof || player.profession || '',
-               map: location.map || record.mapName || '',
-               x: location.x != null && location.x !== '' && Number.isFinite(Number(location.x)) ? Number(location.x) : null,
-               y: location.y != null && location.y !== '' && Number.isFinite(Number(location.y)) ? Number(location.y) : null,
-               afk: record.isAfk === true
-             };
-             const previous = playerDetailsCache.get(nick) || {};
-             const merged = {
-               level: extra.level ?? previous.level ?? null,
-               profession: extra.profession || previous.profession || '',
-               map: extra.map || previous.map || '',
-               x: extra.x ?? previous.x ?? null,
-               y: extra.y ?? previous.y ?? null,
-               afk: extra.afk || previous.afk === true
-             };
-             playerDetailsCache.set(nick, merged);
-             extrasByNick.set(nick, merged);
-           }
-         }
-       }
-     } catch (error) {
-       console.debug('[The Crew] Dodatkowe dane Lootloga niedostępne:', error);
-     }
+     // Szczegóły z Lootloga są pobierane najwyżej raz na 2 minuty i cache’owane.
+     const extrasByNick = await loadLootlogPlayerDetails();
 
      // Podświetlanie członków aktualnej drużyny.
      const partyMembers = PAGE.Engine?.party?.getMembers?.();
@@ -6949,14 +7031,32 @@ if (location.hostname === 'riventia.margonem.pl') {
    };
 
    let busy = false;
-   let refreshTimer;
+   let refreshTimer = null;
+
+   function isCrewRunnable() {
+     return window.__vicknessAddonEnabled?.crewOnline !== false &&
+       !settings.hidden && document.visibilityState !== 'hidden';
+   }
+
+   function syncCrewRefreshTimer() {
+     if (isCrewRunnable()) {
+       if (refreshTimer === null) {
+         void refresh();
+         refreshTimer = window.setInterval(() => { void refresh(); }, REFRESH_MS);
+       }
+     } else if (refreshTimer !== null) {
+       clearInterval(refreshTimer);
+       refreshTimer = null;
+     }
+   }
 
    const refresh = async () => {
-     if (busy) return;
+     if (busy || !isCrewRunnable()) return;
      busy = true;
 
      try {
        const players = await getPlayers();
+       if (!isCrewRunnable()) return;
 
        render(players);
 
@@ -6964,6 +7064,7 @@ if (location.hostname === 'riventia.margonem.pl') {
          `Online: ${players.length} · ` +
          `Aktualizacja: ${new Date().toLocaleTimeString('pl-PL')}`;
      } catch (error) {
+       if (!isCrewRunnable()) return;
        console.warn('[The Crew] Refresh error:', error);
 
        if (lastRoster.length) {
@@ -7032,15 +7133,20 @@ if (location.hostname === 'riventia.margonem.pl') {
      window.__vicknessCrewOnlineAction(pendingAction);
    }
 
-   applySettings();
-   refresh();
+   installMembersHook();
+   onRosterCaptured = () => {
+     if (isCrewRunnable()) void refresh();
+   };
 
-   refreshTimer = window.setInterval(refresh, REFRESH_MS);
+   applySettings();
+   document.addEventListener('visibilitychange', syncCrewRefreshTimer);
 
    window.addEventListener('pagehide', () => {
-     clearInterval(refreshTimer);
+     if (refreshTimer !== null) clearInterval(refreshTimer);
+     refreshTimer = null;
      clearTimeout(resizeTimer);
-   });
+     document.removeEventListener('visibilitychange', syncCrewRefreshTimer);
+   }, { once: true });
  })();
 
 }
@@ -7649,14 +7755,25 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
     processAlertQueue();
   }
+  function syncScanTimer() {
+    const shouldScan = running && document.visibilityState !== 'hidden';
+    if (!shouldScan) {
+      if (scanTimer) window.clearInterval(scanTimer);
+      scanTimer = null;
+      return;
+    }
+    if (scanTimer === null) {
+      scanPlayers();
+      scanTimer = window.setInterval(scanPlayers, 1000);
+    }
+  }
   function start() {
     if (running) return;
     running = true;
     settings.enabled = true;
     saveSettings();
     ensureAlertBox();
-    scanPlayers();
-    scanTimer = window.setInterval(scanPlayers, 700);
+    syncScanTimer();
     console.info('[Wróg na mapie] Uruchomiono wersję 2.7');
   }
   function stop() {
@@ -7684,12 +7801,13 @@ if (location.hostname === 'riventia.margonem.pl') {
     showAlert({ key: 'test', text: 'Test 0 lvl', distanceText: '12 kratek' });
   }
   window.__vicknessSetWnmEnabled = setEnabled;
+  document.addEventListener('visibilitychange', syncScanTimer);
   window.__vicknessWnmAPI = { playSound, testAlert, updateSettings: () => { settings = loadSettings(); if (currentAlert && alertBox) alertBox.style.color = settings.textColor; } };
   window.addEventListener('vickness-wnm-settings-change', () => {
     settings = loadSettings();
     if (currentAlert && alertBox) alertBox.style.color = settings.textColor;
   });
-  window.addEventListener('pagehide', () => { stop(); delete window.__vicknessSetWnmEnabled; delete window.__vicknessWnmAPI; }, { once: true });
+  window.addEventListener('pagehide', () => { stop(); document.removeEventListener('visibilitychange', syncScanTimer); delete window.__vicknessSetWnmEnabled; delete window.__vicknessWnmAPI; }, { once: true });
   setEnabled(window.__vicknessAddonEnabled?.wnm !== false);
 })();
 
