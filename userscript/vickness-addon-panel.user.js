@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.48
-// @description  Vickness Addons 1.1.48: dodano Wróg na mapie do panelu dodatków
+// @version      1.1.49
+// @description  Vickness Addons 1.1.49: aktualizacja Wróg na mapie 2.7, dodano piąty dźwięk alarmu
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2542,7 +2542,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.48 — Wróg na mapie zintegrowany z panelem
+// VICKNESS ADDON PANEL 1.1.49 — Wróg na mapie 2.7 zintegrowany z panelem
 // =============================================================
 (() => {
   'use strict';
@@ -3033,12 +3033,12 @@ if (location.hostname === 'riventia.margonem.pl') {
         <div class="vxLootlogInfo">Dodatek działa na stronach profilu Margonem (www.margonem.pl/profile/view,...). Sprawdza listy postaci online na znanych światach, pokazuje znalezioną postać i podświetla jej kartę na profilu. Wyszukiwanie odświeża się co 30 sekund. Przełącznik w kafelku włącza lub wyłącza dodatek także na profilach otwartych w innych kartach.</div>
       </div>
       <div id="vxSettingsWnm" class="vxSettingsSlot" hidden>
-        <div class="vxLootlogInfo">Wróg na mapie 2.6 wykrywa wrogów i graczy bez klanu w pobliżu na Riventii. Alarm pojawia się na środku ekranu, kolejkuje nowe wykrycia i znika po wybranym czasie. Kliknięcie alarmu zamyka go natychmiast.</div>
+        <div class="vxLootlogInfo">Wróg na mapie 2.7 wykrywa wrogów i graczy bez klanu w pobliżu na Riventii. Alarm pojawia się na środku ekranu, kolejkuje nowe wykrycia i znika po wybranym czasie. Dostępnych jest 5 dźwięków alarmu. Kliknięcie alarmu zamyka go natychmiast.</div>
         <div class="vxLootlogInfo" style="margin-top:8px">
           <label style="display:flex;align-items:center;gap:8px;margin:7px 0"><input id="vxWnmNoClan" type="checkbox"> Gracze bez klanu</label>
           <label style="display:flex;align-items:center;gap:8px;margin:7px 0"><input id="vxWnmEnemies" type="checkbox"> Wrogowie i wrogowie klanowi</label>
           <label style="display:block;margin:8px 0 4px">Dźwięk alarmu</label>
-          <select id="vxWnmSound" class="vxWnmControl"><option value="1">Dzwonek 1</option><option value="2">Dzwonek 2</option><option value="3">Dzwonek 3</option><option value="4">Dzwonek 4</option><option value="none">Bez dźwięku</option></select>
+          <select id="vxWnmSound" class="vxWnmControl"><option value="1">Dzwonek 1</option><option value="2">Dzwonek 2</option><option value="3">Dzwonek 3</option><option value="4">Dzwonek 4</option><option value="5">Dzwonek 5</option><option value="none">Bez dźwięku</option></select>
           <label style="display:block;margin:8px 0 4px">Kolor powiadomienia</label>
           <input id="vxWnmColor" class="vxWnmControl" type="color" style="height:34px;padding:3px">
           <label style="display:block;margin:8px 0 4px">Czas wyświetlania</label>
@@ -3051,7 +3051,8 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.48</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano „Wróg na mapie 2.6” do zakładki Dodatki. Alarm wykrywa wrogów i graczy bez klanu, ma ustawienia dźwięku, koloru, czasu powiadomienia oraz testy alarmu. Moduł działa wyłącznie na Riventii i nie tworzy drugiego panelu ustawień.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.49</span><span class="vxChangelogDate">bieżące wydanie</span><div>Zaktualizowano „Wróg na mapie” do wersji 2.7. Dodano piąty dźwięk alarmu, zachowano dotychczasowe ustawienia i test dźwięku w głównym panelu. Moduł nadal działa wyłącznie na Riventii.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.48</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Dodano „Wróg na mapie 2.6” do zakładki Dodatki. Alarm wykrywa wrogów i graczy bez klanu, ma ustawienia dźwięku, koloru, czasu powiadomienia oraz testy alarmu. Moduł działa wyłącznie na Riventii i nie tworzy drugiego panelu ustawień.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.47</span><span class="vxChangelogDate">bieżące wydanie</span><div>Wzmocniono izolację domen: dodatki gry działają tylko na Riventii, a na profilach Margonem ukrywane są również panele pozostawione przez starsze kopie skryptów. Wyszukiwarka profili obsługuje adresy z www i bez www.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.46</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Naprawiono zakres działania dodatków do Riventii, a wyszukiwarkę profili ograniczono do stron profili Margonem.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.45</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano dodatek „Postacie online na profilach” do zakładki Dodatki. Na profilach Margonem wyszukuje postacie konta na światach, pokazuje status online i podświetla znalezioną kartę; przełącznik panelu steruje dodatkiem również między kartami.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.44</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto opis o harmonogramie aktualizacji z GitHuba. Po kliknięciu „SPRAWDŹ PONOWNIE” status wyświetla „Sprawdzam aktualizację...”.</div></div>
@@ -3258,7 +3259,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.48';
+  const CURRENT_PANEL_VERSION = '1.1.49';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -3588,6 +3589,10 @@ if (location.hostname === 'riventia.margonem.pl') {
       window.dispatchEvent(new CustomEvent('vickness-wnm-settings-change'));
     };
     const wnmInitial = readWnmSettings();
+    if (!['1', '2', '3', '4', '5', 'none'].includes(String(wnmInitial.soundChoice))) {
+      wnmInitial.soundChoice = '1';
+      try { localStorage.setItem(WNM_STORAGE_KEY, JSON.stringify({ ...wnmInitial, enabled: !!enabled.wnm })); } catch (_) {}
+    }
     root.querySelector('#vxWnmNoClan').checked = !!wnmInitial.noClan;
     root.querySelector('#vxWnmEnemies').checked = !!wnmInitial.enemies;
     root.querySelector('#vxWnmSound').value = String(wnmInitial.soundChoice || '1');
@@ -7505,7 +7510,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 })();
 
 // =============================================================
-// WRÓG NA MAPIE 2.6 — moduł zintegrowany z panelem Vickness
+// WRÓG NA MAPIE 2.7 — moduł zintegrowany z panelem Vickness
 // Uruchamiany wyłącznie na riventia.margonem.pl; ustawienia w zakładce Dodatki.
 // =============================================================
 (() => {
@@ -7519,7 +7524,8 @@ if (location.hostname === 'riventia.margonem.pl') {
     '1': 'https://audio.jukehost.co.uk/01a18d43-edb0-7064-b23c-7f21fe743a9f',
     '2': 'https://audio.jukehost.co.uk/01a18d61-318b-70ab-bca5-4870dee36b96',
     '3': 'https://audio.jukehost.co.uk/01a18d61-3187-7016-8f92-a3b493ed7433',
-    '4': 'https://audio.jukehost.co.uk/01a18d61-318c-7311-812a-dde178534917'
+    '4': 'https://audio.jukehost.co.uk/01a18d61-318c-7311-812a-dde178534917',
+    '5': 'https://audio.jukehost.co.uk/zUxgyvfvc9K4AMGvcwSFor1r0EP8vgmU'
   };
   const DEFAULTS = { enabled: true, noClan: true, enemies: true, soundChoice: '1', textColor: '#ff3333', alertDuration: 5000 };
   let settings = loadSettings();
@@ -7555,7 +7561,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       if (audio) { audio.pause(); audio.currentTime = 0; }
       audio = new Audio(url);
       audio.volume = 1;
-      audio.play().catch(() => {});
+      audio.play().catch(error => { console.warn('[Wróg na mapie] Nie udało się odtworzyć dźwięku:', error); });
     } catch (error) { console.warn('[Wróg na mapie] Błąd dźwięku:', error); }
   }
   function getDistance(engine, other) {
@@ -7651,7 +7657,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     ensureAlertBox();
     scanPlayers();
     scanTimer = window.setInterval(scanPlayers, 700);
-    console.info('[Wróg na mapie] Uruchomiono wersję 2.6');
+    console.info('[Wróg na mapie] Uruchomiono wersję 2.7');
   }
   function stop() {
     if (!running) return;
