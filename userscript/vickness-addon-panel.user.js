@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.54
-// @description  Vickness Addons 1.1.54: usunięto aktualizator z panelu; aktualizacja przez Tampermonkey
+// @version      1.1.55
+// @description  Vickness Addons 1.1.55: szybsze, zdarzeniowe uruchamianie i odświeżanie przyciemnienia mapy
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2541,7 +2541,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.54 — bez aktualizatora w panelu
+// VICKNESS ADDON PANEL 1.1.55 — szybkie przyciemnienie mapy, bez aktualizatora w panelu
 // =============================================================
 (() => {
   'use strict';
@@ -2619,6 +2619,8 @@ if (location.hostname === 'riventia.margonem.pl') {
   let mapDimmerApplyQueued = false;
   let mapDimmerMonitorStarted = false;
   let mapDimmerResizeObserver = null;
+  let mapDimmerReadyTimer = null;
+  let mapDimmerMapCheckTimer = null;
 
   function getMapDimmerGameElements() {
     const canvas = document.querySelector('#GAME_CANVAS');
@@ -2728,29 +2730,65 @@ if (location.hostname === 'riventia.margonem.pl') {
     scheduleMapDimmerApply();
   }
 
+  function getReadyMapDimmerEngine() {
+    const engine = PAGE_WINDOW.Engine || window.Engine;
+    return engine?.canvasFilter && engine?.map ? engine : null;
+  }
+
+  function startMapDimmerMapChecks() {
+    if (mapDimmerMapCheckTimer) return;
+
+    // Sprawdzaj wyłącznie referencję silnika/mapy i identyfikator mapy.
+    // Wymiary canvasu obsługuje ResizeObserver, więc nie mierzymy DOM co 100 ms.
+    mapDimmerMapCheckTimer = setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      const engine = getReadyMapDimmerEngine();
+      if (!engine) return;
+
+      const map = engine.map;
+      let mapId = null;
+      try { mapId = map.getId?.() ?? map.d?.id ?? null; } catch (_) {}
+      const canvas = document.getElementById('GAME_CANVAS');
+
+      if (engine !== lastMapDimmerEngine || map !== lastMapDimmerMap ||
+          mapId !== lastMapDimmerMapId || canvas !== lastMapDimmerCanvas) {
+        if (canvas !== lastMapDimmerCanvas) watchMapDimmerGameSize();
+        else scheduleMapDimmerApply();
+      }
+    }, 100);
+  }
+
   function startMapDimmerMonitor() {
     if (mapDimmerMonitorStarted) return;
     mapDimmerMonitorStarted = true;
-    watchMapDimmerGameSize();
-    applyMapDimmer(true);
 
-    // Obserwuj wyłącznie wymiary canvasu; nie skanuj mutacji całego dokumentu.
+    // Reaguj od razu na zmianę rozmiaru, pełny ekran i powrót do karty.
     window.addEventListener('resize', watchMapDimmerGameSize, { passive: true });
     document.addEventListener('fullscreenchange', watchMapDimmerGameSize);
-    // Kontrola wykrywa zmianę mapy/canvasu, także gdy gra nie emituje zdarzenia.
-    setInterval(() => {
-      const engine = PAGE_WINDOW.Engine || window.Engine;
-      if (!engine?.canvasFilter || !engine?.map) return;
-      const dimensions = getMapDimmerDimensions();
-      const mapId = engine.map.getId?.() ?? engine.map.d?.id ?? null;
-      if (engine !== lastMapDimmerEngine || engine.map !== lastMapDimmerMap ||
-          mapId !== lastMapDimmerMapId || dimensions.canvas !== lastMapDimmerCanvas ||
-          dimensions.width !== lastMapDimmerWidth || dimensions.height !== lastMapDimmerHeight ||
-          dimensions.pixelWidth !== lastMapDimmerPixelWidth || dimensions.pixelHeight !== lastMapDimmerPixelHeight) {
-        if (dimensions.canvas !== lastMapDimmerCanvas) watchMapDimmerGameSize();
-        else scheduleMapDimmerApply();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'hidden') {
+        watchMapDimmerGameSize();
+        applyMapDimmer(true);
       }
-    }, 1000);
+    }, { passive: true });
+
+    // Najpierw próbuj natychmiast. Jeśli Engine jeszcze się ładuje,
+    // sprawdzaj gotowość co 50 ms i zakończ polling zaraz po starcie.
+    const tryInitialApply = () => {
+      const engine = getReadyMapDimmerEngine();
+      if (!engine) return false;
+      if (mapDimmerReadyTimer) {
+        clearInterval(mapDimmerReadyTimer);
+        mapDimmerReadyTimer = null;
+      }
+      watchMapDimmerGameSize();
+      applyMapDimmer(true);
+      startMapDimmerMapChecks();
+      return true;
+    };
+
+    if (tryInitialApply()) return;
+    mapDimmerReadyTimer = setInterval(tryInitialApply, 50);
   }
 
   // Zmiana rozmiaru okna skaluje proporcjonalnie tekst i odstępy wizualne;
@@ -3042,7 +3080,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.54</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto aktualizator z głównego panelu: brak automatycznego sprawdzania, przycisków aktualizacji i otwierania surowego pliku GitHub. Aktualizacje należy wykonywać przez Tampermonkey, który korzysta z tych samych metadanych userscriptu.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.55</span><span class="vxChangelogDate">bieżące wydanie</span><div>Przyspieszono automatyczne nakładanie przyciemnienia mapy: natychmiastowa próba przy starcie, oczekiwanie na silnik gry co 50 ms i wykrywanie zmiany mapy/canvasu co 100 ms. Kontrola wymiarów pozostaje oparta na ResizeObserver i zdarzeniach okna, bez kosztownego skanowania całego DOM.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.54</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto aktualizator z głównego panelu: brak automatycznego sprawdzania, przycisków aktualizacji i otwierania surowego pliku GitHub. Aktualizacje należy wykonywać przez Tampermonkey, który korzysta z tych samych metadanych userscriptu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.53</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono automatyczne Klanowicze online: lista jest pobierana z API klienta Lootlog co 10 sekund. Usunięto wywołanie PAGE._g(&quot;clan&amp;a=members&quot;), które otwierało listę klanu w interfejsie gry, oraz całkowicie usunięto przechwytywanie dispatcher.on_members. Przy błędzie API panel pokazuje ostatnią poprawną listę zamiast wywoływać komunikację gry. Belka Lootów pozostaje ustawiona na 10 minut.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.52</span><span class="vxChangelogDate">bieżące wydanie</span><div>Klanowicze online automatycznie pobierają listę klanu co 10 sekund bez otwierania zakładki klanu. Żądanie jest wykonywane dopiero po ustabilizowaniu obiektu postaci; w czasie zaniku/zmiany postaci jest wstrzymywane. Odpowiedź zawsze przechodzi przez oryginalny handler gry — dodatek nie pomija ani nie zastępuje jego działania. Zachowano Loot Bar co 10 minut, pamięć podręczną i dotychczasowe optymalizacje panelu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.51</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Optymalizacja całego panelu i dodatków: Loot Bar odświeża się co 10 minut (cache i ręczne odświeżanie pozostają), Klanowicze online odświeżają widok co 10 sekund na podstawie pasywnych danych gry bez automatycznych żądań clan&amp;a=members. Ograniczono zbędne pętle panelu i przyciemniania mapy; Titan Tracker pracuje co 2 s i całkowicie wstrzymuje timer po wyłączeniu lub ukryciu karty, a Procent łupu rzadziej wykonuje kontrolę zapasową. Wróg na mapie skanuje co 1 sekundę i wstrzymuje skanowanie w tle. Cięższe odświeżanie jest pomijane, gdy karta nie jest widoczna.</div></div>
