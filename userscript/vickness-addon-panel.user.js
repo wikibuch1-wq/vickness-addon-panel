@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.47
-// @description  Vickness Addons 1.1.47: dodatki gry tylko na Riventii, izolacja paneli na profilach Margonem
+// @version      1.1.48
+// @description  Vickness Addons 1.1.48: dodano Wróg na mapie do panelu dodatków
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -64,7 +64,7 @@
 
 // Stan dodatków gry istnieje wyłącznie na Riventii.
 if (location.hostname === 'riventia.margonem.pl') {
-    window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true };
+    window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true };
 }
 
 // Wszystkie moduły gry, panel oraz belki działają wyłącznie na Riventii.
@@ -2542,7 +2542,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.47 — izolacja dodatków na stronach profili
+// VICKNESS ADDON PANEL 1.1.48 — Wróg na mapie zintegrowany z panelem
 // =============================================================
 (() => {
   'use strict';
@@ -2566,12 +2566,14 @@ if (location.hostname === 'riventia.margonem.pl') {
     else if (typeof enabled.lootChance !== 'boolean') enabled.lootChance = true;
     if (typeof saved.crewOnline === 'boolean') enabled.crewOnline = saved.crewOnline;
     else if (typeof enabled.crewOnline !== 'boolean') enabled.crewOnline = true;
+    if (typeof saved.wnm === 'boolean') enabled.wnm = saved.wnm;
   } catch (_) { if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true; if (typeof enabled.titan !== 'boolean') enabled.titan = true; if (typeof enabled.crewOnline !== 'boolean') enabled.crewOnline = true; }
   if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true;
   if (typeof enabled.titan !== 'boolean') enabled.titan = true;
   if (typeof enabled.lootChance !== 'boolean') enabled.lootChance = true;
   if (typeof enabled.crewOnline !== 'boolean') enabled.crewOnline = true;
   if (typeof enabled.profileFinder !== 'boolean') enabled.profileFinder = true;
+  if (typeof enabled.wnm !== 'boolean') enabled.wnm = true;
   const PROFILE_FINDER_GM_KEY = 'vickness_profileFinderEnabled';
   try {
     const storedProfileFinder = GM_getValue(PROFILE_FINDER_GM_KEY, undefined);
@@ -2878,6 +2880,8 @@ if (location.hostname === 'riventia.margonem.pl') {
     #vxHomeView { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:minmax(70px,auto); align-content:start; align-items:stretch; gap:4px; padding:5px; flex:1 1 0%; height:0; min-height:0; max-height:none; overflow-y:auto; overflow-x:hidden; }
     #vxHomeView.vxNarrow { grid-template-columns:minmax(0,1fr); grid-auto-rows:minmax(68px,auto); }
     #vxHomeView, #vxSettingsView, #vxChangelogView, #vxAppearanceView { scrollbar-width:thin; scrollbar-color:rgba(201,162,39,.25) transparent; overscroll-behavior:contain; }
+    #vxSettingsWnm .vxWnmControl { width:100%; box-sizing:border-box; padding:6px 8px; border:1px solid var(--vx-accent-line); border-radius:5px; color:#f3e7c5; background:#171717; font:12px Arial,sans-serif; }
+    #vxSettingsWnm input[type="checkbox"] { accent-color:var(--vx-accent); }
     #vxHomeView::-webkit-scrollbar, #vxSettingsView::-webkit-scrollbar, #vxChangelogView::-webkit-scrollbar, #vxAppearanceView::-webkit-scrollbar { width:4px; }
     #vxHomeView::-webkit-scrollbar-track, #vxSettingsView::-webkit-scrollbar-track, #vxChangelogView::-webkit-scrollbar-track, #vxAppearanceView::-webkit-scrollbar-track { background:transparent; }
     #vxHomeView::-webkit-scrollbar-thumb, #vxSettingsView::-webkit-scrollbar-thumb, #vxChangelogView::-webkit-scrollbar-thumb, #vxAppearanceView::-webkit-scrollbar-thumb { background:rgba(201,162,39,.22); border-radius:8px; }
@@ -2991,6 +2995,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Procent łupu</span><span class="vxStandaloneDesc">Szansa według profesji i uprawnionych graczy</span><div class="vxStandaloneState" id="vxLootChanceState"></div><button type="button" class="vxOpenSettings" id="vxLootChanceOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxLootChanceSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">The Crew Online</span><span class="vxStandaloneDesc">Lista klanowiczów online z Lootloga</span><div class="vxStandaloneState" id="vxCrewOnlineState"></div><button type="button" class="vxOpenSettings" id="vxCrewOnlineOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxCrewOnlineSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Postacie online na profilach</span><span class="vxStandaloneDesc">Wyszukuje postacie konta na światach i podświetla znaleziony profil</span><div class="vxStandaloneState" id="vxProfileFinderState"></div><button type="button" class="vxOpenSettings" id="vxProfileFinderOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxProfileFinderSwitch" type="checkbox"><span></span></label></div>
+      <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Wróg na mapie</span><span class="vxStandaloneDesc">Alarm dźwiękowy o wrogach i graczach bez klanu</span><div class="vxStandaloneState" id="vxWnmState"></div><button type="button" class="vxOpenSettings" id="vxWnmOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxWnmSwitch" type="checkbox"><span></span></label></div>
     </div>
     <div id="vxSettingsView">
       <div id="vxSettingsToolbar"><button class="vxNavBtn" id="vxBackHome" type="button">← WSTECZ</button><span id="vxCurrentSetting">USTAWIENIA</span><button class="vxNavBtn" id="vxSwitchAddon" type="button">DRUGI DODATEK →</button></div>
@@ -3027,11 +3032,26 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div id="vxSettingsProfileFinder" class="vxSettingsSlot" hidden>
         <div class="vxLootlogInfo">Dodatek działa na stronach profilu Margonem (www.margonem.pl/profile/view,...). Sprawdza listy postaci online na znanych światach, pokazuje znalezioną postać i podświetla jej kartę na profilu. Wyszukiwanie odświeża się co 30 sekund. Przełącznik w kafelku włącza lub wyłącza dodatek także na profilach otwartych w innych kartach.</div>
       </div>
+      <div id="vxSettingsWnm" class="vxSettingsSlot" hidden>
+        <div class="vxLootlogInfo">Wróg na mapie 2.6 wykrywa wrogów i graczy bez klanu w pobliżu na Riventii. Alarm pojawia się na środku ekranu, kolejkuje nowe wykrycia i znika po wybranym czasie. Kliknięcie alarmu zamyka go natychmiast.</div>
+        <div class="vxLootlogInfo" style="margin-top:8px">
+          <label style="display:flex;align-items:center;gap:8px;margin:7px 0"><input id="vxWnmNoClan" type="checkbox"> Gracze bez klanu</label>
+          <label style="display:flex;align-items:center;gap:8px;margin:7px 0"><input id="vxWnmEnemies" type="checkbox"> Wrogowie i wrogowie klanowi</label>
+          <label style="display:block;margin:8px 0 4px">Dźwięk alarmu</label>
+          <select id="vxWnmSound" class="vxWnmControl"><option value="1">Dzwonek 1</option><option value="2">Dzwonek 2</option><option value="3">Dzwonek 3</option><option value="4">Dzwonek 4</option><option value="none">Bez dźwięku</option></select>
+          <label style="display:block;margin:8px 0 4px">Kolor powiadomienia</label>
+          <input id="vxWnmColor" class="vxWnmControl" type="color" style="height:34px;padding:3px">
+          <label style="display:block;margin:8px 0 4px">Czas wyświetlania</label>
+          <select id="vxWnmDuration" class="vxWnmControl"><option value="3000">3 sekundy</option><option value="5000">5 sekund</option><option value="8000">8 sekund</option><option value="12000">12 sekund</option></select>
+        </div>
+        <div class="vxLootlogActions"><button type="button" id="vxWnmTestSound">TESTUJ DŹWIĘK</button><button type="button" id="vxWnmTestAlert">TESTUJ POWIADOMIENIE</button></div>
+      </div>
     </div>
     <div id="vxChangelogView" class="vxExtraView">
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.48</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano „Wróg na mapie 2.6” do zakładki Dodatki. Alarm wykrywa wrogów i graczy bez klanu, ma ustawienia dźwięku, koloru, czasu powiadomienia oraz testy alarmu. Moduł działa wyłącznie na Riventii i nie tworzy drugiego panelu ustawień.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.47</span><span class="vxChangelogDate">bieżące wydanie</span><div>Wzmocniono izolację domen: dodatki gry działają tylko na Riventii, a na profilach Margonem ukrywane są również panele pozostawione przez starsze kopie skryptów. Wyszukiwarka profili obsługuje adresy z www i bez www.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.46</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Naprawiono zakres działania dodatków do Riventii, a wyszukiwarkę profili ograniczono do stron profili Margonem.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.45</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano dodatek „Postacie online na profilach” do zakładki Dodatki. Na profilach Margonem wyszukuje postacie konta na światach, pokazuje status online i podświetla znalezioną kartę; przełącznik panelu steruje dodatkiem również między kartami.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.44</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto opis o harmonogramie aktualizacji z GitHuba. Po kliknięciu „SPRAWDŹ PONOWNIE” status wyświetla „Sprawdzam aktualizację...”.</div></div>
@@ -3179,6 +3199,9 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxCrewOnlineSwitch').checked = !!enabled.crewOnline;
     root.querySelector('#vxProfileFinderSwitch').checked = !!enabled.profileFinder;
     root.querySelector('#vxProfileFinderState').textContent = enabled.profileFinder ? 'WŁĄCZONY' : 'WYŁĄCZONY';
+    root.querySelector('#vxWnmSwitch').checked = !!enabled.wnm;
+    root.querySelector('#vxWnmState').textContent = enabled.wnm ? 'WŁĄCZONY' : 'WYŁĄCZONY';
+    if (typeof window.__vicknessSetWnmEnabled === 'function') window.__vicknessSetWnmEnabled(!!enabled.wnm);
     root.querySelector('#vxTitanState').textContent = enabled.titan ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxLootChanceState').textContent = enabled.lootChance ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxCrewOnlineState').textContent = enabled.crewOnline ? 'WŁĄCZONY' : 'WYŁĄCZONY';
@@ -3206,7 +3229,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (tab === 'appearance') syncAppearanceControls();
   }
   function openSettings(which) {
-    if (!['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder'].includes(which)) which = 'dc';
+    if (!['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm'].includes(which)) which = 'dc';
     setActiveTab('addons');
     root.querySelector('#vxHomeView').style.display = 'none';
     root.querySelector('#vxChangelogView').style.display = 'none';
@@ -3223,10 +3246,11 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxSettingsLootChance').hidden = which !== 'lootChance';
     root.querySelector('#vxSettingsCrewOnline').hidden = which !== 'crewOnline';
     root.querySelector('#vxSettingsProfileFinder').hidden = which !== 'profileFinder';
-    root.querySelector('#vxCurrentSetting').textContent = which === 'loot' ? 'LOOT GLOW' : which === 'dc' ? 'DC WYKRYWACZ' : which === 'lootlog' ? 'BELKA LOOTÓW' : which === 'titan' ? 'TITAN TRACKER GOLD' : which === 'lootChance' ? 'PROCENT ŁUPU' : which === 'crewOnline' ? 'THE CREW ONLINE' : 'POSTACIE ONLINE NA PROFILACH';
-    const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder'];
+    root.querySelector('#vxSettingsWnm').hidden = which !== 'wnm';
+    root.querySelector('#vxCurrentSetting').textContent = which === 'loot' ? 'LOOT GLOW' : which === 'dc' ? 'DC WYKRYWACZ' : which === 'lootlog' ? 'BELKA LOOTÓW' : which === 'titan' ? 'TITAN TRACKER GOLD' : which === 'lootChance' ? 'PROCENT ŁUPU' : which === 'crewOnline' ? 'THE CREW ONLINE' : which === 'profileFinder' ? 'POSTACIE ONLINE NA PROFILACH' : 'WRÓG NA MAPIE';
+    const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm'];
     const next = order[(order.indexOf(which) + 1) % order.length];
-    root.querySelector('#vxSwitchAddon').textContent = next === 'loot' ? 'LOOT GLOW →' : next === 'dc' ? 'DC WYKRYWACZ →' : next === 'lootlog' ? 'BELKA LOOTÓW →' : next === 'titan' ? 'TITAN TRACKER →' : next === 'lootChance' ? 'PROCENT ŁUPU →' : next === 'crewOnline' ? 'THE CREW ONLINE →' : 'POSTACIE ONLINE →';
+    root.querySelector('#vxSwitchAddon').textContent = next === 'loot' ? 'LOOT GLOW →' : next === 'dc' ? 'DC WYKRYWACZ →' : next === 'lootlog' ? 'BELKA LOOTÓW →' : next === 'titan' ? 'TITAN TRACKER →' : next === 'lootChance' ? 'PROCENT ŁUPU →' : next === 'crewOnline' ? 'THE CREW ONLINE →' : next === 'profileFinder' ? 'POSTACIE ONLINE →' : 'WRÓG NA MAPIE →';
     applyToggles();
     setTimeout(dockWidgets, 100);
     setTimeout(dockWidgets, 600);
@@ -3234,7 +3258,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.47';
+  const CURRENT_PANEL_VERSION = '1.1.48';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -3548,6 +3572,35 @@ if (location.hostname === 'riventia.margonem.pl') {
       activeView.scrollTop += event.deltaY;
     }, { passive: false });
 
+
+    // Ustawienia Wróg na mapie są przechowywane we wspólnym localStorage dodatku.
+    const WNM_STORAGE_KEY = 'wnm_settings_v25';
+    const readWnmSettings = () => {
+      const defaults = { enabled: true, noClan: true, enemies: true, soundChoice: '1', textColor: '#ff3333', alertDuration: 5000 };
+      try { return { ...defaults, ...JSON.parse(localStorage.getItem(WNM_STORAGE_KEY) || '{}') }; }
+      catch (_) { return defaults; }
+    };
+    const writeWnmSetting = (key, value) => {
+      const settings = readWnmSettings();
+      settings[key] = value;
+      settings.enabled = !!enabled.wnm;
+      try { localStorage.setItem(WNM_STORAGE_KEY, JSON.stringify(settings)); } catch (_) {}
+      window.dispatchEvent(new CustomEvent('vickness-wnm-settings-change'));
+    };
+    const wnmInitial = readWnmSettings();
+    root.querySelector('#vxWnmNoClan').checked = !!wnmInitial.noClan;
+    root.querySelector('#vxWnmEnemies').checked = !!wnmInitial.enemies;
+    root.querySelector('#vxWnmSound').value = String(wnmInitial.soundChoice || '1');
+    root.querySelector('#vxWnmColor').value = /^#[0-9a-f]{6}$/i.test(wnmInitial.textColor) ? wnmInitial.textColor : '#ff3333';
+    root.querySelector('#vxWnmDuration').value = String(wnmInitial.alertDuration || 5000);
+    root.querySelector('#vxWnmNoClan').addEventListener('change', e => writeWnmSetting('noClan', e.target.checked));
+    root.querySelector('#vxWnmEnemies').addEventListener('change', e => writeWnmSetting('enemies', e.target.checked));
+    root.querySelector('#vxWnmSound').addEventListener('change', e => writeWnmSetting('soundChoice', e.target.value));
+    root.querySelector('#vxWnmColor').addEventListener('input', e => writeWnmSetting('textColor', e.target.value));
+    root.querySelector('#vxWnmDuration').addEventListener('change', e => writeWnmSetting('alertDuration', Number(e.target.value)));
+    root.querySelector('#vxWnmTestSound').addEventListener('click', () => window.__vicknessWnmAPI?.playSound());
+    root.querySelector('#vxWnmTestAlert').addEventListener('click', () => window.__vicknessWnmAPI?.testAlert());
+
     root.querySelector('#vxLootSwitch').addEventListener('change', e => { enabled.loot = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxDcSwitch').addEventListener('change', e => { enabled.dc = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxLootlogSwitch').addEventListener('change', e => {
@@ -3558,6 +3611,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxLootChanceSwitch').addEventListener('change', e => { enabled.lootChance = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxCrewOnlineSwitch').addEventListener('change', e => { enabled.crewOnline = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxProfileFinderSwitch').addEventListener('change', e => { enabled.profileFinder = e.target.checked; saveFlags(); saveProfileFinderFlag(); applyToggles(); });
+    root.querySelector('#vxWnmSwitch').addEventListener('change', e => { enabled.wnm = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxLootOpen').addEventListener('click', () => openSettings('loot'));
     root.querySelector('#vxDcOpen').addEventListener('click', () => {
       if (dcWindowDetached) openDCWindow();
@@ -3569,6 +3623,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxLootChanceOpen').addEventListener('click', () => openSettings('lootChance'));
     root.querySelector('#vxCrewOnlineOpen').addEventListener('click', () => openSettings('crewOnline'));
     root.querySelector('#vxProfileFinderOpen').addEventListener('click', () => openSettings('profileFinder'));
+    root.querySelector('#vxWnmOpen').addEventListener('click', () => openSettings('wnm'));
     root.querySelector('#vxTitanShow').addEventListener('click', () => { enabled.titan = true; saveFlags(); applyToggles(); const p = getPanel('rtt-panel'); if (p) p.style.setProperty('display', 'block', 'important'); });
     root.querySelector('#vxTitanDiscord').addEventListener('click', () => { enabled.titan = true; saveFlags(); applyToggles(); const p = getPanel('rtt-panel'); if (p) p.style.setProperty('display', 'block', 'important'); const settings = getPanel('rtt-settings-panel'); if (settings && settings.style.display === 'none') getPanel('rtt-settings')?.click(); });
     const crewAction = action => { if (typeof window.__vicknessCrewOnlineAction === 'function') window.__vicknessCrewOnlineAction(action); else window.__vicknessPendingCrewOnlineAction = action; };
@@ -3597,8 +3652,8 @@ if (location.hostname === 'riventia.margonem.pl') {
     });
     root.querySelector('#vxLayoutReset').addEventListener('click', resetPanelLayout);
     root.querySelector('#vxSwitchAddon').addEventListener('click', () => {
-      const current = !root.querySelector('#vxSettingsLoot').hidden ? 'loot' : !root.querySelector('#vxSettingsDc').hidden ? 'dc' : !root.querySelector('#vxSettingsLootlog').hidden ? 'lootlog' : !root.querySelector('#vxSettingsTitan').hidden ? 'titan' : !root.querySelector('#vxSettingsLootChance').hidden ? 'lootChance' : !root.querySelector('#vxSettingsCrewOnline').hidden ? 'crewOnline' : 'profileFinder';
-      const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder'];
+      const current = !root.querySelector('#vxSettingsLoot').hidden ? 'loot' : !root.querySelector('#vxSettingsDc').hidden ? 'dc' : !root.querySelector('#vxSettingsLootlog').hidden ? 'lootlog' : !root.querySelector('#vxSettingsTitan').hidden ? 'titan' : !root.querySelector('#vxSettingsLootChance').hidden ? 'lootChance' : !root.querySelector('#vxSettingsCrewOnline').hidden ? 'crewOnline' : !root.querySelector('#vxSettingsProfileFinder').hidden ? 'profileFinder' : 'wnm';
+      const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm'];
       openSettings(order[(order.indexOf(current) + 1) % order.length]);
     });
     root.querySelector('#vxLootlogRefresh').addEventListener('click', () => getPanel('vickness-lootbar')?.querySelector('.vl-refresh')?.click());
@@ -3643,7 +3698,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     // Zachowaj dotychczasową nawigację ustawień, ale nie używaj jej przy samym wykryciu.
     window.__vicknessOpenAddonSettings = function(which) {
       restore();
-      openSettings(['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder'].includes(which) ? which : 'dc');
+      openSettings(['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm'].includes(which) ? which : 'dc');
     };
 
     // Obsłuż wykrycie, które nastąpiło przed uruchomieniem menedżera Vickness.
@@ -7448,3 +7503,187 @@ if (location.hostname === 'riventia.margonem.pl') {
   
   }
 })();
+
+// =============================================================
+// WRÓG NA MAPIE 2.6 — moduł zintegrowany z panelem Vickness
+// Uruchamiany wyłącznie na riventia.margonem.pl; ustawienia w zakładce Dodatki.
+// =============================================================
+(() => {
+  'use strict';
+  if (location.hostname !== 'riventia.margonem.pl' || window.top !== window.self) return;
+  if (window.__vicknessWnmModuleStarted) return;
+  window.__vicknessWnmModuleStarted = true;
+
+  const STORAGE_KEY = 'wnm_settings_v25';
+  const SOUND_LIST = {
+    '1': 'https://audio.jukehost.co.uk/01a18d43-edb0-7064-b23c-7f21fe743a9f',
+    '2': 'https://audio.jukehost.co.uk/01a18d61-318b-70ab-bca5-4870dee36b96',
+    '3': 'https://audio.jukehost.co.uk/01a18d61-3187-7016-8f92-a3b493ed7433',
+    '4': 'https://audio.jukehost.co.uk/01a18d61-318c-7311-812a-dde178534917'
+  };
+  const DEFAULTS = { enabled: true, noClan: true, enemies: true, soundChoice: '1', textColor: '#ff3333', alertDuration: 5000 };
+  let settings = loadSettings();
+  let audio = null;
+  let scanTimer = null;
+  let alertTimer = null;
+  let currentMap = null;
+  let currentAlert = null;
+  let alertQueue = [];
+  let alerted = new Set();
+  let alertBox = null;
+  let running = false;
+
+  function loadSettings() {
+    try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') }; }
+    catch (_) { return { ...DEFAULTS }; }
+  }
+  function saveSettings() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch (_) {}
+  }
+  function getEngine() {
+    try { return typeof window.getEngine === 'function' ? window.getEngine() : window.Engine || null; }
+    catch (_) { return null; }
+  }
+  function getMapId(engine) {
+    try { return String(engine?.map?.d?.id ?? engine?.map?.d?.name ?? engine?.map?.id ?? 'unknown'); }
+    catch (_) { return 'unknown'; }
+  }
+  function playSound() {
+    const url = SOUND_LIST[settings.soundChoice];
+    if (!url) return;
+    try {
+      if (audio) { audio.pause(); audio.currentTime = 0; }
+      audio = new Audio(url);
+      audio.volume = 1;
+      audio.play().catch(() => {});
+    } catch (error) { console.warn('[Wróg na mapie] Błąd dźwięku:', error); }
+  }
+  function getDistance(engine, other) {
+    try {
+      const hero = engine?.hero?.d, target = other?.d;
+      if (!hero || !target) return null;
+      const dx = Number(hero.x) - Number(target.x), dy = Number(hero.y) - Number(target.y);
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) return null;
+      return Math.round(Math.sqrt(dx * dx + dy * dy));
+    } catch (_) { return null; }
+  }
+  function getPlayerList(engine) {
+    try {
+      const list = engine?.whoIsHere?.getList?.();
+      return !list ? [] : Array.isArray(list) ? list : Object.values(list);
+    } catch (_) { return []; }
+  }
+  function isEnemy(player) { return player?.relation === 'enemy' || player?.relation === 'clan-enemy'; }
+  function shouldAlert(player, other) {
+    if (!settings.enabled) return false;
+    return (settings.noClan && !other?.d?.clan) || (settings.enemies && isEnemy(player));
+  }
+  function getAlertKey(player) { return String(player?.id ?? player?.nick ?? 'unknown'); }
+  function makeAlert(player, other, engine) {
+    const distance = getDistance(engine, other);
+    return { key: getAlertKey(player), text: `${String(player?.nick || 'Nieznany')} ${player?.lvl ?? '?'}m`, distanceText: distance === null ? 'Odległość nieznana' : `${distance} kratek` };
+  }
+  function ensureAlertBox() {
+    if (alertBox?.isConnected) return;
+    alertBox = document.createElement('div');
+    alertBox.id = 'wnm-alert';
+    Object.assign(alertBox.style, {
+      position: 'fixed', top: '45%', left: '50%', transform: 'translate(-50%, -50%)',
+      zIndex: '999999', display: 'none', textAlign: 'center', fontFamily: 'Arial,sans-serif',
+      fontSize: '25px', fontWeight: 'bold', lineHeight: '1.5',
+      textShadow: '2px 2px 4px #000,-1px -1px 2px #000', cursor: 'pointer',
+      userSelect: 'none', whiteSpace: 'nowrap', pointerEvents: 'auto'
+    });
+    alertBox.addEventListener('click', () => { hideAlert(); processAlertQueue(); });
+    (document.body || document.documentElement).appendChild(alertBox);
+  }
+  function hideAlert() {
+    clearTimeout(alertTimer);
+    alertTimer = null;
+    currentAlert = null;
+    if (alertBox) alertBox.style.display = 'none';
+  }
+  function showAlert(data) {
+    ensureAlertBox();
+    currentAlert = data;
+    alertBox.replaceChildren();
+    const name = document.createElement('div');
+    name.className = 'wnm-alert-name';
+    name.textContent = data.text;
+    const distance = document.createElement('div');
+    distance.className = 'wnm-alert-distance';
+    distance.textContent = data.distanceText;
+    distance.style.fontSize = '19px';
+    alertBox.append(name, distance);
+    alertBox.style.color = settings.textColor;
+    alertBox.style.display = 'block';
+    playSound();
+    clearTimeout(alertTimer);
+    alertTimer = setTimeout(() => { hideAlert(); processAlertQueue(); }, Math.max(1000, Number(settings.alertDuration) || 5000));
+  }
+  function processAlertQueue() {
+    if (currentAlert || !alertQueue.length || !running) return;
+    showAlert(alertQueue.shift());
+  }
+  function scanPlayers() {
+    const engine = getEngine();
+    if (!engine?.whoIsHere || !engine?.others) return;
+    const mapId = getMapId(engine);
+    if (currentMap === null) currentMap = mapId;
+    else if (currentMap !== mapId) { currentMap = mapId; alerted.clear(); alertQueue = []; hideAlert(); }
+    for (const player of getPlayerList(engine)) {
+      if (!player || player.id === undefined) continue;
+      let other;
+      try { other = engine.others.getById(Number(player.id)); } catch (_) { continue; }
+      if (!other || !shouldAlert(player, other)) continue;
+      const key = getAlertKey(player);
+      if (alerted.has(key)) continue;
+      alerted.add(key);
+      alertQueue.push(makeAlert(player, other, engine));
+    }
+    processAlertQueue();
+  }
+  function start() {
+    if (running) return;
+    running = true;
+    settings.enabled = true;
+    saveSettings();
+    ensureAlertBox();
+    scanPlayers();
+    scanTimer = window.setInterval(scanPlayers, 700);
+    console.info('[Wróg na mapie] Uruchomiono wersję 2.6');
+  }
+  function stop() {
+    if (!running) return;
+    running = false;
+    if (scanTimer) window.clearInterval(scanTimer);
+    scanTimer = null;
+    alertQueue = [];
+    alerted.clear();
+    hideAlert();
+    if (alertBox) { alertBox.remove(); alertBox = null; }
+    if (audio) { try { audio.pause(); audio.currentTime = 0; } catch (_) {} }
+    settings.enabled = false;
+    saveSettings();
+  }
+  function setEnabled(value) {
+    const shouldRun = !!value;
+    if (shouldRun === running) return;
+    if (shouldRun) start(); else stop();
+  }
+  function testAlert() {
+    if (!running) return;
+    alertQueue = [];
+    hideAlert();
+    showAlert({ key: 'test', text: 'Test 0 lvl', distanceText: '12 kratek' });
+  }
+  window.__vicknessSetWnmEnabled = setEnabled;
+  window.__vicknessWnmAPI = { playSound, testAlert, updateSettings: () => { settings = loadSettings(); if (currentAlert && alertBox) alertBox.style.color = settings.textColor; } };
+  window.addEventListener('vickness-wnm-settings-change', () => {
+    settings = loadSettings();
+    if (currentAlert && alertBox) alertBox.style.color = settings.textColor;
+  });
+  window.addEventListener('pagehide', () => { stop(); delete window.__vicknessSetWnmEnabled; delete window.__vicknessWnmAPI; }, { once: true });
+  setEnabled(window.__vicknessAddonEnabled?.wnm !== false);
+})();
+
