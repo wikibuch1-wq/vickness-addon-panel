@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.55
-// @description  Vickness Addons 1.1.55: szybsze, zdarzeniowe uruchamianie i odświeżanie przyciemnienia mapy
+// @version      1.1.57
+// @description  Vickness Addons 1.1.57: instrukcja aktualizacji przez Tampermonkey
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2541,7 +2541,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.55 — szybkie przyciemnienie mapy, bez aktualizatora w panelu
+// VICKNESS ADDON PANEL 1.1.57 — instrukcja aktualizacji przez Tampermonkey
 // =============================================================
 (() => {
   'use strict';
@@ -2739,7 +2739,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (mapDimmerMapCheckTimer) return;
 
     // Sprawdzaj wyłącznie referencję silnika/mapy i identyfikator mapy.
-    // Wymiary canvasu obsługuje ResizeObserver, więc nie mierzymy DOM co 100 ms.
+    // Wymiary canvasu obsługuje ResizeObserver; lekki test zmiany mapy działa co 50 ms.
     mapDimmerMapCheckTimer = setInterval(() => {
       if (document.visibilityState === 'hidden') return;
       const engine = getReadyMapDimmerEngine();
@@ -2755,7 +2755,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         if (canvas !== lastMapDimmerCanvas) watchMapDimmerGameSize();
         else scheduleMapDimmerApply();
       }
-    }, 100);
+    }, 50);
   }
 
   function startMapDimmerMonitor() {
@@ -2864,6 +2864,9 @@ if (location.hostname === 'riventia.margonem.pl') {
     .vxExtraView { display:none; flex:1 1 0%; flex-direction:column; gap:8px; min-width:0; min-height:0; padding:9px; overflow:auto; background:rgba(8,8,8,.24); }
     .vxPageCard { border:1px solid rgba(95,75,32,.68); border-radius:5px; padding:10px; background:rgba(20,20,20,.48); color:#c8c3b5; line-height:1.45; }
     .vxPageTitle { display:block; margin-bottom:6px; color:var(--vx-accent); font-weight:bold; }
+    .vxUpdateSteps { margin:7px 0 8px 18px; padding:0; color:#c8c3b5; font-size:11px; line-height:1.5; }
+    .vxUpdateSteps li { margin:4px 0; padding-left:2px; }
+    .vxUpdateSteps strong { color:#e7d6ad; }
     #vxMapDimmerCard { padding:8px 9px; border-color:var(--vx-accent-line); }
     #vxMapDimmerCard .vxAppearanceControl { margin:6px 0; }
     #vxMapDimmerCard .vxPageNote { line-height:1.35; }
@@ -3080,7 +3083,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.55</span><span class="vxChangelogDate">bieżące wydanie</span><div>Przyspieszono automatyczne nakładanie przyciemnienia mapy: natychmiastowa próba przy starcie, oczekiwanie na silnik gry co 50 ms i wykrywanie zmiany mapy/canvasu co 100 ms. Kontrola wymiarów pozostaje oparta na ResizeObserver i zdarzeniach okna, bez kosztownego skanowania całego DOM.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.54</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto aktualizator z głównego panelu: brak automatycznego sprawdzania, przycisków aktualizacji i otwierania surowego pliku GitHub. Aktualizacje należy wykonywać przez Tampermonkey, który korzysta z tych samych metadanych userscriptu.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.57</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano czytelną instrukcję aktualizacji istniejącej instalacji Vickness Addons przez Tampermonkey na dole zakładki Dziennik zmian. Nie dodano instalatora ani aktualizatora do panelu.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.56</span><span class="vxChangelogDate">bieżące wydanie</span><div>Przyspieszono wykrywanie zmiany mapy/canvasu z 100 ms do 50 ms. Kontrola gotowości silnika również pozostaje ustawiona na 50 ms; rozmiar canvasu nadal obsługuje ResizeObserver, bez skanowania całego DOM.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.55</span><span class="vxChangelogDate">bieżące wydanie</span><div>Przyspieszono automatyczne nakładanie przyciemnienia mapy: natychmiastowa próba przy starcie, oczekiwanie na silnik gry co 50 ms i wykrywanie zmiany mapy/canvasu co 100 ms. Kontrola wymiarów pozostaje oparta na ResizeObserver i zdarzeniach okna, bez kosztownego skanowania całego DOM.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.54</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto aktualizator z głównego panelu: brak automatycznego sprawdzania, przycisków aktualizacji i otwierania surowego pliku GitHub. Aktualizacje należy wykonywać przez Tampermonkey, który korzysta z tych samych metadanych userscriptu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.53</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono automatyczne Klanowicze online: lista jest pobierana z API klienta Lootlog co 10 sekund. Usunięto wywołanie PAGE._g(&quot;clan&amp;a=members&quot;), które otwierało listę klanu w interfejsie gry, oraz całkowicie usunięto przechwytywanie dispatcher.on_members. Przy błędzie API panel pokazuje ostatnią poprawną listę zamiast wywoływać komunikację gry. Belka Lootów pozostaje ustawiona na 10 minut.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.52</span><span class="vxChangelogDate">bieżące wydanie</span><div>Klanowicze online automatycznie pobierają listę klanu co 10 sekund bez otwierania zakładki klanu. Żądanie jest wykonywane dopiero po ustabilizowaniu obiektu postaci; w czasie zaniku/zmiany postaci jest wstrzymywane. Odpowiedź zawsze przechodzi przez oryginalny handler gry — dodatek nie pomija ani nie zastępuje jego działania. Zachowano Loot Bar co 10 minut, pamięć podręczną i dotychczasowe optymalizacje panelu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.51</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Optymalizacja całego panelu i dodatków: Loot Bar odświeża się co 10 minut (cache i ręczne odświeżanie pozostają), Klanowicze online odświeżają widok co 10 sekund na podstawie pasywnych danych gry bez automatycznych żądań clan&amp;a=members. Ograniczono zbędne pętle panelu i przyciemniania mapy; Titan Tracker pracuje co 2 s i całkowicie wstrzymuje timer po wyłączeniu lub ukryciu karty, a Procent łupu rzadziej wykonuje kontrolę zapasową. Wróg na mapie skanuje co 1 sekundę i wstrzymuje skanowanie w tle. Cięższe odświeżanie jest pomijane, gdy karta nie jest widoczna.</div></div>
@@ -3113,7 +3116,18 @@ if (location.hostname === 'riventia.margonem.pl') {
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.23</span><div>Zmiana rozmiaru głównego panelu z proporcjonalnym skalowaniem czcionek i zapamiętywaniem pozycji.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.20</span><div>Poprawki odczytu API Lootloga i integracja Procentu łupu 5.11.0 oraz The Crew Online.</div></div>
       </div>
-      <div class="vxPageCard"><span class="vxPageTitle">Aktualizacje skryptu</span><div class="vxPageNote">Aktualizacje wykonuj z poziomu Tampermonkey. Panel Vickness nie otwiera instalatora ani surowego pliku GitHub, dzięki czemu nie uruchamia instalacji kolejnej kopii skryptu.</div></div>
+      <div class="vxPageCard" id="vxTampermonkeyHelp">
+        <span class="vxPageTitle">Jak aktualizować Vickness Addons przez Tampermonkey?</span>
+        <div class="vxPageNote">Aktualizuj już zainstalowaną pozycję Vickness Addons — nie instaluj pliku ponownie jako nowego skryptu.</div>
+        <ol class="vxUpdateSteps">
+          <li>Kliknij ikonę <strong>Tampermonkey</strong> obok paska adresu przeglądarki.</li>
+          <li>Wybierz <strong>„Sprawdź aktualizacje skryptów”</strong> (ang. <strong>Check for userscript updates</strong>).</li>
+          <li>Poczekaj na zakończenie sprawdzania. Tampermonkey pobierze nowszą wersję dla istniejącego skryptu, jeżeli jest dostępna.</li>
+          <li>Wróć do Riventii i odśwież kartę gry, najlepiej skrótem <strong>Ctrl + F5</strong>.</li>
+        </ol>
+        <div class="vxPageNote"><strong>Gdy aktualizacja nie pojawia się:</strong> otwórz Kokpit (Dashboard) Tampermonkey, znajdź istniejący wpis <strong>Vickness Addons</strong> i kliknij datę w kolumnie „Ostatnia aktualizacja” (Last updated), aby ponowić sprawdzenie.</div>
+        <div class="vxPageNote" style="margin-top:7px;color:#d8bd78"><strong>Ważne:</strong> nie klikaj ponownie linku instalacyjnego ani nie wybieraj „Utwórz nowy skrypt” / „Create a new script”. Może to dodać drugą kopię zamiast zaktualizować obecną. Jeśli widzisz kilka wpisów Vickness Addons, pozostaw jedną aktywną kopię.</div>
+      </div>
     </div>
     <div id="vxAppearanceView" class="vxExtraView">
       <div class="vxPageCard" id="vxMapDimmerCard">
