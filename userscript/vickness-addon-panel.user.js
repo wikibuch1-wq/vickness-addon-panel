@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.51
-// @description  Vickness Addons 1.1.51: płynniejsza praca dodatków, Loot Bar co 10 min i Klanowicze co 10 s
+// @version      1.1.52
+// @description  Vickness Addons 1.1.52: automatyczni Klanowicze co 10 s bez blokowania handlera gry; bezpieczne odświeżanie i ochrona podczas przeładowania postaci
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2542,7 +2542,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.51 — optymalizacja całego panelu i dodatków
+// VICKNESS ADDON PANEL 1.1.52 — automatyczne Klanowicze co 10 s z zachowaniem handlera gry
 // =============================================================
 (() => {
   'use strict';
@@ -3024,7 +3024,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         </div>
       </div>
       <div id="vxSettingsCrewOnline" class="vxSettingsSlot" hidden>
-        <div class="vxLootlogInfo">The Crew Online pobiera listę pasywnie z odpowiedzi gry (bez automatycznego żądania clan&amp;a=members), a szczegóły Lootloga cache’uje przez 2 minuty. Odświeżanie widoku co 10 sekund; panel pozostaje osobnym oknem na ekranie gry.</div>
+        <div class="vxLootlogInfo">The Crew Online automatycznie pobiera listę klanu co 10 sekund, bez otwierania zakładki Klanowicze. W czasie przełączania postaci wstrzymuje żądania, a odpowiedź zawsze obsługuje oryginalny handler gry. Szczegóły Lootloga cache’uje przez 2 minuty; panel pozostaje osobnym oknem na ekranie gry.</div>
         <div class="vxLootlogActions">
           <button type="button" id="vxCrewOnlineShow">POKAŻ PANEL</button>
           <button type="button" id="vxCrewOnlineRefresh">ODŚWIEŻ LISTĘ</button>
@@ -3053,7 +3053,8 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.51</span><span class="vxChangelogDate">bieżące wydanie</span><div>Optymalizacja całego panelu i dodatków: Loot Bar odświeża się co 10 minut (cache i ręczne odświeżanie pozostają), Klanowicze online odświeżają widok co 10 sekund na podstawie pasywnych danych gry bez automatycznych żądań clan&amp;a=members. Ograniczono zbędne pętle panelu i przyciemniania mapy; Titan Tracker pracuje co 2 s i całkowicie wstrzymuje timer po wyłączeniu lub ukryciu karty, a Procent łupu rzadziej wykonuje kontrolę zapasową. Wróg na mapie skanuje co 1 sekundę i wstrzymuje skanowanie w tle. Cięższe odświeżanie jest pomijane, gdy karta nie jest widoczna.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.52</span><span class="vxChangelogDate">bieżące wydanie</span><div>Klanowicze online automatycznie pobierają listę klanu co 10 sekund bez otwierania zakładki klanu. Żądanie jest wykonywane dopiero po ustabilizowaniu obiektu postaci; w czasie zaniku/zmiany postaci jest wstrzymywane. Odpowiedź zawsze przechodzi przez oryginalny handler gry — dodatek nie pomija ani nie zastępuje jego działania. Zachowano Loot Bar co 10 minut, pamięć podręczną i dotychczasowe optymalizacje panelu.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.51</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Optymalizacja całego panelu i dodatków: Loot Bar odświeża się co 10 minut (cache i ręczne odświeżanie pozostają), Klanowicze online odświeżają widok co 10 sekund na podstawie pasywnych danych gry bez automatycznych żądań clan&amp;a=members. Ograniczono zbędne pętle panelu i przyciemniania mapy; Titan Tracker pracuje co 2 s i całkowicie wstrzymuje timer po wyłączeniu lub ukryciu karty, a Procent łupu rzadziej wykonuje kontrolę zapasową. Wróg na mapie skanuje co 1 sekundę i wstrzymuje skanowanie w tle. Cięższe odświeżanie jest pomijane, gdy karta nie jest widoczna.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.50</span><span class="vxChangelogDate">bieżące wydanie</span><div>Optymalizacja Loot Bar i The Crew Online pod kątem bezpiecznego przelogowywania: The Crew nie wysyła już automatycznie clan&amp;a=members i nie blokuje natywnego handlera gry; listę klanu odczytuje pasywnie. Odświeżanie Klanowiczów ograniczono do 30 s, dane uzupełniające Lootloga są cache’owane przez 2 minuty. Loot Bar odświeża się co 5 minut i wstrzymuje zapytania, gdy dodatek jest wyłączony lub karta działa w tle.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.49</span><span class="vxChangelogDate">bieżące wydanie</span><div>Zaktualizowano „Wróg na mapie” do wersji 2.7. Dodano piąty dźwięk alarmu, zachowano dotychczasowe ustawienia i test dźwięku w głównym panelu. Moduł nadal działa wyłącznie na Riventii.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.48</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Dodano „Wróg na mapie 2.6” do zakładki Dodatki. Alarm wykrywa wrogów i graczy bez klanu, ma ustawienia dźwięku, koloru, czasu powiadomienia oraz testy alarmu. Moduł działa wyłącznie na Riventii i nie tworzy drugiego panelu ustawień.</div></div>
@@ -3271,7 +3272,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   function backHome() { setMainTab('addons'); }
 
   const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.51';
+  const CURRENT_PANEL_VERSION = '1.1.52';
   function compareVersions(a, b) {
     const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
     const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
@@ -6226,7 +6227,7 @@ if (location.hostname === 'riventia.margonem.pl') {
    const GUILD_ID = '1384811864235704372';
    const WORLD = 'riventia';
    const STORAGE_KEY = 'tc_online_panel_v2';
-   // Co 10 s odświeżamy widok z pasywnie przechwyconych danych gry; bez PAGE._g('clan&a=members').
+   // Automatyczne pobieranie listy klanu co 10 s; natywny handler gry zawsze pozostaje aktywny.
    const REFRESH_MS = 10000;
 
    const defaults = {
@@ -6713,14 +6714,19 @@ if (location.hostname === 'riventia.margonem.pl') {
      save();
    });
 
-   // Pasywny odczyt listy klanu: nigdy nie wysyłamy automatycznie
-   // PAGE._g('clan&a=members') i nigdy nie pomijamy oryginalnego handlera gry.
+   // Automatyczny odczyt listy klanu co 10 s. Żądanie jest wstrzymywane
+   // podczas zaniku/zmiany postaci, a oryginalny handler gry zawsze dostaje odpowiedź.
    let cachedRawMembers = null;
    let cachedMembersAt = 0;
    let hookedDispatcher = null;
    let wrappedMembersHandler = null;
+   let pendingMembersRequest = null;
    let lastRoster = [];
    let onRosterCaptured = null;
+   let lastHeroKey = null;
+   let heroStableSince = 0;
+   const MEMBERS_CACHE_MS = 8000;
+   const MEMBERS_REQUEST_TIMEOUT_MS = 8000;
    const playerDetailsCache = new Map();
    const LOOTLOG_DETAILS_CACHE_MS = 120000;
    let lootlogDetailsAt = 0;
@@ -6738,6 +6744,29 @@ if (location.hostname === 'riventia.margonem.pl') {
      return flattened.length >= 11 ? flattened : null;
    };
 
+   // W czasie przeładowania Engine/hero potrafi chwilowo zniknąć.
+   // Po pojawieniu się nowej postaci czekamy 8 s stabilności, zanim wyślemy żądanie.
+   const isGameReadyForMembersRequest = () => {
+     const engine = PAGE.Engine;
+     const hero = engine?.hero?.d || engine?.hero;
+     const communication = engine?.communication;
+     const membersHandlerReady = typeof communication?.dispatcher?.on_members === 'function';
+     if (document.visibilityState === 'hidden' || !hero || !communication || !membersHandlerReady || typeof PAGE._g !== 'function') {
+       lastHeroKey = null;
+       heroStableSince = 0;
+       return false;
+     }
+
+     const heroKey = String(hero.id ?? hero.nick ?? '');
+     if (!heroKey) return false;
+     if (heroKey !== lastHeroKey) {
+       lastHeroKey = heroKey;
+       heroStableSince = Date.now();
+       return false;
+     }
+     return Date.now() - heroStableSince >= 8000;
+   };
+
    const installMembersHook = () => {
      const dispatcher = PAGE.Engine?.communication?.dispatcher;
      if (!dispatcher || typeof dispatcher.on_members !== 'function') return false;
@@ -6745,15 +6774,26 @@ if (location.hostname === 'riventia.margonem.pl') {
 
      const originalOnMembers = dispatcher.on_members;
      const wrappedOnMembers = function(data, ...args) {
-       const members = normalizeMembersPayload(data);
-       if (members) {
-         cachedRawMembers = members;
-         cachedMembersAt = Date.now();
-         // Po zakończeniu natywnej obsługi odpowiedzi odśwież widok dodatku.
-         window.setTimeout(() => onRosterCaptured?.(), 50);
+       let members = null;
+       try { members = normalizeMembersPayload(data); } catch (_) {}
+
+       // Najpierw i zawsze wywołujemy natywną obsługę Margonem z oryginalnym this/argumentami.
+       // Capture wykonujemy w finally, więc nawet błąd oryginalnego handlera nie blokuje cache.
+       try {
+         return originalOnMembers.apply(this, [data, ...args]);
+       } finally {
+         if (members) {
+           cachedRawMembers = members;
+           cachedMembersAt = Date.now();
+           const pending = pendingMembersRequest;
+           if (pending) {
+             pendingMembersRequest = null;
+             clearTimeout(pending.timeout);
+             pending.resolve(members);
+           }
+           window.setTimeout(() => onRosterCaptured?.(), 50);
+         }
        }
-       // Zawsze przekazuj oryginalną odpowiedź bez zmian do gry.
-       return originalOnMembers.apply(this, [data, ...args]);
      };
 
      dispatcher.on_members = wrappedOnMembers;
@@ -6779,20 +6819,52 @@ if (location.hostname === 'riventia.margonem.pl') {
      }
    };
 
-   const requestMembers = async () => {
+   const requestMembers = () => {
      installMembersHook();
-     const liveRoster = readMembersFromOpenClan();
-     if (liveRoster) {
-       cachedRawMembers = liveRoster;
-       cachedMembersAt = Date.now();
-       return liveRoster;
+
+     if (Array.isArray(cachedRawMembers) && cachedRawMembers.length >= 11 &&
+         Date.now() - cachedMembersAt < MEMBERS_CACHE_MS) {
+       return Promise.resolve(cachedRawMembers);
      }
-     // Zwracamy ostatnią listę otrzymaną naturalnie przez grę, także gdy jest starsza.
-     // Nie generujemy dodatkowego ruchu w komunikacji gry, gdy cache nie istnieje.
-     if (Array.isArray(cachedRawMembers) && cachedRawMembers.length >= 11) {
-       return cachedRawMembers;
+
+     if (pendingMembersRequest) return pendingMembersRequest.promise;
+
+     if (!isGameReadyForMembersRequest()) {
+       // Jeśli okno klanu jest już otwarte, można bezpiecznie pokazać jego model bez nowego żądania.
+       const liveRoster = readMembersFromOpenClan();
+       if (liveRoster) {
+         cachedRawMembers = liveRoster;
+         cachedMembersAt = Date.now();
+         return Promise.resolve(liveRoster);
+       }
+       if (Array.isArray(cachedRawMembers) && cachedRawMembers.length >= 11) {
+         return Promise.resolve(cachedRawMembers);
+       }
+       return Promise.reject(new Error('Oczekuję na pełne załadowanie postaci — automatyczne pobieranie wznowi się samo.'));
      }
-     throw new Error('Brak zapisanej listy klanu. Otwórz w grze okno Klanowicze, aby pobrać ją bezpiecznie.');
+
+     let resolveRequest;
+     let rejectRequest;
+     const promise = new Promise((resolve, reject) => {
+       resolveRequest = resolve;
+       rejectRequest = reject;
+     });
+     const pending = { resolve: resolveRequest, reject: rejectRequest, timeout: null, promise };
+     pendingMembersRequest = pending;
+     pending.timeout = window.setTimeout(() => {
+       if (pendingMembersRequest === pending) pendingMembersRequest = null;
+       pending.reject(new Error('Serwer nie odpowiedział na automatyczne pobranie listy klanu. Ponowię próbę za 10 sekund.'));
+     }, MEMBERS_REQUEST_TIMEOUT_MS);
+
+     try {
+       // To standardowe żądanie gry. Odpowiedź jest przekazywana bez zmian do oryginalnego handlera.
+       PAGE._g('clan&a=members');
+     } catch (error) {
+       clearTimeout(pending.timeout);
+       if (pendingMembersRequest === pending) pendingMembersRequest = null;
+       pending.reject(error);
+     }
+     return promise;
    };
 
    const loadLootlogPlayerDetails = async () => {
@@ -7145,6 +7217,11 @@ if (location.hostname === 'riventia.margonem.pl') {
      if (refreshTimer !== null) clearInterval(refreshTimer);
      refreshTimer = null;
      clearTimeout(resizeTimer);
+     if (pendingMembersRequest) {
+       clearTimeout(pendingMembersRequest.timeout);
+       pendingMembersRequest.reject(new Error('Strona została zamknięta.'));
+       pendingMembersRequest = null;
+     }
      document.removeEventListener('visibilitychange', syncCrewRefreshTimer);
    }, { once: true });
  })();
