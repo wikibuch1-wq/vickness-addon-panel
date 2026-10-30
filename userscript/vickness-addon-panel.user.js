@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.53
-// @description  Vickness Addons 1.1.53: Klanowicze online z Lootlog co 10 s bez otwierania listy klanu; bezpieczne przelogowanie
+// @version      1.1.54
+// @description  Vickness Addons 1.1.54: usunięto aktualizator z panelu; aktualizacja przez Tampermonkey
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -23,7 +23,6 @@
 // @connect      api.lootlog.pl
 // @connect      lootlog.pl
 // @connect      www.margonem.pl
-// @connect      raw.githubusercontent.com
 // @connect      staticinfo.margonem.pl
 // @run-at       document-idle
 // @noframes
@@ -2542,7 +2541,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.53 — Klanowicze online z Lootlog bez otwierania listy klanu
+// VICKNESS ADDON PANEL 1.1.54 — bez aktualizatora w panelu
 // =============================================================
 (() => {
   'use strict';
@@ -2823,7 +2822,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     .vxSideTab:hover { border-color:var(--vx-accent); color:#f3df9b; background:rgba(33,27,16,.78); }
     .vxSideTab.active { border-color:var(--vx-accent); color:var(--vx-accent); background:var(--vx-accent-soft); box-shadow:inset 2px 0 0 var(--vx-accent); }
     .vxSideTab .vxTabIcon { width:14px; flex:0 0 14px; text-align:center; }
-    #vxUpdateDot { display:none; width:7px; height:7px; flex:0 0 7px; margin-left:auto; border-radius:50%; background:#7fe18c; box-shadow:0 0 7px #7fe18c; }
     #vxContentArea { display:flex; flex:1 1 auto; flex-direction:column; min-width:0; min-height:0; overflow:hidden; background:rgba(6,6,6,.12); }
     .vxExtraView { display:none; flex:1 1 0%; flex-direction:column; gap:8px; min-width:0; min-height:0; padding:9px; overflow:auto; background:rgba(8,8,8,.24); }
     .vxPageCard { border:1px solid rgba(95,75,32,.68); border-radius:5px; padding:10px; background:rgba(20,20,20,.48); color:#c8c3b5; line-height:1.45; }
@@ -2835,11 +2833,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     .vxChangelogEntry:first-of-type { border-top:0; }
     .vxChangelogVersion { color:var(--vx-accent); font-weight:bold; }
     .vxChangelogDate { margin-left:6px; color:#777; font-size:9px; }
-    .vxUpdateBanner { display:none; grid-column:1 / -1; align-items:center; justify-content:space-between; gap:8px; padding:8px; border:1px solid rgba(112,198,125,.68); border-radius:5px; background:rgba(20,60,29,.58); color:#bcefc4; }
-    .vxUpdateBanner.visible { display:flex; }
-    .vxUpdateBannerText { min-width:0; }
-    .vxUpdateBannerTitle { display:block; color:#a4f3af; font-weight:bold; }
-    .vxUpdateBannerDesc { display:block; margin-top:3px; color:#d1d9cf; font-size:10px; overflow-wrap:anywhere; }
     .vxActionBtn { padding:6px 8px; border:1px solid var(--vx-accent); border-radius:4px; background:var(--vx-accent-soft); color:var(--vx-accent); font:inherit; font-size:10px; cursor:pointer; }
     .vxActionBtn:hover { filter:brightness(1.18); }
     .vxAppearanceControl { display:block; margin:9px 0; }
@@ -2958,7 +2951,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       white-space:normal!important;
       -webkit-font-smoothing:antialiased;
     }
-    #vicknessStandaloneRoot #vxStandalonePanel #vxSidebar .vxSideTab > span:not(.vxTabIcon):not(#vxUpdateDot) {
+    #vicknessStandaloneRoot #vxStandalonePanel #vxSidebar .vxSideTab > span:not(.vxTabIcon) {
       font-family:Arial,Helvetica,sans-serif!important;
       font-size:12px!important;
       font-weight:600!important;
@@ -2981,15 +2974,11 @@ if (location.hostname === 'riventia.margonem.pl') {
     <div id="vxWorkspace">
       <nav id="vxSidebar" aria-label="Nawigacja panelu">
         <button type="button" class="vxSideTab active" data-vx-tab="addons"><span class="vxTabIcon">◆</span><span>Dodatki</span></button>
-        <button type="button" class="vxSideTab" data-vx-tab="changelog"><span class="vxTabIcon">☷</span><span>Log zmian</span><span id="vxUpdateDot" title="Dostępna aktualizacja"></span></button>
+        <button type="button" class="vxSideTab" data-vx-tab="changelog"><span class="vxTabIcon">☷</span><span>Log zmian</span></button>
         <button type="button" class="vxSideTab" data-vx-tab="appearance"><span class="vxTabIcon">◐</span><span>Wygląd</span></button>
       </nav>
       <div id="vxContentArea">
     <div id="vxHomeView" class="vxView">
-      <div class="vxUpdateBanner" id="vxUpdateBanner">
-        <div class="vxUpdateBannerText"><span class="vxUpdateBannerTitle" id="vxUpdateBannerTitle">Sprawdzanie aktualizacji…</span><span class="vxUpdateBannerDesc" id="vxUpdateBannerDesc">Porównuję wersję z repozytorium GitHub.</span></div>
-        <button type="button" class="vxActionBtn" id="vxUpdateOpen">AKTUALIZUJ</button>
-      </div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Loot Glow</span><span class="vxStandaloneDesc">Podświetlanie lootu • kolor i intensywność</span><div class="vxStandaloneState" id="vxLootState"></div><button type="button" class="vxOpenSettings" id="vxLootOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxLootSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">DC Wykrywacz</span><span class="vxStandaloneDesc">Herosi, tytani, grzybki i Discord</span><div class="vxStandaloneState" id="vxDcState"></div><button type="button" class="vxOpenSettings" id="vxDcOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxDcSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Belka lootów zintegrowana z Lootlogiem</span><span class="vxStandaloneDesc">Ostatnie herosy i legendarne łupy TheCrew</span><div class="vxStandaloneState" id="vxLootlogState"></div><button type="button" class="vxOpenSettings" id="vxLootlogOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxLootlogSwitch" type="checkbox"><span></span></label></div>
@@ -3053,6 +3042,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.54</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto aktualizator z głównego panelu: brak automatycznego sprawdzania, przycisków aktualizacji i otwierania surowego pliku GitHub. Aktualizacje należy wykonywać przez Tampermonkey, który korzysta z tych samych metadanych userscriptu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.53</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono automatyczne Klanowicze online: lista jest pobierana z API klienta Lootlog co 10 sekund. Usunięto wywołanie PAGE._g(&quot;clan&amp;a=members&quot;), które otwierało listę klanu w interfejsie gry, oraz całkowicie usunięto przechwytywanie dispatcher.on_members. Przy błędzie API panel pokazuje ostatnią poprawną listę zamiast wywoływać komunikację gry. Belka Lootów pozostaje ustawiona na 10 minut.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.52</span><span class="vxChangelogDate">bieżące wydanie</span><div>Klanowicze online automatycznie pobierają listę klanu co 10 sekund bez otwierania zakładki klanu. Żądanie jest wykonywane dopiero po ustabilizowaniu obiektu postaci; w czasie zaniku/zmiany postaci jest wstrzymywane. Odpowiedź zawsze przechodzi przez oryginalny handler gry — dodatek nie pomija ani nie zastępuje jego działania. Zachowano Loot Bar co 10 minut, pamięć podręczną i dotychczasowe optymalizacje panelu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.51</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Optymalizacja całego panelu i dodatków: Loot Bar odświeża się co 10 minut (cache i ręczne odświeżanie pozostają), Klanowicze online odświeżają widok co 10 sekund na podstawie pasywnych danych gry bez automatycznych żądań clan&amp;a=members. Ograniczono zbędne pętle panelu i przyciemniania mapy; Titan Tracker pracuje co 2 s i całkowicie wstrzymuje timer po wyłączeniu lub ukryciu karty, a Procent łupu rzadziej wykonuje kontrolę zapasową. Wróg na mapie skanuje co 1 sekundę i wstrzymuje skanowanie w tle. Cięższe odświeżanie jest pomijane, gdy karta nie jest widoczna.</div></div>
@@ -3085,7 +3075,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.23</span><div>Zmiana rozmiaru głównego panelu z proporcjonalnym skalowaniem czcionek i zapamiętywaniem pozycji.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.20</span><div>Poprawki odczytu API Lootloga i integracja Procentu łupu 5.11.0 oraz The Crew Online.</div></div>
       </div>
-      <div class="vxPageCard"><span class="vxPageTitle">Aktualizacje</span><div id="vxChangelogUpdateStatus">Sprawdzanie aktualnej wersji…</div><div class="vxLootlogActions"><button type="button" id="vxUpdateCheck" class="vxActionBtn">SPRAWDŹ PONOWNIE</button><button type="button" id="vxUpdateOpenFromLog" class="vxActionBtn" style="display:none">OTWÓRZ AKTUALIZACJĘ</button></div></div>
+      <div class="vxPageCard"><span class="vxPageTitle">Aktualizacje skryptu</span><div class="vxPageNote">Aktualizacje wykonuj z poziomu Tampermonkey. Panel Vickness nie otwiera instalatora ani surowego pliku GitHub, dzięki czemu nie uruchamia instalacji kolejnej kopii skryptu.</div></div>
     </div>
     <div id="vxAppearanceView" class="vxExtraView">
       <div class="vxPageCard" id="vxMapDimmerCard">
@@ -3240,7 +3230,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     changelog.style.display = tab === 'changelog' ? 'flex' : 'none';
     appearance.style.display = tab === 'appearance' ? 'flex' : 'none';
     setActiveTab(tab);
-    if (tab === 'changelog') checkForUpdates(false);
     if (tab === 'appearance') syncAppearanceControls();
   }
   function openSettings(which) {
@@ -3271,77 +3260,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     setTimeout(dockWidgets, 600);
   }
   function backHome() { setMainTab('addons'); }
-
-  const UPDATE_URL = 'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
-  const CURRENT_PANEL_VERSION = '1.1.53';
-  function compareVersions(a, b) {
-    const aa = String(a).split('.').map(part => parseInt(part, 10) || 0);
-    const bb = String(b).split('.').map(part => parseInt(part, 10) || 0);
-    for (let i = 0; i < Math.max(aa.length, bb.length); i++) {
-      const diff = (aa[i] || 0) - (bb[i] || 0);
-      if (diff) return diff > 0 ? 1 : -1;
-    }
-    return 0;
-  }
-  function setUpdateStatus(message) {
-    const status = root.querySelector('#vxChangelogUpdateStatus');
-    if (status) status.textContent = message;
-  }
-  function showUpdateAvailable(latest) {
-    const banner = root.querySelector('#vxUpdateBanner');
-    const title = root.querySelector('#vxUpdateBannerTitle');
-    const desc = root.querySelector('#vxUpdateBannerDesc');
-    const dot = root.querySelector('#vxUpdateDot');
-    const logOpen = root.querySelector('#vxUpdateOpenFromLog');
-    if (banner) banner.classList.add('visible');
-    if (title) title.textContent = `Dostępna aktualizacja ${latest}`;
-    if (desc) desc.textContent = `Masz ${CURRENT_PANEL_VERSION}. Otwórz aktualizator, aby przejść do najnowszego pliku.`;
-    if (dot) dot.style.display = 'inline-block';
-    if (logOpen) logOpen.style.display = 'inline-block';
-    setUpdateStatus(`Dostępna wersja ${latest}. Zainstalowana wersja: ${CURRENT_PANEL_VERSION}.`);
-  }
-  function checkForUpdates(showChecking = true) {
-    const bannerTitle = root.querySelector('#vxUpdateBannerTitle');
-    if (showChecking && bannerTitle) bannerTitle.textContent = 'Sprawdzanie aktualizacji…';
-    if (showChecking) setUpdateStatus('Sprawdzam aktualizację...');
-    if (typeof GM_xmlhttpRequest !== 'function') {
-      setUpdateStatus('Nie można sprawdzić wersji: brak GM_xmlhttpRequest.');
-      return;
-    }
-    GM_xmlhttpRequest({
-      method: 'GET',
-      url: UPDATE_URL + '?v=' + Date.now(),
-      timeout: 12000,
-      onload(response) {
-        if (response.status < 200 || response.status >= 300) {
-          setUpdateStatus(`Nie udało się sprawdzić aktualizacji (HTTP ${response.status}).`);
-          return;
-        }
-        const match = String(response.responseText || '').match(/^\s*\/\/\s*@version\s+([^\s]+)/m);
-        if (!match) {
-          setUpdateStatus('Nie znaleziono @version w pliku GitHub. Sprawdź, czy repozytorium zawiera skrypt userscript.');
-          return;
-        }
-        const latest = match[1].trim();
-        const comparison = compareVersions(latest, CURRENT_PANEL_VERSION);
-        if (comparison > 0) {
-          showUpdateAvailable(latest);
-        } else if (comparison === 0) {
-          root.querySelector('#vxUpdateBanner')?.classList.remove('visible');
-          root.querySelector('#vxUpdateDot').style.display = 'none';
-          root.querySelector('#vxUpdateOpenFromLog').style.display = 'none';
-          setUpdateStatus(`Masz najnowszą wersję (${CURRENT_PANEL_VERSION}).`);
-        } else {
-          root.querySelector('#vxUpdateBanner')?.classList.remove('visible');
-          root.querySelector('#vxUpdateDot').style.display = 'none';
-          root.querySelector('#vxUpdateOpenFromLog').style.display = 'none';
-          setUpdateStatus(`GitHub zawiera wersję ${latest}, a uruchomiona wersja to ${CURRENT_PANEL_VERSION}. Wgraj tę wersję do repozytorium, aby udostępnić ją innym.`);
-        }
-      },
-      onerror() { setUpdateStatus('Nie udało się połączyć z GitHubem. Spróbuj ponownie później.'); },
-      ontimeout() { setUpdateStatus('GitHub nie odpowiedział w ciągu 12 sekund.'); }
-    });
-  }
 
   const THEME_SETTINGS = {
     gold: {
@@ -3563,7 +3481,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     syncMapDimmerControls();
     startMapDimmerMonitor();
     setMainTab('addons');
-    setTimeout(() => checkForUpdates(true), 1800);
 
     let panelResizeSaveTimer = null;
     const panelResizeObserver = new ResizeObserver(() => {
@@ -3653,10 +3570,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('[data-vx-tab="addons"]').addEventListener('click', () => setMainTab('addons'));
     root.querySelector('[data-vx-tab="changelog"]').addEventListener('click', () => setMainTab('changelog'));
     root.querySelector('[data-vx-tab="appearance"]').addEventListener('click', () => setMainTab('appearance'));
-    const openUpdater = () => window.open(UPDATE_URL, '_blank', 'noopener');
-    root.querySelector('#vxUpdateOpen').addEventListener('click', openUpdater);
-    root.querySelector('#vxUpdateOpenFromLog').addEventListener('click', openUpdater);
-    root.querySelector('#vxUpdateCheck').addEventListener('click', () => checkForUpdates(true));
     root.querySelector('#vxOpacityRange').addEventListener('input', e => saveAppearanceField('opacity', Number(e.target.value)));
     root.querySelector('#vxBlurRange').addEventListener('input', e => saveAppearanceField('blur', Number(e.target.value)));
     root.querySelector('#vxThemeSelect').addEventListener('change', e => saveAppearanceField('theme', e.target.value));
