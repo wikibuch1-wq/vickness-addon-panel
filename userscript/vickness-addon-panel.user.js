@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.61
-// @description  Vickness Addons 1.1.61: naprawa testów dodatku Wróg na mapie
+// @version      1.1.63
+// @description  Vickness Addons 1.1.63: naprawa automatycznego odświeżania Klanowiczów online
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -93,9 +93,43 @@
   let lastSavedDigest = '';
   const collected = new Map();
 
+  function readVisibleMemberColor(element) {
+    if (!element) return null;
+    // Prefer the actual computed color (the current Lootlog sets it on the nickname span).
+    const computed = toHexColor(getComputedStyle(element).color);
+    if (computed) return computed;
+    return toHexColor(element.style?.color || element.getAttribute?.('style') || '');
+  }
+
+  function collectCurrentLootlogMemberRows() {
+    // Current Lootlog members page: /<org>/settings/members/<memberId>
+    // Nick is rendered in: span.mr-1.truncate.text-sm.font-semibold
+    const links = document.querySelectorAll(`a[href*="/${ORG_ID}/settings/members/"]`);
+    for (const link of links) {
+      const spans = Array.from(link.querySelectorAll('span'));
+      const nameElement = spans.find(span =>
+        span.classList.contains('font-semibold') &&
+        (span.classList.contains('truncate') || span.classList.contains('mr-1'))
+      ) || spans.find(span => {
+        const text = (span.innerText || span.textContent || '').trim();
+        return text.length >= 2 && text.length <= 42 && /[\p{L}]/u.test(text);
+      });
+      if (!nameElement) continue;
+      const name = (directText(nameElement) || nameElement.innerText || nameElement.textContent || '').replace(/\s+/g, ' ').trim();
+      const key = normalize(name);
+      if (!key || key.length < 2 || key.length > 42 || !/[\p{L}]/u.test(key)) continue;
+      const color = readVisibleMemberColor(nameElement);
+      if (!color) continue;
+      collected.set(key, { name, color });
+    }
+  }
+
   function scanAndSave() {
     scanQueued = false;
     if (document.visibilityState === 'hidden' || !document.body) return;
+    // First use the precise members-page selector, then keep the generic fallback
+    // for Lootlog layout variants and rows rendered after scrolling.
+    collectCurrentLootlogMemberRows();
     const candidates = document.body.querySelectorAll('span,div,p,a,strong,b');
     for (const element of candidates) {
       if (!element.isConnected || element.closest('button,input,textarea,select,[contenteditable="true"]')) continue;
@@ -106,7 +140,7 @@
       if (/\b(online|offline|minut[ęya]|godzin|dni temu|mniej niż|temu|wszyscy|aktywni|filtruj|discord)\b/i.test(key)) continue;
       if (key.split(/\s+/).length > 4) continue;
       if (!looksLikeMemberRow(element, name)) continue;
-      const color = toHexColor(getComputedStyle(element).color);
+      const color = readVisibleMemberColor(element);
       if (!color) continue;
       // Zachowujemy nazwę z widoku jako klucz; późniejsze skany mogą ją zaktualizować.
       collected.set(key, { name, color });
@@ -122,7 +156,8 @@
         version: 1,
         orgId: ORG_ID,
         updatedAt: Date.now(),
-        source: location.href,
+        source: 'lootlog-members-dom',
+        sourceUrl: location.href,
         colors
       });
       console.info(`[Vickness] Zapisano kolory Lootloga: ${collected.size} nicków.`);
@@ -2720,8 +2755,8 @@ if (location.hostname === 'riventia.margonem.pl') {
   let layout = {};
   try { layout = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (_) {}
 
-  const PANEL_BASE_WIDTH = 520;
-  const PANEL_BASE_HEIGHT = 420;
+  const PANEL_BASE_WIDTH = 840;
+  const PANEL_BASE_HEIGHT = 560;
   let currentPanelScale = 1;
   const baseFontSizes = new WeakMap();
   // Po wykryciu NPC panel DC odpinamy z widoku ustawień i pokazujemy jako samodzielne okno.
@@ -2950,7 +2985,10 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
     currentPanelScale = scale;
     const home = el.querySelector('#vxHomeView');
-    if (home) home.classList.toggle('vxNarrow', rect.width < 470);
+    if (home) {
+      home.classList.toggle('vxNarrow', rect.width < 470);
+      home.classList.toggle('vxCompact', rect.width >= 470 && rect.width < 720);
+    }
   }
 
   function clamp(el, key, fx = 20, fy = 100) {
@@ -2986,7 +3024,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   root.innerHTML = `
   <style>
     #vicknessStandaloneRoot { all:initial; font-family:Arial,sans-serif; --vx-accent:#dfb943; --vx-accent-line:rgba(201,162,39,.72); --vx-accent-soft:rgba(46,35,8,.62); }
-    #vxStandalonePanel { position:fixed; z-index:2147483646; left:20px; top:20px; display:flex; flex-direction:column; width:min(520px,calc(100vw - 20px)); height:min(420px,calc(100vh - 16px)); min-width:390px; min-height:300px; max-width:calc(100vw - 12px); max-height:calc(100vh - 12px); resize:both; overflow:hidden; background:rgba(8,8,8,.88); color:#eee; border:1px solid #c9a227; border-radius:8px; box-shadow:0 8px 26px #000b; font:12px Arial,sans-serif; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+    #vxStandalonePanel { position:fixed; z-index:2147483646; left:20px; top:20px; display:flex; flex-direction:column; width:min(840px,calc(100vw - 20px)); height:min(560px,calc(100vh - 16px)); min-width:650px; min-height:360px; max-width:calc(100vw - 12px); max-height:calc(100vh - 12px); resize:both; overflow:hidden; background:rgba(8,8,8,.88); color:#eee; border:1px solid #c9a227; border-radius:8px; box-shadow:0 8px 26px #000b; font:12px Arial,sans-serif; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
     #vxStandalonePanel * { box-sizing:border-box; }
     #vxStandaloneHeader { position:relative; flex:0 0 auto; padding:9px 35px 8px 10px; text-align:center; background:rgba(16,16,16,.92); border-bottom:1px solid #765b20; cursor:move; user-select:none; }
     #vxStandaloneBrand { color:#dfb943; font-size:16px; font-weight:bold; letter-spacing:2px; }
@@ -3051,7 +3089,8 @@ if (location.hostname === 'riventia.margonem.pl') {
     #vxStandaloneMini { border-color:var(--vx-accent-line); }
     #vxSettingsToolbar { border-bottom-color:var(--vx-accent-line); }
     /* Widok główny jest przewijany wewnątrz okna; stopka zostaje na dole. */
-    #vxHomeView { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:minmax(70px,auto); align-content:start; align-items:stretch; gap:4px; padding:5px; flex:1 1 0%; height:0; min-height:0; max-height:none; overflow-y:auto; overflow-x:hidden; }
+    #vxHomeView { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); grid-auto-rows:minmax(76px,auto); align-content:start; align-items:stretch; gap:4px; padding:5px; flex:1 1 0%; height:0; min-height:0; max-height:none; overflow-y:auto; overflow-x:hidden; }
+    #vxHomeView.vxCompact { grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:minmax(72px,auto); }
     #vxHomeView.vxNarrow { grid-template-columns:minmax(0,1fr); grid-auto-rows:minmax(68px,auto); }
     #vxHomeView, #vxSettingsView, #vxChangelogView, #vxAppearanceView { scrollbar-width:thin; scrollbar-color:rgba(201,162,39,.25) transparent; overscroll-behavior:contain; }
     #vxSettingsWnm .vxWnmControl { width:100%; box-sizing:border-box; padding:6px 8px; border:1px solid var(--vx-accent-line); border-radius:5px; color:#f3e7c5; background:#171717; font:12px Arial,sans-serif; }
@@ -3209,7 +3248,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         <div class="vxLootlogInfo" id="vxRankChatDataState" style="margin-top:8px">Oczekiwanie na dane kolorów…</div>
       </div>
       <div id="vxSettingsWnm" class="vxSettingsSlot" hidden>
-        <div class="vxLootlogInfo">Wróg na mapie 2.7 wykrywa wrogów i graczy bez klanu w pobliżu na Riventii. Alarm pojawia się na środku ekranu, kolejkuje nowe wykrycia i znika po wybranym czasie. Dostępnych jest 5 dźwięków alarmu. Kliknięcie alarmu zamyka go natychmiast.</div>
+        <div class="vxLootlogInfo">Wróg na mapie 2.7 wykrywa wrogów i graczy bez klanu w pobliżu na Riventii. Alarm pojawia się na środku ekranu, kolejkuje nowe wykrycia i znika po wybranym czasie. Dostępnych jest 5 wbudowanych dźwięków generowanych lokalnie (bez zewnętrznych plików audio). Kliknięcie alarmu zamyka go natychmiast.</div>
         <div class="vxLootlogInfo" style="margin-top:8px">
           <label style="display:flex;align-items:center;gap:8px;margin:7px 0"><input id="vxWnmNoClan" type="checkbox"> Gracze bez klanu</label>
           <label style="display:flex;align-items:center;gap:8px;margin:7px 0"><input id="vxWnmEnemies" type="checkbox"> Wrogowie i wrogowie klanowi</label>
@@ -3228,6 +3267,8 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.63</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono automatyczne odświeżanie Klanowiczów online. Usunięto błąd z odwołaniem do niezdefiniowanej stałej interwału (timer uruchamiał pierwsze pobranie, ale nie tworzył harmonogramu kolejnych odświeżeń). Harmonogram korzysta teraz bezpośrednio z REFRESH_MS = 10 000 ms. Ukrycie pływającego okna Klanowiczów nie zatrzymuje pobierania; timer zatrzymuje się tylko po wyłączeniu dodatku, ukryciu karty lub zamknięciu strony. Dodano jawne uruchomienie i bezpieczną synchronizację timera.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.62</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono odczyt kolorów rang z aktualnego DOM Lootloga (linki /settings/members/ID i span z nickiem), a kolorowanie czatu rozszerzono o dokładniejsze rozpoznawanie nicku nadawcy w nowym i starszym interfejsie. Dźwięki „Wróg na mapie” są teraz generowane lokalnie przez Web Audio (5 różnych sygnałów), bez zależności od zewnętrznych plików; dodano odblokowanie audio po pierwszej interakcji z grą, a test wizualny nie uruchamia dźwięku. Panel Dodatków pokazuje 4 kafelki w rzędzie na szerokim oknie, 2 przy mniejszej szerokości i 1 w wąskim widoku; zawartość przewija się wewnątrz panelu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.61</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono testy dodatku „Wróg na mapie”. Test powiadomienia działa również wtedy, gdy automatyczne wykrywanie jest wyłączone. Test dźwięku pokazuje wynik, a przy niedostępnym pliku audio próbuje odtworzyć krótki sygnał zastępczy. Dodano komunikat wyjaśniający, gdy wybrano „Bez dźwięku” lub moduł nie jest gotowy.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.60</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano „Kolory rang Lootloga na czacie”. Na stronie Lootlog → The Crew → Ustawienia → Członkowie skrypt zapisuje widoczne kolory nicków do pamięci Tampermonkey, a na Riventii koloruje wyłącznie nicki nadawców w czacie. Dodano przełącznik i ręczną synchronizację z otwartej karty Lootloga.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.59</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono The Crew Online na podstawie przesłanego skryptu 3.4.0: odpowiedź listy klanu jest odbierana przez Engine.communication.dispatcher.on_members po żądaniu clan&amp;a=members. Parser obsługuje spłaszczoną odpowiedź Margonem z rekordami po 11 pól. Lista online, nicki, poziomy, profesje, mapy i współrzędne pochodzą bezpośrednio z klanu; całkowicie usunięto pobieranie listy i dodatkowych danych z Lootloga. Odświeżanie co 10 sekund, bez callbacku do _g.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.57</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano czytelną instrukcję aktualizacji istniejącej instalacji Vickness Addons przez Tampermonkey na dole zakładki Dziennik zmian. Nie dodano instalatora ani aktualizatora do panelu.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.56</span><span class="vxChangelogDate">bieżące wydanie</span><div>Przyspieszono wykrywanie zmiany mapy/canvasu z 100 ms do 50 ms. Kontrola gotowości silnika również pozostaje ustawiona na 50 ms; rozmiar canvasu nadal obsługuje ResizeObserver, bez skanowania całego DOM.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.55</span><span class="vxChangelogDate">bieżące wydanie</span><div>Przyspieszono automatyczne nakładanie przyciemnienia mapy: natychmiastowa próba przy starcie, oczekiwanie na silnik gry co 50 ms i wykrywanie zmiany mapy/canvasu co 100 ms. Kontrola wymiarów pozostaje oparta na ResizeObserver i zdarzeniach okna, bez kosztownego skanowania całego DOM.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.54</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto aktualizator z głównego panelu: brak automatycznego sprawdzania, przycisków aktualizacji i otwierania surowego pliku GitHub. Aktualizacje należy wykonywać przez Tampermonkey, który korzysta z tych samych metadanych userscriptu.</div></div>
@@ -3749,10 +3790,9 @@ if (location.hostname === 'riventia.margonem.pl') {
       wnmTestStatus.textContent = 'Odtwarzam wybrany dźwięk…';
       try {
         const result = await api.testSound();
-        if (result?.status === 'played') wnmTestStatus.textContent = 'Dźwięk testowy odtworzony.';
+        if (result?.status === 'played') wnmTestStatus.textContent = 'Dźwięk testowy odtworzony lokalnie.';
         else if (result?.status === 'muted') wnmTestStatus.textContent = 'Wybrano „Bez dźwięku”. Wybierz Dzwonek 1–5, aby przetestować alarm.';
-        else if (result?.status === 'fallback') wnmTestStatus.textContent = 'Plik wybranego dźwięku jest niedostępny. Odtworzono zastępczy sygnał testowy.';
-        else wnmTestStatus.textContent = 'Nie udało się odtworzyć dźwięku. Sprawdź głośność i połączenie z internetem.';
+        else wnmTestStatus.textContent = `Nie udało się uruchomić dźwięku: ${result?.reason || 'sprawdź głośność i obsługę audio przeglądarki.'}`;
       } catch (error) {
         console.warn('[Vickness] Test dźwięku WNM:', error);
         wnmTestStatus.textContent = 'Test dźwięku nie powiódł się. Sprawdź konsolę przeglądarki.';
@@ -7245,15 +7285,17 @@ if (location.hostname === 'riventia.margonem.pl') {
    let refreshTimer = null;
 
    function isCrewRunnable() {
+     // Ukrycie samego okna nie może zatrzymywać automatycznego odświeżania listy.
+     // Zatrzymujemy pracę wyłącznie po wyłączeniu dodatku lub przejściu karty w tło.
      return window.__vicknessAddonEnabled?.crewOnline !== false &&
-       !settings.hidden && document.visibilityState !== 'hidden';
+       document.visibilityState !== 'hidden';
    }
 
    function syncCrewRefreshTimer() {
      if (isCrewRunnable()) {
        if (refreshTimer === null) {
          void refresh();
-         refreshTimer = window.setInterval(() => { void refresh(); }, CLAN_REFRESH_INTERVAL_MS);
+         refreshTimer = window.setInterval(() => { void refresh(); }, REFRESH_MS);
        }
      } else if (refreshTimer !== null) {
        clearInterval(refreshTimer);
@@ -7329,6 +7371,8 @@ if (location.hostname === 'riventia.margonem.pl') {
 
    applySettings();
    document.addEventListener('visibilitychange', syncCrewRefreshTimer);
+   // Jawny start timera; jeśli applySettings już go uruchomiło, funkcja niczego nie dubluje.
+   syncCrewRefreshTimer();
 
    window.addEventListener('pagehide', () => {
      if (refreshTimer !== null) clearInterval(refreshTimer);
@@ -7815,16 +7859,8 @@ if (location.hostname === 'riventia.margonem.pl') {
   window.__vicknessWnmModuleStarted = true;
 
   const STORAGE_KEY = 'wnm_settings_v25';
-  const SOUND_LIST = {
-    '1': 'https://audio.jukehost.co.uk/01a18d43-edb0-7064-b23c-7f21fe743a9f',
-    '2': 'https://audio.jukehost.co.uk/01a18d61-318b-70ab-bca5-4870dee36b96',
-    '3': 'https://audio.jukehost.co.uk/01a18d61-3187-7016-8f92-a3b493ed7433',
-    '4': 'https://audio.jukehost.co.uk/01a18d61-318c-7311-812a-dde178534917',
-    '5': 'https://audio.jukehost.co.uk/zUxgyvfvc9K4AMGvcwSFor1r0EP8vgmU'
-  };
   const DEFAULTS = { enabled: true, noClan: true, enemies: true, soundChoice: '1', textColor: '#ff3333', alertDuration: 5000 };
   let settings = loadSettings();
-  let audio = null;
   let scanTimer = null;
   let alertTimer = null;
   let currentMap = null;
@@ -7849,52 +7885,73 @@ if (location.hostname === 'riventia.margonem.pl') {
     try { return String(engine?.map?.d?.id ?? engine?.map?.d?.name ?? engine?.map?.id ?? 'unknown'); }
     catch (_) { return 'unknown'; }
   }
-  function playFallbackTone() {
+  // Dźwięki są generowane lokalnie przez Web Audio. Nie zależą od hostingu MP3,
+  // CORS ani dostępności zewnętrznych plików. Pięć ustawień ma różne sekwencje tonów.
+  const SOUND_PATTERNS = {
+    '1': [880, 660],
+    '2': [660, 880, 990],
+    '3': [784, 1046, 784],
+    '4': [587, 740, 988],
+    '5': [1046, 784, 659, 784]
+  };
+  let audioContext = null;
+
+  function getAudioContext() {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) return false;
-    let context;
+    if (!AudioContextClass) return null;
+    if (!audioContext || audioContext.state === 'closed') audioContext = new AudioContextClass();
+    return audioContext;
+  }
+
+  function primeAudioFromGesture() {
     try {
-      context = new AudioContextClass();
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      const now = context.currentTime;
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(740, now);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.16, now + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
-      oscillator.connect(gain);
-      gain.connect(context.destination);
-      oscillator.start(now);
-      oscillator.stop(now + 0.25);
-      oscillator.addEventListener('ended', () => {
-        try { context.close(); } catch (_) {}
-      }, { once: true });
-      if (context.state === 'suspended') context.resume().catch(() => {});
-      return true;
+      const context = getAudioContext();
+      if (context && context.state === 'suspended') {
+        // resume() musi być wywołane bezpośrednio w obsłudze gestu użytkownika.
+        const resumePromise = context.resume();
+        if (resumePromise?.catch) resumePromise.catch(() => {});
+      }
     } catch (error) {
-      console.warn('[Wróg na mapie] Nie udało się uruchomić sygnału zastępczego:', error);
-      try { context?.close(); } catch (_) {}
-      return false;
+      console.debug('[Wróg na mapie] Audio jeszcze nieodblokowane:', error);
     }
   }
 
+  document.addEventListener('pointerdown', primeAudioFromGesture, { capture: true, passive: true });
+  document.addEventListener('keydown', primeAudioFromGesture, { capture: true });
+
   async function playSound() {
-    const url = SOUND_LIST[String(settings.soundChoice)];
-    if (!url) return { status: 'muted' };
+    const choice = String(settings.soundChoice);
+    if (choice === 'none' || !SOUND_PATTERNS[choice]) return { status: 'muted' };
+    let context;
     try {
-      if (audio) {
-        try { audio.pause(); audio.currentTime = 0; } catch (_) {}
+      context = getAudioContext();
+      if (!context) return { status: 'failed', reason: 'Web Audio API niedostępne' };
+      // Wywołujemy resume natychmiast, zanim funkcja odda sterowanie przeglądarce.
+      const resumePromise = context.state === 'suspended' ? context.resume() : Promise.resolve();
+      await resumePromise;
+      if (context.state !== 'running') return { status: 'failed', reason: 'AudioContext nie został odblokowany' };
+
+      const notes = SOUND_PATTERNS[choice];
+      let at = context.currentTime + 0.025;
+      for (let index = 0; index < notes.length; index++) {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        const noteDuration = 0.16;
+        oscillator.type = index % 2 === 0 ? 'triangle' : 'sine';
+        oscillator.frequency.setValueAtTime(notes[index], at);
+        gain.gain.setValueAtTime(0.0001, at);
+        gain.gain.exponentialRampToValueAtTime(0.14, at + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, at + noteDuration);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(at);
+        oscillator.stop(at + noteDuration + 0.01);
+        at += 0.19;
       }
-      audio = new Audio();
-      audio.preload = 'auto';
-      audio.volume = 1;
-      audio.src = url;
-      await audio.play();
-      return { status: 'played' };
+      return { status: 'played', source: 'webaudio' };
     } catch (error) {
-      console.warn('[Wróg na mapie] Nie udało się odtworzyć wybranego pliku audio:', error);
-      return { status: playFallbackTone() ? 'fallback' : 'failed', error };
+      console.warn('[Wróg na mapie] Nie udało się odtworzyć sygnału:', error);
+      return { status: 'failed', error };
     }
   }
   function getDistance(engine, other) {
@@ -8012,7 +8069,8 @@ if (location.hostname === 'riventia.margonem.pl') {
     alerted.clear();
     hideAlert();
     if (alertBox) { alertBox.remove(); alertBox = null; }
-    if (audio) { try { audio.pause(); audio.currentTime = 0; } catch (_) {} }
+    if (audioContext && audioContext.state !== 'closed') { try { void audioContext.close(); } catch (_) {} }
+    audioContext = null;
     settings.enabled = false;
     saveSettings();
   }
@@ -8026,7 +8084,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     // Nie uruchamia skanera i nie zmienia zapisanego stanu dodatku.
     alertQueue = [];
     hideAlert();
-    showAlert({ key: 'test', text: 'TEST — WRÓG NA MAPIE', distanceText: 'Przykładowy alarm · 12 kratek' });
+    showAlert({ key: 'test', text: 'TEST — WRÓG NA MAPIE', distanceText: 'Przykładowy alarm · 12 kratek' }, { sound: false });
     return true;
   }
   async function testSound() {
@@ -8047,7 +8105,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
 
 // =============================================================
-// KOLORY RANG LOOTLOGA NA CZACIE — Vickness Addons 1.1.61
+// KOLORY RANG LOOTLOGA NA CZACIE — Vickness Addons 1.1.62
 // =============================================================
 (() => {
   'use strict';
@@ -8084,7 +8142,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       const data = readStoredData();
       details.textContent = count
         ? `Zapisano ${count} kolorów nicków · aktualizacja ${data?.updatedAt ? new Date(data.updatedAt).toLocaleString('pl-PL') : '—'}. Po zmianie ról odśwież stronę Członkowie w Lootlogu.`
-        : 'Brak zapisanych kolorów. Otwórz Lootlog → The Crew → Ustawienia → Członkowie i poczekaj, aż lista zostanie odczytana.';
+        : 'Brak zapisanych kolorów. Otwórz Lootlog → The Crew → Ustawienia → Członkowie. Nicki są odczytywane z linków /settings/members/ID i ich kolorowych spanów.';
     }
   }
 
@@ -8135,8 +8193,20 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   function exactKey(element) {
     if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
-    const key = normalize(element.textContent || '');
-    return key && Object.prototype.hasOwnProperty.call(colors, key) ? key : '';
+    const candidates = [];
+    const full = normalize(element.innerText || element.textContent || '');
+    if (full) candidates.push(full);
+    let direct = '';
+    for (const node of element.childNodes) if (node.nodeType === Node.TEXT_NODE) direct += ` ${node.nodeValue || ''}`;
+    const directKey = normalize(direct);
+    if (directKey && directKey !== full) candidates.push(directKey);
+    // Chat templates can wrap the nickname in one or more nested spans/anchors.
+    // Check short leaf-like text nodes as well as the complete author container.
+    for (const child of element.querySelectorAll('span,a,strong,b,em')) {
+      const text = normalize(child.innerText || child.textContent || '');
+      if (text && text.length <= 42) candidates.push(text);
+    }
+    return candidates.find(key => key.length >= 2 && key.length <= 42 && Object.prototype.hasOwnProperty.call(colors, key)) || '';
   }
 
   function hasAuthorHint(element) {
@@ -8174,10 +8244,18 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   function scanMessage(message) {
     if (!message || !message.isConnected) return;
-    const newAuthors = message.querySelectorAll('.information-part .author-section');
+    const newAuthors = message.querySelectorAll('.information-part .author-section, .information-part .author-section.click-able');
     for (const author of newAuthors) {
-      colorCandidate(author, message, true);
-      for (const child of author.querySelectorAll('*')) colorCandidate(child, message, true);
+      const key = exactKey(author);
+      if (key) {
+        applyColor(author, key);
+        for (const child of author.querySelectorAll('span,a,strong,b,em')) {
+          if (exactKey(child) === key) applyColor(child, key);
+        }
+      } else {
+        colorCandidate(author, message, true);
+        for (const child of author.querySelectorAll('*')) colorCandidate(child, message, true);
+      }
     }
     if (message.matches('.new-chat-message .information-part .author-section')) colorCandidate(message, message, true);
 
@@ -8232,13 +8310,19 @@ if (location.hostname === 'riventia.margonem.pl') {
     attachChatRoots();
     bodyObserver = new MutationObserver(mutations => {
       let shouldAttach = false;
+      let shouldScanMessages = false;
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
           if (node.nodeType !== Node.ELEMENT_NODE) continue;
           if (node.matches?.(CHAT_ROOT_SELECTOR) || node.querySelector?.(CHAT_ROOT_SELECTOR)) shouldAttach = true;
+          // Margonem may mount the chat after the game window itself. Trigger a
+          // scan as soon as a real message node appears, even if its wrapper
+          // uses a different class than the known chat-root selectors.
+          if (node.matches?.(MESSAGE_SELECTOR) || node.querySelector?.(MESSAGE_SELECTOR)) shouldScanMessages = true;
         }
       }
-      if (shouldAttach) { attachChatRoots(); scheduleScan(); }
+      if (shouldAttach) attachChatRoots();
+      if (shouldAttach || shouldScanMessages) scheduleScan();
     });
     bodyObserver.observe(document.body, { childList: true, subtree: true });
   }
