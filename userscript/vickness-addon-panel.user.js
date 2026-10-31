@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.57
-// @description  Vickness Addons 1.1.57: instrukcja aktualizacji przez Tampermonkey
+// @version      1.1.58
+// @description  Vickness Addons 1.1.58: Klanowicze online pobierani bezpośrednio z Margonem
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -3025,7 +3025,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Belka lootów zintegrowana z Lootlogiem</span><span class="vxStandaloneDesc">Ostatnie herosy i legendarne łupy TheCrew</span><div class="vxStandaloneState" id="vxLootlogState"></div><button type="button" class="vxOpenSettings" id="vxLootlogOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxLootlogSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Titan Tracker Gold</span><span class="vxStandaloneDesc">Tytani i lista do 15 graczy na wybranych mapach</span><div class="vxStandaloneState" id="vxTitanState"></div><button type="button" class="vxOpenSettings" id="vxTitanOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxTitanSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Procent łupu</span><span class="vxStandaloneDesc">Szansa według profesji i uprawnionych graczy</span><div class="vxStandaloneState" id="vxLootChanceState"></div><button type="button" class="vxOpenSettings" id="vxLootChanceOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxLootChanceSwitch" type="checkbox"><span></span></label></div>
-      <div class="vxStandaloneRow"><div><span class="vxStandaloneName">The Crew Online</span><span class="vxStandaloneDesc">Lista klanowiczów online z Lootloga</span><div class="vxStandaloneState" id="vxCrewOnlineState"></div><button type="button" class="vxOpenSettings" id="vxCrewOnlineOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxCrewOnlineSwitch" type="checkbox"><span></span></label></div>
+      <div class="vxStandaloneRow"><div><span class="vxStandaloneName">The Crew Online</span><span class="vxStandaloneDesc">Lista klanowiczów online bezpośrednio z Margonem</span><div class="vxStandaloneState" id="vxCrewOnlineState"></div><button type="button" class="vxOpenSettings" id="vxCrewOnlineOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxCrewOnlineSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Postacie online na profilach</span><span class="vxStandaloneDesc">Wyszukuje postacie konta na światach i podświetla znaleziony profil</span><div class="vxStandaloneState" id="vxProfileFinderState"></div><button type="button" class="vxOpenSettings" id="vxProfileFinderOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxProfileFinderSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Wróg na mapie</span><span class="vxStandaloneDesc">Alarm dźwiękowy o wrogach i graczach bez klanu</span><div class="vxStandaloneState" id="vxWnmState"></div><button type="button" class="vxOpenSettings" id="vxWnmOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxWnmSwitch" type="checkbox"><span></span></label></div>
     </div>
@@ -3054,7 +3054,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         </div>
       </div>
       <div id="vxSettingsCrewOnline" class="vxSettingsSlot" hidden>
-        <div class="vxLootlogInfo">The Crew Online pobiera listę online bezpośrednio z API Lootloga co 10 sekund. Nie wysyła polecenia clan&amp;a=members do gry, nie otwiera listy klanu i nie przechwytuje handlerów komunikacji. Panel pozostaje osobnym oknem na ekranie gry.</div>
+        <div class="vxLootlogInfo">The Crew Online pobiera listę członków bezpośrednio z Margonem co 10 sekund. Podczas zapytania tymczasowo wycisza automatyczne odświeżenie widoku klanu, po czym przywraca oryginalny obiekt gry. Nie otwiera zakładki klanu ani nie przechwytuje globalnych handlerów komunikacji. Panel pozostaje osobnym oknem na ekranie gry.</div>
         <div class="vxLootlogActions">
           <button type="button" id="vxCrewOnlineShow">POKAŻ PANEL</button>
           <button type="button" id="vxCrewOnlineRefresh">ODŚWIEŻ LISTĘ</button>
@@ -3083,7 +3083,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.57</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano czytelną instrukcję aktualizacji istniejącej instalacji Vickness Addons przez Tampermonkey na dole zakładki Dziennik zmian. Nie dodano instalatora ani aktualizatora do panelu.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.56</span><span class="vxChangelogDate">bieżące wydanie</span><div>Przyspieszono wykrywanie zmiany mapy/canvasu z 100 ms do 50 ms. Kontrola gotowości silnika również pozostaje ustawiona na 50 ms; rozmiar canvasu nadal obsługuje ResizeObserver, bez skanowania całego DOM.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.55</span><span class="vxChangelogDate">bieżące wydanie</span><div>Przyspieszono automatyczne nakładanie przyciemnienia mapy: natychmiastowa próba przy starcie, oczekiwanie na silnik gry co 50 ms i wykrywanie zmiany mapy/canvasu co 100 ms. Kontrola wymiarów pozostaje oparta na ResizeObserver i zdarzeniach okna, bez kosztownego skanowania całego DOM.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.54</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto aktualizator z głównego panelu: brak automatycznego sprawdzania, przycisków aktualizacji i otwierania surowego pliku GitHub. Aktualizacje należy wykonywać przez Tampermonkey, który korzysta z tych samych metadanych userscriptu.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.58</span><span class="vxChangelogDate">bieżące wydanie</span><div>Przebudowano Klanowicze online: lista członków jest pobierana bezpośrednio z Margonem przez clan&amp;a=members co 10 sekund, bez zależności od Lootloga. Dodano tymczasowe wyciszenie automatycznego odświeżania widoku klanu w czasie żądania, bez przechwytywania dispatcher.on_members; dodatek pomija pobieranie podczas przelogowania i pisania na czacie. Zachowano panel, zapraszanie do drużyny i podświetlanie członków aktualnej grupy.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.57</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano czytelną instrukcję aktualizacji istniejącej instalacji Vickness Addons przez Tampermonkey na dole zakładki Dziennik zmian. Nie dodano instalatora ani aktualizatora do panelu.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.56</span><span class="vxChangelogDate">bieżące wydanie</span><div>Przyspieszono wykrywanie zmiany mapy/canvasu z 100 ms do 50 ms. Kontrola gotowości silnika również pozostaje ustawiona na 50 ms; rozmiar canvasu nadal obsługuje ResizeObserver, bez skanowania całego DOM.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.55</span><span class="vxChangelogDate">bieżące wydanie</span><div>Przyspieszono automatyczne nakładanie przyciemnienia mapy: natychmiastowa próba przy starcie, oczekiwanie na silnik gry co 50 ms i wykrywanie zmiany mapy/canvasu co 100 ms. Kontrola wymiarów pozostaje oparta na ResizeObserver i zdarzeniach okna, bez kosztownego skanowania całego DOM.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.54</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto aktualizator z głównego panelu: brak automatycznego sprawdzania, przycisków aktualizacji i otwierania surowego pliku GitHub. Aktualizacje należy wykonywać przez Tampermonkey, który korzysta z tych samych metadanych userscriptu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.53</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono automatyczne Klanowicze online: lista jest pobierana z API klienta Lootlog co 10 sekund. Usunięto wywołanie PAGE._g(&quot;clan&amp;a=members&quot;), które otwierało listę klanu w interfejsie gry, oraz całkowicie usunięto przechwytywanie dispatcher.on_members. Przy błędzie API panel pokazuje ostatnią poprawną listę zamiast wywoływać komunikację gry. Belka Lootów pozostaje ustawiona na 10 minut.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.52</span><span class="vxChangelogDate">bieżące wydanie</span><div>Klanowicze online automatycznie pobierają listę klanu co 10 sekund bez otwierania zakładki klanu. Żądanie jest wykonywane dopiero po ustabilizowaniu obiektu postaci; w czasie zaniku/zmiany postaci jest wstrzymywane. Odpowiedź zawsze przechodzi przez oryginalny handler gry — dodatek nie pomija ani nie zastępuje jego działania. Zachowano Loot Bar co 10 minut, pamięć podręczną i dotychczasowe optymalizacje panelu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.51</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Optymalizacja całego panelu i dodatków: Loot Bar odświeża się co 10 minut (cache i ręczne odświeżanie pozostają), Klanowicze online odświeżają widok co 10 sekund na podstawie pasywnych danych gry bez automatycznych żądań clan&amp;a=members. Ograniczono zbędne pętle panelu i przyciemniania mapy; Titan Tracker pracuje co 2 s i całkowicie wstrzymuje timer po wyłączeniu lub ukryciu karty, a Procent łupu rzadziej wykonuje kontrolę zapasową. Wróg na mapie skanuje co 1 sekundę i wstrzymuje skanowanie w tle. Cięższe odświeżanie jest pomijane, gdy karta nie jest widoczna.</div></div>
@@ -6190,10 +6190,8 @@ if (location.hostname === 'riventia.margonem.pl') {
    if (window.top !== window.self) return;
    if (document.getElementById('tc-online-panel')) return;
 
-   const GUILD_ID = '1384811864235704372';
-   const WORLD = 'riventia';
    const STORAGE_KEY = 'tc_online_panel_v2';
-   // Automatyczne pobieranie listy klanu co 10 s; natywny handler gry zawsze pozostaje aktywny.
+   // Automatyczne pobieranie bezpośrednio z Margonem co 10 s.
    const REFRESH_MS = 10000;
 
    const defaults = {
@@ -6505,7 +6503,7 @@ if (location.hostname === 'riventia.margonem.pl') {
    head.append(title, collapseBtn, hideBtn);
 
    const content = make('div', undefined, 'tc-content');
-   const status = make('div', 'Łączenie z Lootlogiem…', 'tc-status');
+   const status = make('div', 'Pobieranie listy klanu Margonem…', 'tc-status');
    const list = make('div', undefined, 'tc-list');
 
    // Przewijanie kółkiem myszy nad listą.
@@ -6680,11 +6678,15 @@ if (location.hostname === 'riventia.margonem.pl') {
      save();
    });
 
-   // Klanowicze online są pobierani bezpośrednio przez API klienta Lootlog.
-   // Celowo NIE wywołujemy PAGE._g('clan&a=members') i nie przechwytujemy
-   // dispatcher.on_members, ponieważ żądanie gry otwiera widok/listę klanu.
-   const LOOTLOG_ROSTER_TIMEOUT_MS = 9000;
-   let lootlogRosterPromise = null;
+   // Klanowicze online są pobierani bezpośrednio z Margonem.
+   // W trakcie żądania podmieniamy wyłącznie obiekt Engine.clan na jego
+   // tymczasową kopię z pustym updateMembers(), aby odpowiedź nie otwierała/
+   // nie odświeżała widoku klanu. Oryginalny obiekt jest przywracany w callbacku.
+   // Nie przechwytujemy parseInput ani dispatcher.on_members.
+   const CLAN_REQUEST_TIMEOUT_MS = 8000;
+   const CLAN_REFRESH_INTERVAL_MS = REFRESH_MS;
+   const MEMBER_TUPLE_LENGTH = 10;
+   let clanRosterPromise = null;
    let lastRoster = [];
    let hasRosterSnapshot = false;
 
@@ -6694,85 +6696,201 @@ if (location.hostname === 'riventia.margonem.pl') {
      return Number.isFinite(number) ? number : null;
    };
 
-   const loadLootlogRoster = async () => {
-     if (lootlogRosterPromise) return lootlogRosterPromise;
+   const isChatBeingEdited = () => {
+     const active = document.activeElement;
+     if (!active) return false;
+     if (active.isContentEditable) return true;
+     if (/^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) {
+       return !!active.closest('.chat-tpl, .chat, [class*="chat"]');
+     }
+     return false;
+   };
 
-     const api = PAGE.lootlogGameClientApi;
-     if (!api?.ready || typeof api.getOnlinePlayers !== 'function') {
-       throw new Error('API Lootloga nie jest jeszcze gotowe. Ponowię próbę za 10 sekund.');
+   const getCurrentEngine = () => {
+     const engine = PAGE.Engine;
+     if (!engine || engine.logOff) return null;
+     if (!engine.hero?.d) return null;
+     if (isChatBeingEdited()) return null;
+     return engine;
+   };
+
+   const makeSilentClanShield = engine => {
+     const originalClan = engine.clan;
+     let shield;
+
+     if (originalClan && typeof originalClan === 'object') {
+       // Zachowaj prototyp i zwykłe dane klanu, ale wycisz automatyczne
+       // odświeżanie UI wywoływane przez odpowiedź clan&a=members.
+       shield = Object.assign(
+         Object.create(Object.getPrototypeOf(originalClan)),
+         originalClan
+       );
+     } else {
+       shield = {};
      }
 
-     lootlogRosterPromise = (async () => {
-       let timeoutId = null;
+     Object.defineProperty(shield, 'updateMembers', {
+       value: function () {},
+       configurable: true,
+       enumerable: true,
+       writable: true
+     });
+     try {
+       engine.clan = shield;
+     } catch (error) {
+       throw new Error('Nie można bezpiecznie odizolować widoku klanu: ' + (error?.message || error));
+     }
+
+     if (engine.clan !== shield) {
+       throw new Error('Silnik gry nie pozwolił bezpiecznie wyciszyć widoku klanu.');
+     }
+
+     return () => {
+       // Nie nadpisuj obiektu, jeśli w międzyczasie gra zdążyła przeładować Engine
+       // albo sama przypisała już nowy obiekt clan.
        try {
-         const request = Promise.resolve().then(() => api.getOnlinePlayers({
-           guildId: GUILD_ID,
-           world: WORLD
-         }));
-         const timeout = new Promise((_, reject) => {
-           timeoutId = window.setTimeout(
-             () => reject(new Error('Lootlog nie odpowiedział w ciągu 9 sekund.')),
-             LOOTLOG_ROSTER_TIMEOUT_MS
-           );
-         });
-         const result = await Promise.race([request, timeout]);
-
-         if (result?.status !== 'success') {
-           throw new Error(result?.message || 'Lootlog nie zwrócił listy klanowiczów.');
+         if (PAGE.Engine === engine && engine.clan === shield) {
+           engine.clan = originalClan;
          }
-
-         const source = result.players ?? [];
-         const records = Array.isArray(source)
-           ? source
-           : source && typeof source === 'object'
-             ? Object.values(source).flat()
-             : [];
-
-         const roster = [];
-         const seen = new Set();
-
-         for (const record of records) {
-           const player = record?.player;
-           if (!player || record.status !== 'online') continue;
-
-           const playerWorld = String(player.world ?? record.world ?? WORLD).toLowerCase();
-           if (playerWorld !== WORLD) continue;
-
-           const nick = String(player.name || player.nick || '').trim();
-           if (!nick) continue;
-           const nickKey = nick.toLocaleLowerCase('pl');
-           if (seen.has(nickKey)) continue;
-           seen.add(nickKey);
-
-           const location = player.location || {};
-           const idValue = player.id ?? player.charId ?? player.characterId ?? null;
-           roster.push({
-             id: idValue == null ? '' : String(idValue),
-             nick,
-             level: toFiniteNumber(player.lvl ?? player.level),
-             profession: String(player.prof || player.profession || ''),
-             map: String(location.map || record.mapName || ''),
-             x: toFiniteNumber(location.x),
-             y: toFiniteNumber(location.y),
-             afk: record.isAfk === true,
-             isOnline: true
-           });
-         }
-
-         lastRoster = roster;
-         hasRosterSnapshot = true;
-         return roster;
-       } finally {
-         if (timeoutId !== null) clearTimeout(timeoutId);
-         lootlogRosterPromise = null;
+       } catch (error) {
+         console.warn('[The Crew] Nie udało się przywrócić Engine.clan:', error);
        }
-     })();
+     };
+   };
 
-     return lootlogRosterPromise;
+   const parseClanRoster = (response, engine) => {
+     const source = response?.members ?? response?.members2 ??
+       response?.data?.members ?? response?.data?.members2;
+
+     if (!Array.isArray(source)) {
+       throw new Error('Margonem nie zwrócił listy członków klanu.');
+     }
+
+     const ownNick = String(engine.hero?.d?.nick || engine.hero?.d?.name || '')
+       .trim().toLocaleLowerCase('pl');
+     const roster = [];
+     const seen = new Set();
+
+     // Format Margonem: płaska tablica z krotek po 10 pól:
+     // [id, nick, lvl, prof, map, x, y, ?, loggedTimeAgo, icon].
+     for (let i = 0; i + 8 < source.length; i += MEMBER_TUPLE_LENGTH) {
+       const idValue = source[i];
+       const nick = String(source[i + 1] ?? '').trim();
+       const loggedTimeAgo = source[i + 8];
+       const online = loggedTimeAgo === 0 ||
+         String(loggedTimeAgo).toLowerCase() === '0' ||
+         String(loggedTimeAgo).toLowerCase() === 'online';
+
+       if (!online || !nick || idValue === null || idValue === undefined) continue;
+
+       // Nie pokazuj własnej postaci na liście; pozostałe postacie konta
+       // nadal mogą się pojawić jako zwykli członkowie klanu.
+       if (ownNick && nick.toLocaleLowerCase('pl') === ownNick) continue;
+
+       const id = String(idValue);
+       if (seen.has(id)) continue;
+       seen.add(id);
+
+       roster.push({
+         id,
+         nick,
+         level: toFiniteNumber(source[i + 2]),
+         profession: String(source[i + 3] ?? ''),
+         map: String(source[i + 4] ?? ''),
+         x: toFiniteNumber(source[i + 5]),
+         y: toFiniteNumber(source[i + 6]),
+         afk: false,
+         isOnline: true
+       });
+     }
+
+     // Jeśli serwer zwrócił dane, ale nie ma obecnie online członków,
+     // prawidłowa pusta lista jest poprawnym wynikiem.
+     return roster;
+   };
+
+   const loadClanRoster = () => {
+     if (clanRosterPromise) return clanRosterPromise;
+
+     const engine = getCurrentEngine();
+     if (!engine) {
+       return Promise.reject(new Error(
+         PAGE.Engine?.logOff
+           ? 'Pominięto odświeżanie podczas przelogowania.'
+           : isChatBeingEdited()
+             ? 'Pominięto odświeżanie podczas pisania na czacie.'
+             : 'Oczekiwanie na załadowanie postaci.'
+       ));
+     }
+
+     const gameRequest = PAGE._g;
+     if (typeof gameRequest !== 'function') {
+       return Promise.reject(new Error('Funkcja komunikacji Margonem (_g) nie jest dostępna.'));
+     }
+     const heroAtRequest = engine.hero.d;
+     const heroIdAtRequest = String(heroAtRequest.id ?? heroAtRequest.nick ?? '');
+
+     clanRosterPromise = new Promise((resolve, reject) => {
+       let done = false;
+       let timeoutId = null;
+       let restoreClan = () => {};
+
+       const finish = (response, error) => {
+         if (done) return;
+         done = true;
+         if (timeoutId !== null) clearTimeout(timeoutId);
+
+         // Najpierw przywróć natywny obiekt klanu, dopiero potem analizuj odpowiedź.
+         restoreClan();
+
+         if (error) {
+           reject(error);
+           return;
+         }
+
+         const currentHero = engine.hero?.d;
+         const currentHeroId = String(currentHero?.id ?? currentHero?.nick ?? '');
+         if (
+           PAGE.Engine !== engine ||
+           engine.logOff ||
+           (heroIdAtRequest
+             ? currentHeroId !== heroIdAtRequest
+             : currentHero !== heroAtRequest)
+         ) {
+           reject(new Error('Odpowiedź pominięta — postać została przełączona.'));
+           return;
+         }
+
+         try {
+           const roster = parseClanRoster(response, engine);
+           lastRoster = roster;
+           hasRosterSnapshot = true;
+           resolve(roster);
+         } catch (parseError) {
+           reject(parseError);
+         }
+       };
+
+       try {
+         restoreClan = makeSilentClanShield(engine);
+         timeoutId = window.setTimeout(() => {
+           finish(null, new Error('Margonem nie odpowiedział w ciągu 8 sekund.'));
+         }, CLAN_REQUEST_TIMEOUT_MS);
+
+         // PAGE._g jest wywoływane bezpośrednio na obiekcie strony, aby zachować this.
+         PAGE._g('clan&a=members', response => finish(response));
+       } catch (requestError) {
+         finish(null, requestError);
+       }
+     }).finally(() => {
+       clanRosterPromise = null;
+     });
+
+     return clanRosterPromise;
    };
 
    const getPlayers = async () => {
-     const roster = await loadLootlogRoster();
+     const roster = await loadClanRoster();
 
      // Podświetlanie członków aktualnej drużyny — odczyt lokalny, bez żądania do gry.
      const partyIds = new Set();
@@ -6918,7 +7036,7 @@ if (location.hostname === 'riventia.margonem.pl') {
      if (isCrewRunnable()) {
        if (refreshTimer === null) {
          void refresh();
-         refreshTimer = window.setInterval(() => { void refresh(); }, REFRESH_MS);
+         refreshTimer = window.setInterval(() => { void refresh(); }, CLAN_REFRESH_INTERVAL_MS);
        }
      } else if (refreshTimer !== null) {
        clearInterval(refreshTimer);
@@ -6944,7 +7062,7 @@ if (location.hostname === 'riventia.margonem.pl') {
        console.warn('[The Crew] Refresh error:', error);
 
        if (hasRosterSnapshot) {
-         // Zachowaj ostatnią poprawną listę z Lootloga, bez dotykania interfejsu klanu.
+         // Zachowaj ostatnią poprawną listę Margonem, bez otwierania widoku klanu.
          render(lastRoster);
          status.textContent = `Błąd odświeżania — pokazuję ostatnie dane · ${error.message || 'brak odpowiedzi'}`;
        } else {
