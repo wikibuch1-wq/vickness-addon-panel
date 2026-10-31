@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.69
-// @description  Vickness Addons 1.1.69: naprawa wykrywania graczy i audio Wróg na mapie
+// @version      1.1.70
+// @description  Vickness Addons 1.1.70: stabilizacja Klanowiczów i diagnostyka alarmu
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -3095,7 +3095,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.69</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono „Wróg na mapie”: silnik gry i listę graczy odczytuje teraz z unsafeWindow (kontekst strony), co jest wymagane przy uprawnieniach GM_* Tampermonkey. Rozszerzono zgodne odczyty listy graczy, identyfikatorów, danych postaci, klanu i relacji wroga. Dodano diagnostykę stanu skanowania w ustawieniach dodatku oraz poprawiono reset alarmu po wyjściu gracza z mapy. Naprawiono zatrzymywanie audio (bez odwołania do nieistniejącego audioContext). Dźwięki zachowują pięć oryginalnych nagrań; odtwarzanie próbuje najpierw adresu JukeHost z .mp3, a następnie oryginalnego adresu bez rozszerzenia. Testy wizualny i dźwiękowy są niezależne od skanera.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.70</span><span class="vxChangelogDate">bieżące wydanie</span><div>Stabilizacja Klanowiczów online: oczekiwanie na gotowość postaci, komunikacji i handlera klanu nie jest już raportowane jako błąd w konsoli; dodano lekkie ponawianie próby po załadowaniu postaci, po przelogowaniu lub po zakończeniu pisania na czacie. Zachowano automatyczne odświeżanie co 10 sekund i blokadę nakładających się żądań. „Wróg na mapie” otrzymał bezpieczniejsze odczyty listy graczy z zachowaniem ID z kluczy obiektów, rozszerzone statusy diagnostyczne i szczegółowe komunikaty testu audio. Odtwarzanie używa elementu audio DOM, sprawdza zdarzenia błędów i próbuje najpierw oryginalnych adresów JukeHost bez rozszerzenia, potem wariantu .mp3; nie dodano sztucznych dźwięków zastępczych. Pozostałe moduły i ich ustawienia bez zmian.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.69</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono „Wróg na mapie”: silnik gry i listę graczy odczytuje teraz z unsafeWindow (kontekst strony), co jest wymagane przy uprawnieniach GM_* Tampermonkey. Rozszerzono zgodne odczyty listy graczy, identyfikatorów, danych postaci, klanu i relacji wroga. Dodano diagnostykę stanu skanowania w ustawieniach dodatku oraz poprawiono reset alarmu po wyjściu gracza z mapy. Naprawiono zatrzymywanie audio (bez odwołania do nieistniejącego audioContext). Dźwięki zachowują pięć oryginalnych nagrań; odtwarzanie próbuje najpierw adresu JukeHost z .mp3, a następnie oryginalnego adresu bez rozszerzenia. Testy wizualny i dźwiękowy są niezależne od skanera.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.68</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono moduł kolorowania nicków na przesłany Lootlog Nick Colors 2.7.0. Dodano ręczne pobieranie konta offline 7239525 z powiązaniem Discord ID 606168243232833566 oraz diagnostykę postaci Piekielna Wika. Zachowano cache v24, odświeżanie rang co 24 godziny, listy kont online co 5 minut, ponawianie pobierania profili i bezpieczne włączanie/wyłączanie modułu z panelu. Rozszerzono rozpoznawanie nicków i selektory czatu, pozostawiając zoptymalizowaną obserwację tylko odpowiednich elementów. Pozostałe dodatki bez zmian.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.67</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono wbudowany moduł kolorowania nicków na przesłany Lootlog Nick Colors 2.5.0. Zastosowano nowy cache v24 z migracją zapisanych profili z v23, odświeżanie rang maksymalnie co 24 godziny, sprawdzanie nowych kont online co 5 minut oraz ponawianie prób po błędach Lootlog Gateway (8 prób co 3 sekundy). Zachowano integrację z kafelkiem, przełącznikiem, przyciskiem ręcznej synchronizacji i zoptymalizowaną obserwacją nicków na czacie. Pozostałe dodatki bez zmian.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.66</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano ponownie „Kolory rang Lootloga na czacie” na podstawie nowego skryptu 2.3.0. Kolory rang są pobierane z API Lootloga, konta online z Lootlog Game Client API, a postacie Riventii z profili Margonem. Nicki nadawców są kolorowane na czacie bez zmiany treści wiadomości. Dodano przełącznik i ręczną synchronizację w ustawieniach. Moduł działa wyłącznie na Riventii.</div></div>
@@ -3629,7 +3629,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       wnmTestStatus.textContent = 'Odtwarzam wybrany dźwięk…';
       try {
         const result = await api.testSound();
-        if (result?.status === 'played') wnmTestStatus.textContent = 'Dźwięk testowy odtworzony lokalnie.';
+        if (result?.status === 'played') wnmTestStatus.textContent = 'Odtwarzanie oryginalnego dźwięku testowego rozpoczęte.';
         else if (result?.status === 'muted') wnmTestStatus.textContent = 'Wybrano „Bez dźwięku”. Wybierz Dzwonek 1–5, aby przetestować alarm.';
         else wnmTestStatus.textContent = `Nie udało się uruchomić dźwięku: ${result?.reason || 'sprawdź głośność i obsługę audio przeglądarki.'}`;
       } catch (error) {
@@ -7127,6 +7127,9 @@ if (location.hostname === 'riventia.margonem.pl') {
 
    let busy = false;
    let refreshTimer = null;
+   let crewRetryTimer = null;
+   const CREW_READY_RETRY_MS = 1200;
+   const CREW_CHAT_RETRY_MS = 2500;
 
    function isCrewRunnable() {
      // Ukrycie samego okna nie może zatrzymywać automatycznego odświeżania listy.
@@ -7135,20 +7138,47 @@ if (location.hostname === 'riventia.margonem.pl') {
        document.visibilityState !== 'hidden';
    }
 
+   function isCrewTransientError(error) {
+     const message = String(error?.message || error || '').toLowerCase();
+     return message.includes('oczekiwanie na załadowanie postaci') ||
+       message.includes('pominięto odświeżanie podczas przelogowania') ||
+       message.includes('pominięto odświeżanie podczas pisania na czacie') ||
+       message.includes('oczekiwanie na handler listy członków') ||
+       message.includes('nie jest dostępna') && message.includes('_g');
+   }
+
+   function scheduleCrewRetry(delay = CREW_READY_RETRY_MS) {
+     if (crewRetryTimer !== null || !isCrewRunnable()) return;
+     crewRetryTimer = window.setTimeout(() => {
+       crewRetryTimer = null;
+       if (isCrewRunnable()) void refresh();
+     }, delay);
+   }
+
    function syncCrewRefreshTimer() {
      if (isCrewRunnable()) {
        if (refreshTimer === null) {
          void refresh();
          refreshTimer = window.setInterval(() => { void refresh(); }, REFRESH_MS);
        }
-     } else if (refreshTimer !== null) {
-       clearInterval(refreshTimer);
-       refreshTimer = null;
+     } else {
+       if (refreshTimer !== null) {
+         clearInterval(refreshTimer);
+         refreshTimer = null;
+       }
+       if (crewRetryTimer !== null) {
+         clearTimeout(crewRetryTimer);
+         crewRetryTimer = null;
+       }
      }
    }
 
    const refresh = async () => {
      if (busy || !isCrewRunnable()) return;
+     if (crewRetryTimer !== null) {
+       clearTimeout(crewRetryTimer);
+       crewRetryTimer = null;
+     }
      busy = true;
 
      try {
@@ -7163,14 +7193,26 @@ if (location.hostname === 'riventia.margonem.pl') {
          `Aktualizacja: ${new Date().toLocaleTimeString('pl-PL')}`;
      } catch (error) {
        if (!isCrewRunnable()) return;
-       console.warn('[The Crew] Refresh error:', error);
+       const message = String(error?.message || 'Błąd odczytu listy członków z gry.');
 
-       if (hasRosterSnapshot) {
-         // Zachowaj ostatnią poprawną listę Margonem, bez odpytywania Lootloga.
-         render(lastRenderedPlayers.length ? lastRenderedPlayers : lastRoster);
-         status.textContent = `Błąd odświeżania — pokazuję ostatnie dane · ${error.message || 'brak odpowiedzi'}`;
+       // Brak Engine/hero w chwili startu i podczas przełączania postaci jest
+       // normalnym stanem przejściowym. Nie zalewaj konsoli warningami — ponów próbę.
+       if (isCrewTransientError(error)) {
+         status.textContent = message;
+         const delay = message.toLowerCase().includes('pisania na czacie')
+           ? CREW_CHAT_RETRY_MS
+           : CREW_READY_RETRY_MS;
+         scheduleCrewRetry(delay);
        } else {
-         status.textContent = error.message || 'Błąd odczytu listy członków z gry.';
+         console.warn('[The Crew] Refresh error:', error);
+         if (hasRosterSnapshot) {
+           render(lastRenderedPlayers.length ? lastRenderedPlayers : lastRoster);
+           status.textContent = `Błąd odświeżania — pokazuję ostatnie dane · ${message}`;
+         } else {
+           status.textContent = message;
+         }
+         // Dla błędu sieci/timeoutu wykonaj jeszcze jedną próbę przed kolejnym cyklem 10 s.
+         scheduleCrewRetry(3000);
        }
      } finally {
        busy = false;
@@ -7221,6 +7263,8 @@ if (location.hostname === 'riventia.margonem.pl') {
    window.addEventListener('pagehide', () => {
      if (refreshTimer !== null) clearInterval(refreshTimer);
      refreshTimer = null;
+     if (crewRetryTimer !== null) clearTimeout(crewRetryTimer);
+     crewRetryTimer = null;
      clearTimeout(resizeTimer);
      document.removeEventListener('visibilitychange', syncCrewRefreshTimer);
    }, { once: true });
@@ -7693,7 +7737,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 })();
 
 // =============================================================
-// WRÓG NA MAPIE 2.8 — moduł zintegrowany z panelem Vickness
+// WRÓG NA MAPIE 2.8.1 — stabilizacja odczytu graczy i audio
 // Ważne: silnik Margonem odczytujemy z unsafeWindow, bo główny userscript
 // ma uprawnienia GM_* i działa w izolowanym świecie Tampermonkey.
 // =============================================================
@@ -7773,35 +7817,80 @@ if (location.hostname === 'riventia.margonem.pl') {
       return String(engine?.map?.d?.id ?? engine?.map?.d?.name ?? engine?.map?.id ?? 'unknown');
     } catch (_) { return 'unknown'; }
   }
-  function getAudioConstructor() {
-    return PAGE.Audio || window.Audio;
-  }
   function soundCandidates(choice) {
     const id = SOUND_IDS[String(choice)];
     if (!id) return [];
-    // Po odświeżeniu JukeHost część odtwarzaczy wymaga końcówki .mp3;
-    // stary adres bez rozszerzenia pozostaje drugim wariantem zgodności.
+    // Najpierw użyj dokładnego adresu z oryginalnego skryptu 2.7;
+    // wariant .mp3 pozostaje zapasowy dla zmienionego formatu JukeHost.
     return [
-      `https://audio.jukehost.co.uk/${id}.mp3`,
-      `https://audio.jukehost.co.uk/${id}`
+      `https://audio.jukehost.co.uk/${id}`,
+      `https://audio.jukehost.co.uk/${id}.mp3`
     ];
   }
+  function mediaErrorMessage(player) {
+    const code = player?.error?.code;
+    const descriptions = {
+      1: 'odtwarzanie przerwane',
+      2: 'błąd sieci lub niedostępny plik',
+      3: 'nie udało się zdekodować nagrania',
+      4: 'format lub adres nagrania jest nieobsługiwany'
+    };
+    return descriptions[code] || 'nieznany błąd odtwarzacza';
+  }
   async function tryPlayUrl(url) {
-    const AudioCtor = getAudioConstructor();
-    if (typeof AudioCtor !== 'function') {
-      throw new Error('Przeglądarka nie udostępnia odtwarzacza audio.');
+    // Element audio tworzony bezpośrednio w dokumencie jest stabilniejszy
+    // niż konstruktor Audio pobrany z proxy unsafeWindow Tampermonkey.
+    const player = document.createElement('audio');
+    if (!player || typeof player.play !== 'function') {
+      throw new Error('Przeglądarka nie udostępnia elementu audio.');
     }
-    const player = new AudioCtor();
     player.preload = 'auto';
     player.volume = 1;
-    player.src = url;
-    player.load();
     audio = player;
-    const playResult = player.play();
-    if (!playResult || typeof playResult.then !== 'function') {
-      return player;
-    }
-    await playResult;
+
+    await new Promise((resolve, reject) => {
+      let settled = false;
+      const timeout = window.setTimeout(() => {
+        finishReject(new Error('Przekroczono czas oczekiwania na rozpoczęcie nagrania (12 s).'));
+      }, 12000);
+
+      const finishResolve = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        resolve();
+      };
+      const finishReject = error => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        reject(error);
+      };
+      player.addEventListener('error', () => {
+        const detail = mediaErrorMessage(player);
+        const error = new Error(`JukeHost: ${detail} (${url})`);
+        error.mediaError = player.error?.code || 0;
+        if (settled) {
+          console.warn('[Wróg na mapie] Błąd strumienia audio:', error.message);
+        } else {
+          finishReject(error);
+        }
+      });
+      player.addEventListener('playing', finishResolve, { once: true });
+
+      try {
+        player.src = url;
+        player.load();
+        const result = player.play();
+        if (result && typeof result.then === 'function') {
+          result.then(finishResolve).catch(finishReject);
+        } else if (player.readyState >= 2) {
+          finishResolve();
+        }
+      } catch (error) {
+        finishReject(error);
+      }
+    });
     return player;
   }
   async function playSound() {
@@ -7841,8 +7930,8 @@ if (location.hostname === 'riventia.margonem.pl') {
       }
     }
     const reason = lastError?.name === 'NotAllowedError'
-      ? 'Przeglądarka zablokowała autoplay. Kliknij „TESTUJ DŹWIĘK” po wejściu do gry.'
-      : (lastError?.message || 'Nie udało się pobrać ani odtworzyć pliku z JukeHost.');
+      ? 'Przeglądarka zablokowała odtwarzanie. Kliknij TESTUJ DŹWIĘK bezpośrednio w panelu gry.'
+      : (lastError?.message || 'Nie udało się pobrać ani odtworzyć oryginalnego pliku z JukeHost.');
     console.warn('[Wróg na mapie] Nie udało się odtworzyć dźwięku:', lastError);
     return { status: 'failed', reason };
   }
@@ -7860,13 +7949,45 @@ if (location.hostname === 'riventia.margonem.pl') {
   function getPlayerList(engine) {
     try {
       const holder = engine?.whoIsHere;
-      let list = typeof holder?.getList === 'function' ? holder.getList() : null;
-      if (!list && Array.isArray(holder?.list)) list = holder.list;
-      if (!list && holder?.list && typeof holder.list === 'object') list = holder.list;
-      if (!list) return [];
-      const values = list instanceof Map ? [...list.values()] : Array.isArray(list) ? list : Object.values(list);
-      return values.map(value => (value && typeof value === 'object') ? value : ({ id: value }));
-    } catch (_) { return []; }
+      let list = null;
+      try {
+        if (typeof holder?.getList === 'function') list = holder.getList();
+      } catch (_) {}
+      const isEmpty = value => !value ||
+        (Array.isArray(value) && value.length === 0) ||
+        (value instanceof Map && value.size === 0) ||
+        (!Array.isArray(value) && !(value instanceof Map) && typeof value === 'object' && Object.keys(value).length === 0);
+      if (isEmpty(list)) {
+        if (holder?.list && typeof holder.list === 'object') list = holder.list;
+      }
+      if (isEmpty(list)) return [];
+
+      const arrayList = Array.isArray(list);
+      const keyedCollection = list instanceof Map || (!arrayList && typeof list === 'object');
+      let entries;
+      if (list instanceof Map) entries = [...list.entries()];
+      else if (arrayList) entries = list.map((value, index) => [String(index), value]);
+      else if (typeof list === 'object') entries = Object.entries(list);
+      else return [];
+
+      return entries.map(([key, value]) => {
+        if (value && typeof value === 'object') {
+          if (value.id != null || value.playerId != null || value.d?.id != null) return value;
+          // W tablicy indeks nie jest ID postaci — pozostawiamy obiekt bez zmian.
+          if (arrayList) return value;
+          return { ...value, id: key };
+        }
+        // Tablica może przechowywać ID; obiekt/mapa może mapować ID jako klucz
+        // i flagę/tekst jako wartość.
+        const id = value == null || typeof value === 'boolean'
+          ? (keyedCollection ? key : value)
+          : value;
+        return id == null ? null : ({ id });
+      }).filter(Boolean);
+    } catch (error) {
+      console.debug('[Wróg na mapie] Nie udało się odczytać whoIsHere:', error);
+      return [];
+    }
   }
   function getPlayerId(player) {
     return player?.id ?? player?.d?.id ?? player?.playerId ?? null;
@@ -7886,6 +8007,10 @@ if (location.hostname === 'riventia.margonem.pl') {
         const found = others.get(id) || others.get(String(id));
         if (found) return found;
       }
+    } catch (_) {}
+    try {
+      const found = others?.[id] || others?.list?.[id] || others?.d?.[id];
+      if (found && typeof found === 'object') return found;
     } catch (_) {}
     return player?.d ? player : null;
   }
@@ -7922,8 +8047,9 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
   function makeAlert(player, other, engine) {
     const distance = getDistance(engine, other);
-    const nick = String(player?.nick || player?.d?.nick || player?.name || 'Nieznany');
-    const level = player?.lvl ?? player?.d?.lvl ?? '?';
+    const data = other?.d || other || {};
+    const nick = String(player?.nick || player?.d?.nick || player?.name || data.nick || data.name || 'Nieznany');
+    const level = player?.lvl ?? player?.d?.lvl ?? data.lvl ?? data.level ?? '?';
     return {
       key: getAlertKey(player),
       text: `${nick} ${level}m`,
@@ -7939,6 +8065,14 @@ if (location.hostname === 'riventia.margonem.pl') {
     ].join('|');
     if (!force && state === lastReportedState) return;
     lastReportedState = state;
+    console.info(
+      '[Wróg na mapie] Diagnostyka:',
+      lastDiagnostics.message,
+      `silnik=${lastDiagnostics.engineReady ? 'OK' : 'oczekiwanie'}`,
+      `gracze=${lastDiagnostics.playerCount}`,
+      `dopasowani=${lastDiagnostics.resolvedCount}`,
+      `kandydaci=${lastDiagnostics.eligibleCount}`
+    );
     try {
       window.dispatchEvent(new CustomEvent('vickness-wnm-status', { detail: { ...lastDiagnostics } }));
     } catch (_) {}
@@ -8031,9 +8165,11 @@ if (location.hostname === 'riventia.margonem.pl') {
     emitDiagnostics({
       engineReady: true, playerCount: players.length, resolvedCount,
       eligibleCount, mapId, lastScanAt: Date.now(),
-      message: eligibleCount
-        ? `Skan aktywny · gracze: ${players.length} · kandydaci alarmu: ${eligibleCount}`
-        : `Skan aktywny · gracze: ${players.length} · brak podejrzanych`
+      message: players.length > 0 && resolvedCount === 0
+        ? `Lista ma ${players.length} wpisów, ale nie udało się dopasować graczy w Engine.others.`
+        : eligibleCount
+          ? `Skan aktywny · gracze: ${players.length} · kandydaci alarmu: ${eligibleCount}`
+          : `Skan aktywny · gracze: ${players.length} · brak podejrzanych`
     });
     processAlertQueue();
   }
