@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.67
-// @description  Vickness Addons 1.1.67: zaktualizowano Kolory rang Lootloga na czacie do 2.5.0
+// @version      1.1.68
+// @description  Vickness Addons 1.1.68: Kolory rang Lootloga 2.7.0 z ręcznym kontem offline
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2541,7 +2541,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.67 — panel sterowania dodatkami
+// VICKNESS ADDON PANEL 1.1.68 — panel sterowania dodatkami
 // =============================================================
 (() => {
   'use strict';
@@ -3085,7 +3085,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         <div class="vxLootlogInfo" id="vxWnmTestStatus" role="status" aria-live="polite" style="margin-top:8px">Testy możesz uruchomić niezależnie od automatycznego wykrywania.</div>
       </div>
       <div id="vxSettingsRankChat" class="vxSettingsSlot" hidden>
-        <div class="vxLootlogInfo">Kolory rang są pobierane z API Lootloga dla The Crew, konta online przez Lootlog Game Client API, a postacie kont z profili Margonem. Moduł używa cache v24, ponawia próbę po problemach z gateway i koloruje wyłącznie nicki nadawców. Kolory rang odświeżane są maksymalnie raz na 24 godziny, a lista kont online co 5 minut. Profile zapisane są w pamięci Tampermonkey.</div>
+        <div class="vxLootlogInfo">Kolory rang są pobierane z API Lootloga dla The Crew, konta online przez Lootlog Game Client API, a postacie kont z profili Margonem. Moduł 2.7.0 używa cache v24, obsługuje ręcznie wskazane konto offline (7239525), ponawia próby po błędach gateway i koloruje nicki nadawców oraz nazwy postaci. Rangi odświeżają się maksymalnie raz na 24 godziny, konta online co 5 minut. Profile są zapisywane w pamięci Tampermonkey.</div>
         <div class="vxLootlogActions"><button type="button" id="vxRankChatRefresh">SYNCHRONIZUJ TERAZ</button></div>
         <div class="vxLootlogInfo" id="vxRankChatStatus" role="status" aria-live="polite" style="margin-top:8px">Oczekiwanie na uruchomienie synchronizacji…</div>
       </div>
@@ -3094,6 +3094,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.68</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono moduł kolorowania nicków na przesłany Lootlog Nick Colors 2.7.0. Dodano ręczne pobieranie konta offline 7239525 z powiązaniem Discord ID 606168243232833566 oraz diagnostykę postaci Piekielna Wika. Zachowano cache v24, odświeżanie rang co 24 godziny, listy kont online co 5 minut, ponawianie pobierania profili i bezpieczne włączanie/wyłączanie modułu z panelu. Rozszerzono rozpoznawanie nicków i selektory czatu, pozostawiając zoptymalizowaną obserwację tylko odpowiednich elementów. Pozostałe dodatki bez zmian.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.67</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono wbudowany moduł kolorowania nicków na przesłany Lootlog Nick Colors 2.5.0. Zastosowano nowy cache v24 z migracją zapisanych profili z v23, odświeżanie rang maksymalnie co 24 godziny, sprawdzanie nowych kont online co 5 minut oraz ponawianie prób po błędach Lootlog Gateway (8 prób co 3 sekundy). Zachowano integrację z kafelkiem, przełącznikiem, przyciskiem ręcznej synchronizacji i zoptymalizowaną obserwacją nicków na czacie. Pozostałe dodatki bez zmian.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.66</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano ponownie „Kolory rang Lootloga na czacie” na podstawie nowego skryptu 2.3.0. Kolory rang są pobierane z API Lootloga, konta online z Lootlog Game Client API, a postacie Riventii z profili Margonem. Nicki nadawców są kolorowane na czacie bez zmiany treści wiadomości. Dodano przełącznik i ręczną synchronizację w ustawieniach. Moduł działa wyłącznie na Riventii.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.65</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto dodatek „Kolory rang Lootloga na czacie”: kafelek, ustawienia, eksport kolorów ze strony Lootloga, obserwatory DOM, mechanizm kolorowania nadawców i współdzielone dane. Pozostałe dodatki oraz ich ustawienia pozostają bez zmian.</div></div>
@@ -7912,7 +7913,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
 // =============================================================
 // KOLORY RANG LOOTLOGA NA CZACIE — zintegrowane z Vickness Addons
-// Rdzeń pobierania oparty na przesłanym przez użytkownika Lootlog Nick Colors 2.5.0.
+// Rdzeń pobierania na podstawie przesłanego Lootlog Nick Colors 2.7.0.
 // =============================================================
 (() => {
   'use strict';
@@ -7923,33 +7924,36 @@ if (location.hostname === 'riventia.margonem.pl') {
   const page = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const GUILD_ID = '1384811864235704372';
   const WORLD = 'riventia';
+  const TARGET_NICK = 'Piekielna Wika';
+  const MANUAL_ACCOUNT_IDS = ['7239525'];
+  const MANUAL_ACCOUNT_DISCORD_IDS = { '7239525': '606168243232833566' };
   const MEMBERS_URL = `https://api.lootlog.pl/guilds/${GUILD_ID}/members?includeInactive=true`;
   const PROFILE_URL = id => `https://www.margonem.pl/profile/view,${encodeURIComponent(id)}`;
-
-  // Struktura i klucz cache zgodne z przesłaną wersją 2.5.0.
   const CACHE_KEY = 'riventia_lootlog_cache_v24';
   const LEGACY_CACHE_KEY = 'riventia_nick_cache_v23';
   const ONLINE_CHECK_INTERVAL = 5 * 60 * 1000;
   const MEMBERS_REFRESH_INTERVAL = 24 * 60 * 60 * 1000;
   const GATEWAY_RETRIES = 8;
   const GATEWAY_RETRY_DELAY = 3000;
-  const REQUEST_TIMEOUT_MS = 20000;
+  const PROFILE_RETRIES = 3;
+  const PROFILE_RETRY_DELAY = 2500;
+  const REQUEST_TIMEOUT_MS = 30000;
   const TICK_MS = 5000;
   const RETRY_DELAY_MS = 30000;
-  const AUTHOR_SELECTOR = 'span.author-section.click-able';
+  const AUTHOR_SELECTOR = 'span.author-section, span.hero-name-nick';
 
   let cache = {};
   try {
     const stored = typeof GM_getValue === 'function' ? GM_getValue(CACHE_KEY, null) : null;
     if (stored && typeof stored === 'object' && !Array.isArray(stored)) cache = stored;
   } catch (error) {
-    console.warn('[Vickness Rank Colors] Nie udało się odczytać cache 2.5:', error);
+    console.warn('[Vickness Rank Colors] Nie udało się odczytać cache v24:', error);
   }
   if (!cache.accounts || typeof cache.accounts !== 'object' || Array.isArray(cache.accounts)) cache.accounts = {};
   if (!cache.memberColors || typeof cache.memberColors !== 'object' || Array.isArray(cache.memberColors)) cache.memberColors = {};
   if (!cache.lastMembersRefresh && cache.lastFullRefresh) cache.lastMembersRefresh = cache.lastFullRefresh;
 
-  // Jednorazowa migracja nazw postaci z cache 2.3, jeśli istnieje.
+  // Jednorazowa migracja profili z wcześniejszego klucza pamięci.
   if (Object.keys(cache.accounts).length === 0) {
     try {
       const legacy = typeof GM_getValue === 'function' ? GM_getValue(LEGACY_CACHE_KEY, {}) : {};
@@ -7980,6 +7984,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   let nickColors = new Map();
   let sortedNickNames = [];
   let lastColorLog = '';
+  let targetDiagnosticLogged = false;
   const activeRequests = new Set();
 
   const log = (...args) => console.info('[Vickness Rank Colors]', ...args);
@@ -7988,7 +7993,8 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (element) element.textContent = message;
     window.__vicknessRankChatLastStatus = message;
   };
-  const normalize = value => String(value || '').trim().replace(/:+\s*$/, '').replace(/\s+/g, ' ').toLocaleLowerCase('pl');
+  const normalize = value => String(value || '').replace(/\u00a0/g, ' ').trim().replace(/:+\s*$/, '').replace(/\s+/g, ' ').toLocaleLowerCase('pl');
+  const normalizeAuthor = value => normalize(value).replace(/^\[[^\]]+\]\s*/, '').trim();
   const sleep = ms => new Promise(resolve => window.setTimeout(resolve, ms));
 
   function saveCache() {
@@ -8001,16 +8007,14 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   function request(url) {
     return new Promise((resolve, reject) => {
-      if (typeof GM_xmlhttpRequest !== 'function') {
-        reject(new Error('GM_xmlhttpRequest nie jest dostępny.'));
-        return;
-      }
+      if (!active) { reject(new Error('Dodatek jest wyłączony.')); return; }
+      if (typeof GM_xmlhttpRequest !== 'function') { reject(new Error('GM_xmlhttpRequest nie jest dostępny.')); return; }
       let finished = false;
       let handle = null;
       const finish = (callback, value) => {
         if (finished) return;
         finished = true;
-        clearTimeout(timeout);
+        window.clearTimeout(timeout);
         if (handle) activeRequests.delete(handle);
         callback(value);
       };
@@ -8020,15 +8024,9 @@ if (location.hostname === 'riventia.margonem.pl') {
       }, REQUEST_TIMEOUT_MS + 250);
       try {
         handle = GM_xmlhttpRequest({
-          method: 'GET',
-          url,
-          withCredentials: true,
-          timeout: REQUEST_TIMEOUT_MS,
+          method: 'GET', url, withCredentials: true, timeout: REQUEST_TIMEOUT_MS,
           onload: response => {
-            if (response.status < 200 || response.status >= 300) {
-              finish(reject, new Error(`HTTP ${response.status}`));
-              return;
-            }
+            if (response.status < 200 || response.status >= 300) { finish(reject, new Error(`HTTP ${response.status}`)); return; }
             finish(resolve, response.responseText);
           },
           onerror: () => finish(reject, new Error('Błąd żądania sieciowego.')),
@@ -8036,10 +8034,21 @@ if (location.hostname === 'riventia.margonem.pl') {
           onabort: () => finish(reject, new Error('Żądanie anulowane.'))
         });
         if (!finished && handle) activeRequests.add(handle);
-      } catch (error) {
-        finish(reject, error);
-      }
+      } catch (error) { finish(reject, error); }
     });
+  }
+
+  async function requestWithRetry(url, retries, delay) {
+    let lastError;
+    for (let attempt = 1; attempt <= retries && active; attempt++) {
+      try { return await request(url); }
+      catch (error) {
+        lastError = error;
+        log(`Błąd pobierania (${attempt}/${retries}):`, error?.message || error);
+        if (attempt < retries && active) await sleep(delay * attempt);
+      }
+    }
+    throw lastError || new Error('Dodatek został wyłączony.');
   }
 
   function toHex(color) {
@@ -8049,45 +8058,41 @@ if (location.hostname === 'riventia.margonem.pl') {
       if (/^[0-9a-f]{6}$/i.test(value)) return `#${value}`;
       color = Number(value);
     }
-    if (!Number.isFinite(color) || color <= 0) return null;
+    if (!Number.isFinite(color) || color < 0) return null;
     return '#' + Math.min(0xffffff, Math.floor(color)).toString(16).padStart(6, '0');
   }
 
   function getMemberColor(member) {
     const roles = Array.isArray(member?.roles) ? member.roles : [];
-    const coloredRoles = roles.map(role => ({
-      position: Number(role.position) || 0,
-      color: toHex(role.color)
-    })).filter(role => role.color).sort((a, b) => b.position - a.position);
+    const coloredRoles = roles.map(role => ({ position: Number(role.position) || 0, color: toHex(role.color) }))
+      .filter(role => role.color).sort((a, b) => b.position - a.position);
     return coloredRoles[0]?.color || null;
   }
 
   async function refreshMemberColors(force = false) {
     const lastRefresh = Number(cache.lastMembersRefresh) || 0;
-    if (!force && lastRefresh && Date.now() - lastRefresh < MEMBERS_REFRESH_INTERVAL) return false;
+    const diagnosticRefreshNeeded = cache.diagnosticRefreshDone !== true;
+    if (!force && !diagnosticRefreshNeeded && lastRefresh && Date.now() - lastRefresh < MEMBERS_REFRESH_INTERVAL) return false;
     if (!active) throw new Error('Dodatek został wyłączony.');
-
     log('Odświeżam kolory rang gildii…');
-    const members = JSON.parse(await request(MEMBERS_URL));
+    const members = JSON.parse(await requestWithRetry(MEMBERS_URL, 3, 2000));
     if (!Array.isArray(members)) throw new Error('Nieprawidłowa lista członków gildii.');
-
     const newColors = {};
     for (const member of members) {
       if (!member?.userId) continue;
       const color = getMemberColor(member);
       if (color) newColors[String(member.userId)] = color;
     }
-
+    if (!active) return false;
     cache.memberColors = newColors;
     cache.lastMembersRefresh = Date.now();
+    cache.diagnosticRefreshDone = true;
     for (const account of Object.values(cache.accounts)) {
       if (!account?.discordId) continue;
       const color = newColors[String(account.discordId)];
       if (color) account.color = color;
     }
-    saveCache();
-    rebuildNickColors();
-    applyAllColors();
+    saveCache(); rebuildNickColors(); applyAllColors();
     log(`Zaktualizowano kolory ${Object.keys(newColors).length} członków.`);
     return true;
   }
@@ -8106,8 +8111,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   async function getOnlineAccounts() {
     const api = await getLootlogApi();
     let lastError;
-    for (let attempt = 1; attempt <= GATEWAY_RETRIES; attempt++) {
-      if (!active) throw new Error('Dodatek został wyłączony.');
+    for (let attempt = 1; attempt <= GATEWAY_RETRIES && active; attempt++) {
       try {
         const response = await api.getOnlinePlayers({ guildId: GUILD_ID, world: WORLD });
         if (!response || response.status !== 'success') throw new Error('Nie udało się pobrać graczy online.');
@@ -8123,7 +8127,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         return accounts;
       } catch (error) {
         lastError = error;
-        log(`Gateway niegotowy (${attempt}/${GATEWAY_RETRIES}):`, error?.message || error);
+        log(`Gateway (${attempt}/${GATEWAY_RETRIES}):`, error?.message || error);
         if (attempt < GATEWAY_RETRIES && active) await sleep(GATEWAY_RETRY_DELAY);
       }
     }
@@ -8131,17 +8135,24 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   async function getAccountCharacters(accountId) {
-    const html = await request(PROFILE_URL(accountId));
+    const html = await requestWithRetry(PROFILE_URL(accountId), PROFILE_RETRIES, PROFILE_RETRY_DELAY);
     if (!active) throw new Error('Dodatek został wyłączony.');
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    const rows = doc.querySelectorAll('.character-list .char-row');
+    let rows = [...doc.querySelectorAll('.character-list .char-row')];
+    if (!rows.length) rows = [...doc.querySelectorAll('[data-nick][data-world]')];
     const names = [];
     for (const row of rows) {
-      const world = String(row.dataset.world || '').replace(/^#/, '').toLowerCase();
+      const world = String(row.dataset.world || '').replace(/^#/, '').trim().toLowerCase();
       const nick = String(row.dataset.nick || '').trim();
       if (world === WORLD && nick) names.push(nick);
     }
-    return [...new Set(names)];
+    const uniqueNames = [...new Set(names)];
+    if (uniqueNames.some(name => normalize(name) === normalize(TARGET_NICK)) && !targetDiagnosticLogged) {
+      targetDiagnosticLogged = true;
+      log(`ZNALEZIONO ${TARGET_NICK.toUpperCase()} W PROFILU:`, accountId, uniqueNames);
+    }
+    log('Profil konta:', accountId, 'Postacie na świecie:', uniqueNames);
+    return uniqueNames;
   }
 
   function rebuildNickColors() {
@@ -8161,11 +8172,13 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   function findColor(authorText) {
-    const text = normalize(authorText);
+    const text = normalizeAuthor(authorText);
     if (!text) return null;
     if (nickColors.has(text)) return nickColors.get(text);
     for (const nick of sortedNickNames) {
-      if (text.endsWith(' ' + nick)) return nickColors.get(nick);
+      if (text === nick || text.endsWith(' ' + nick) || text.endsWith(']' + nick)) return nickColors.get(nick);
+      const doubledNick = nick + nick.slice(-1);
+      if (text === doubledNick || text.endsWith(' ' + doubledNick) || text.endsWith(']' + doubledNick)) return nickColors.get(nick);
     }
     return null;
   }
@@ -8234,7 +8247,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       if (!active) return;
       const authors = new Set();
       for (const record of records) {
-        if (record.type === 'characterData') collectAuthors(record.target, authors);
+        if (record.type === 'characterData' || record.type === 'attributes') collectAuthors(record.target, authors);
         else {
           collectAuthors(record.target, authors);
           record.addedNodes.forEach(node => collectAuthors(node, authors));
@@ -8242,44 +8255,85 @@ if (location.hostname === 'riventia.margonem.pl') {
       }
       if (authors.size) scheduleAuthors(authors);
     });
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class'] });
+  }
+
+  async function checkManualAccounts() {
+    for (const accountId of MANUAL_ACCOUNT_IDS) {
+      if (!active) return;
+      const manualDiscordId = MANUAL_ACCOUNT_DISCORD_IDS[accountId] || null;
+      const cached = cache.accounts[accountId];
+      if (cached) {
+        cached.discordId = manualDiscordId;
+        const cachedColor = manualDiscordId ? cache.memberColors[String(manualDiscordId)] : null;
+        if (cachedColor) cached.color = cachedColor;
+      }
+      if (cached && Array.isArray(cached.names) && cached.names.length > 0) continue;
+      try {
+        log('Pobieram ręczne konto (niezależnie od online):', accountId);
+        const names = await getAccountCharacters(accountId);
+        if (!active) return;
+        const color = manualDiscordId ? cache.memberColors[String(manualDiscordId)] || null : null;
+        cache.accounts[accountId] = { ...(cached || {}), discordId: manualDiscordId, color, names, updatedAt: Date.now(), manual: true };
+        saveCache();
+        log('Zapisano ręczne konto:', accountId, 'Postacie:', names, 'Discord ID:', manualDiscordId || 'NIEUSTALONE', 'Kolor:', color || 'OCZEKUJE NA KOLOR RANGI');
+      } catch (error) {
+        log('Błąd pobierania ręcznego konta:', accountId, error?.message || error);
+      }
+    }
+    for (const accountId of MANUAL_ACCOUNT_IDS) {
+      const account = cache.accounts[accountId];
+      if (!account) continue;
+      const discordId = MANUAL_ACCOUNT_DISCORD_IDS[accountId];
+      if (!discordId) continue;
+      account.discordId = discordId;
+      const color = cache.memberColors[String(discordId)];
+      if (color) account.color = color;
+    }
+    saveCache(); rebuildNickColors(); applyAllColors();
   }
 
   async function checkForNewAccounts() {
-    log('Sprawdzam nowe konta online w Lootlogu…');
-    const onlineAccounts = await getOnlineAccounts();
-    let newAccounts = 0;
-    let failedProfiles = 0;
-
+    await checkManualAccounts();
+    if (!active) return { onlineAccounts: 0, newAccounts: 0, failedProfiles: 0 };
+    let onlineAccounts;
+    try { onlineAccounts = await getOnlineAccounts(); }
+    catch (error) {
+      log('Nie udało się pobrać listy online. Konta ręczne zostały sprawdzone:', error?.message || error);
+      rebuildNickColors(); applyAllColors();
+      return { onlineAccounts: 0, newAccounts: 0, failedProfiles: 0 };
+    }
+    let newAccounts = 0, failedProfiles = 0, retriedProfiles = 0;
     for (const [accountId, discordId] of onlineAccounts) {
       if (!active) break;
       const cached = cache.accounts[accountId];
-      if (cached && Array.isArray(cached.names)) {
+      if (cached && Array.isArray(cached.names) && cached.names.length > 0) {
         cached.discordId = discordId;
         const currentColor = cache.memberColors[String(discordId)];
         if (currentColor) cached.color = currentColor;
         continue;
       }
       try {
-        log(`Nowe konto ${accountId}. Pobieram listę postaci…`);
+        if (cached) { retriedProfiles++; log(`Ponawiam pobieranie profilu konta ${accountId}…`); }
+        else log(`Nowe konto ${accountId}. Pobieram postacie…`);
         const names = await getAccountCharacters(accountId);
         if (!active) break;
         const color = cache.memberColors[String(discordId)] || null;
         cache.accounts[accountId] = { discordId, color, names, updatedAt: Date.now() };
         saveCache();
-        newAccounts++;
-        log(`Zapisano konto ${accountId}: ${names.length} postaci.`);
+        if (names.length > 0) { newAccounts++; log(`Zapisano konto ${accountId}: ${names.length} postaci.`); }
       } catch (error) {
         failedProfiles++;
+        cache.accounts[accountId] = { ...(cache.accounts[accountId] || {}), discordId, names: [], lastErrorAt: Date.now() };
+        saveCache();
         log(`Nie udało się pobrać profilu ${accountId}:`, error?.message || error);
       }
     }
-
     if (!active) return { onlineAccounts: onlineAccounts.size, newAccounts, failedProfiles };
-    saveCache();
-    rebuildNickColors();
-    applyAllColors();
-    log(`Sprawdzanie zakończone. Nowe konta: ${newAccounts}, błędy profili: ${failedProfiles}.`);
+    const targetInCache = Object.entries(cache.accounts).filter(([, account]) => (account.names || []).some(name => normalize(name) === normalize(TARGET_NICK)));
+    log(`Wynik wyszukiwania ${TARGET_NICK} w cache:`, targetInCache.length ? targetInCache : 'NIE ZNALEZIONO');
+    saveCache(); rebuildNickColors(); applyAllColors();
+    log(`Sprawdzanie zakończone. Nowe konta: ${newAccounts}, ponowione profile: ${retriedProfiles}, błędy profili: ${failedProfiles}.`);
     return { onlineAccounts: onlineAccounts.size, newAccounts, failedProfiles };
   }
 
@@ -8288,28 +8342,23 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (loading) { status('Synchronizacja już trwa…'); return false; }
     if (!force && Date.now() < nextRetryAt) return false;
     loading = true;
-    status('Pobieram kolory rang i konta online…');
+    status('Pobieram kolory rang, konta online i konto ręczne…');
     let roleError = null;
     let accountResult = null;
     try {
-      try {
-        await refreshMemberColors(force);
-      } catch (error) {
-        roleError = error;
-        log('Nie udało się odświeżyć rang; zostawiam zapisane kolory:', error?.message || error);
-      }
+      try { await refreshMemberColors(force); }
+      catch (error) { roleError = error; log('Nie udało się odświeżyć rang; zostawiam zapisane kolory:', error?.message || error); }
       if (!active) return false;
       accountResult = await checkForNewAccounts();
       if (!active) return false;
       lastPlayerRefresh = Date.now();
       nextRetryAt = 0;
-      rebuildNickColors();
-      applyAllColors();
-      const colorCount = nickColors.size;
-      const accountCount = accountResult?.onlineAccounts || 0;
+      rebuildNickColors(); applyAllColors();
+      const count = nickColors.size;
+      const onlineCount = accountResult?.onlineAccounts || 0;
       const message = roleError
-        ? `Kolory: ${colorCount} postaci · online: ${accountCount} · błąd odświeżania rang: ${roleError.message}`
-        : `Kolory: ${colorCount} postaci · konta online: ${accountCount} · synchronizacja ${new Date().toLocaleTimeString('pl-PL')}`;
+        ? `Kolory: ${count} postaci · konta online: ${onlineCount} · błąd rang: ${roleError.message}`
+        : `Kolory: ${count} postaci · konta online: ${onlineCount} · synchronizacja ${new Date().toLocaleTimeString('pl-PL')}`;
       status(message);
       return true;
     } catch (error) {
@@ -8319,24 +8368,19 @@ if (location.hostname === 'riventia.margonem.pl') {
         console.warn('[Vickness Rank Colors] Błąd synchronizacji:', error);
       }
       return false;
-    } finally {
-      loading = false;
-    }
+    } finally { loading = false; }
   }
 
   async function tick() {
     if (!active || document.visibilityState === 'hidden' || loading || Date.now() < nextRetryAt) return;
     const now = Date.now();
     const lastMembersRefresh = Number(cache.lastMembersRefresh) || 0;
-    if (!lastMembersRefresh || now - lastMembersRefresh >= MEMBERS_REFRESH_INTERVAL) {
-      await refreshNow(false);
-    } else if (!lastPlayerRefresh || now - lastPlayerRefresh >= ONLINE_CHECK_INTERVAL) {
-      await refreshNow(false);
-    }
+    if (!lastMembersRefresh || now - lastMembersRefresh >= MEMBERS_REFRESH_INTERVAL) await refreshNow(false);
+    else if (!lastPlayerRefresh || now - lastPlayerRefresh >= ONLINE_CHECK_INTERVAL) await refreshNow(false);
   }
 
   function clearAppliedColors() {
-    document.querySelectorAll(`${AUTHOR_SELECTOR}[data-vx-rank-chat-applied="1"]`).forEach(restoreAuthor);
+    document.querySelectorAll(`${AUTHOR_SELECTOR}[data-vxRankChatApplied="1"]`).forEach(restoreAuthor);
   }
 
   function stop() {
@@ -8349,9 +8393,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (observerTimer) window.clearTimeout(observerTimer);
     observerTimer = null;
     pendingAuthors.clear();
-    for (const handle of activeRequests) {
-      try { handle.abort?.(); } catch (_) {}
-    }
+    for (const handle of activeRequests) { try { handle.abort?.(); } catch (_) {} }
     activeRequests.clear();
     clearAppliedColors();
     status('WYŁĄCZONY');
@@ -8360,26 +8402,16 @@ if (location.hostname === 'riventia.margonem.pl') {
   function start() {
     if (active) return;
     active = true;
-    rebuildNickColors();
-    applyAllColors();
-    startObserver();
+    rebuildNickColors(); applyAllColors(); startObserver();
     refreshTimer = window.setInterval(tick, TICK_MS);
-    status(nickColors.size
-      ? `Aktywny · zapisane kolory: ${nickColors.size} · synchronizacja…`
-      : 'Aktywny · pobieram pierwszą listę rang…');
+    status(nickColors.size ? `Aktywny · zapisane kolory: ${nickColors.size} · synchronizacja…` : 'Aktywny · pobieram pierwszą listę rang…');
     void refreshNow(false);
   }
 
-  function setEnabled(value) {
-    if (value) start(); else stop();
-  }
-
+  function setEnabled(value) { if (value) start(); else stop(); }
   function onVisibilityChange() {
     if (!active) return;
-    if (document.visibilityState === 'visible') {
-      applyAllColors();
-      void tick();
-    }
+    if (document.visibilityState === 'visible') { applyAllColors(); void tick(); }
   }
 
   window.__vicknessRankChatSetEnabled = setEnabled;
@@ -8401,4 +8433,3 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (active) void refreshNow(true);
   }
 })();
-
