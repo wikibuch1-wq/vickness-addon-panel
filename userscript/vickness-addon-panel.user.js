@@ -1,16 +1,14 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.63
-// @description  Vickness Addons 1.1.63: naprawa automatycznego odświeżania Klanowiczów online
+// @version      1.1.65
+// @description  Vickness Addons 1.1.65: usunięto dodatek kolorowania nicków na czacie
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
 // @match        http://www.margonem.pl/profile/view,*
 // @match        https://margonem.pl/profile/view,*
 // @match        http://margonem.pl/profile/view,*
-// @match        https://lootlog.pl/*
-// @match        https://www.lootlog.pl/*
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        unsafeWindow
@@ -29,175 +27,6 @@
 // @run-at       document-idle
 // @noframes
 // ==/UserScript==
-
-// =============================================================
-// EKSPORT KOLORÓW RANG LOOTLOGA — tylko strona Ustawienia > Członkowie
-// Kolory są odczytywane z widocznego DOM Lootloga i współdzielone przez GM storage.
-// =============================================================
-(() => {
-  'use strict';
-  if (!/^(?:www\.)?lootlog\.pl$/i.test(location.hostname)) return;
-  const route = location.pathname.match(/^\/(\d+)\/settings\/members\/?$/i);
-  if (!route || route[1] !== '1384811864235704372') return;
-  if (window.top !== window.self || window.__vicknessLootlogRankExporter) return;
-  window.__vicknessLootlogRankExporter = true;
-
-  const ORG_ID = route[1];
-  const DATA_KEY = 'vickness_lootlog_rank_chat_colors_v1';
-  const REQUEST_KEY = 'vickness_lootlog_rank_chat_scan_request_v1';
-  const normalize = value => String(value || '')
-    .normalize('NFKC')
-    .replace(/[\u200B-\u200D\uFE0E\uFE0F]/g, '')
-    .replace(/\p{Extended_Pictographic}/gu, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLocaleLowerCase('pl-PL');
-
-  function directText(element) {
-    let result = '';
-    for (const node of element.childNodes) {
-      if (node.nodeType === Node.TEXT_NODE) result += ` ${node.nodeValue || ''}`;
-    }
-    return result.replace(/\s+/g, ' ').trim();
-  }
-
-  function toHexColor(value) {
-    const match = String(value || '').match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)/i);
-    if (!match) return null;
-    const r = Math.max(0, Math.min(255, Number(match[1])));
-    const g = Math.max(0, Math.min(255, Number(match[2])));
-    const b = Math.max(0, Math.min(255, Number(match[3])));
-    const a = match[4] === undefined ? 1 : Number(match[4]);
-    if (a < 0.45) return null;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    // Odrzucamy neutralne kolory tekstu, ikony i opisy statusu.
-    if (max - min < 28 || max < 65) return null;
-    return `#${[r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')}`;
-  }
-
-  function looksLikeMemberRow(element, name) {
-    let current = element;
-    for (let depth = 0; current && depth < 7; depth++, current = current.parentElement) {
-      const text = (current.innerText || current.textContent || '').replace(/\s+/g, ' ').trim();
-      if (!text || text.length > 1100 || !text.toLocaleLowerCase('pl-PL').includes(name.toLocaleLowerCase('pl-PL'))) continue;
-      const cls = typeof current.className === 'string' ? current.className : '';
-      const rowLike = /member|user|row|card|list-item/i.test(`${cls} ${current.getAttribute?.('data-testid') || ''}`)
-        || current.matches?.('tr,[role="row"],li');
-      const presenceText = /online|offline|mniej niż|minut[ęya]|godzin|dni temu|teraz|aktywn|nieaktywn|ostatnio/i.test(text);
-      if (rowLike || presenceText) return true;
-    }
-    return false;
-  }
-
-  let scanQueued = false;
-  let lastSavedDigest = '';
-  const collected = new Map();
-
-  function readVisibleMemberColor(element) {
-    if (!element) return null;
-    // Prefer the actual computed color (the current Lootlog sets it on the nickname span).
-    const computed = toHexColor(getComputedStyle(element).color);
-    if (computed) return computed;
-    return toHexColor(element.style?.color || element.getAttribute?.('style') || '');
-  }
-
-  function collectCurrentLootlogMemberRows() {
-    // Current Lootlog members page: /<org>/settings/members/<memberId>
-    // Nick is rendered in: span.mr-1.truncate.text-sm.font-semibold
-    const links = document.querySelectorAll(`a[href*="/${ORG_ID}/settings/members/"]`);
-    for (const link of links) {
-      const spans = Array.from(link.querySelectorAll('span'));
-      const nameElement = spans.find(span =>
-        span.classList.contains('font-semibold') &&
-        (span.classList.contains('truncate') || span.classList.contains('mr-1'))
-      ) || spans.find(span => {
-        const text = (span.innerText || span.textContent || '').trim();
-        return text.length >= 2 && text.length <= 42 && /[\p{L}]/u.test(text);
-      });
-      if (!nameElement) continue;
-      const name = (directText(nameElement) || nameElement.innerText || nameElement.textContent || '').replace(/\s+/g, ' ').trim();
-      const key = normalize(name);
-      if (!key || key.length < 2 || key.length > 42 || !/[\p{L}]/u.test(key)) continue;
-      const color = readVisibleMemberColor(nameElement);
-      if (!color) continue;
-      collected.set(key, { name, color });
-    }
-  }
-
-  function scanAndSave() {
-    scanQueued = false;
-    if (document.visibilityState === 'hidden' || !document.body) return;
-    // First use the precise members-page selector, then keep the generic fallback
-    // for Lootlog layout variants and rows rendered after scrolling.
-    collectCurrentLootlogMemberRows();
-    const candidates = document.body.querySelectorAll('span,div,p,a,strong,b');
-    for (const element of candidates) {
-      if (!element.isConnected || element.closest('button,input,textarea,select,[contenteditable="true"]')) continue;
-      const name = directText(element);
-      const key = normalize(name);
-      if (!key || key.length < 2 || key.length > 42 || !/[\p{L}]/u.test(key)) continue;
-      if (key.length > 33 || /^(online|offline|wszyscy|aktywni|nieaktywni|filtruj|discord|ustawienia|członkowie|teraz|status)$/i.test(key)) continue;
-      if (/\b(online|offline|minut[ęya]|godzin|dni temu|mniej niż|temu|wszyscy|aktywni|filtruj|discord)\b/i.test(key)) continue;
-      if (key.split(/\s+/).length > 4) continue;
-      if (!looksLikeMemberRow(element, name)) continue;
-      const color = readVisibleMemberColor(element);
-      if (!color) continue;
-      // Zachowujemy nazwę z widoku jako klucz; późniejsze skany mogą ją zaktualizować.
-      collected.set(key, { name, color });
-    }
-
-    if (!collected.size) return;
-    const colors = Object.fromEntries(collected.entries());
-    const digest = JSON.stringify(colors);
-    if (digest === lastSavedDigest) return;
-    lastSavedDigest = digest;
-    try {
-      GM_setValue(DATA_KEY, {
-        version: 1,
-        orgId: ORG_ID,
-        updatedAt: Date.now(),
-        source: 'lootlog-members-dom',
-        sourceUrl: location.href,
-        colors
-      });
-      console.info(`[Vickness] Zapisano kolory Lootloga: ${collected.size} nicków.`);
-    } catch (error) {
-      console.warn('[Vickness] Nie udało się zapisać kolorów Lootloga:', error);
-    }
-  }
-
-  function scheduleScan() {
-    if (scanQueued || document.visibilityState === 'hidden') return;
-    scanQueued = true;
-    requestAnimationFrame(scanAndSave);
-  }
-
-  const bodyObserver = new MutationObserver(mutations => {
-    if (mutations.some(m => m.type === 'childList' || m.type === 'characterData' || m.type === 'attributes')) scheduleScan();
-  });
-  if (document.body) bodyObserver.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['style', 'class'] });
-
-  let refreshTimer = window.setInterval(scheduleScan, 5000);
-  window.addEventListener('scroll', scheduleScan, { passive: true, capture: true });
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleScan(); });
-  let requestListener = null;
-  try {
-    if (typeof GM_addValueChangeListener === 'function') {
-      requestListener = GM_addValueChangeListener(REQUEST_KEY, () => scheduleScan());
-    }
-  } catch (_) {}
-
-  scheduleScan();
-  window.setTimeout(scheduleScan, 700);
-  window.setTimeout(scheduleScan, 1800);
-  window.addEventListener('pagehide', () => {
-    bodyObserver.disconnect();
-    if (refreshTimer) clearInterval(refreshTimer);
-    window.removeEventListener('scroll', scheduleScan, true);
-    try { if (requestListener !== null && typeof GM_removeValueChangeListener === 'function') GM_removeValueChangeListener(requestListener); } catch (_) {}
-    delete window.__vicknessLootlogRankExporter;
-  }, { once: true });
-})();
 
 // Izolacja stron profili: jeśli w Tampermonkey pozostała starsza kopia dodatków,
 // jej panele nie powinny zasłaniać profilu. Moduły nowej wersji i tak nie uruchamiają się tutaj.
@@ -234,7 +63,7 @@
 
 // Stan dodatków gry istnieje wyłącznie na Riventii.
 if (location.hostname === 'riventia.margonem.pl') {
-    window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true };
+    window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true };
 }
 
 // Wszystkie moduły gry, panel oraz belki działają wyłącznie na Riventii.
@@ -2722,7 +2551,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   const KEY = 'vickness_addon_panel_layout_v2';
   const FLAGS_KEY = 'vickness_addon_enabled_v1';
-  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true });
+  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true });
   if (typeof enabled.profileFinder !== 'boolean') enabled.profileFinder = true;
   try {
     const saved = JSON.parse(localStorage.getItem(FLAGS_KEY) || '{}');
@@ -2737,15 +2566,14 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (typeof saved.crewOnline === 'boolean') enabled.crewOnline = saved.crewOnline;
     else if (typeof enabled.crewOnline !== 'boolean') enabled.crewOnline = true;
     if (typeof saved.wnm === 'boolean') enabled.wnm = saved.wnm;
-    if (typeof saved.rankChat === 'boolean') enabled.rankChat = saved.rankChat;
-  } catch (_) { if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true; if (typeof enabled.titan !== 'boolean') enabled.titan = true; if (typeof enabled.crewOnline !== 'boolean') enabled.crewOnline = true; if (typeof enabled.rankChat !== 'boolean') enabled.rankChat = true; }
+  } catch (_) { if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true; if (typeof enabled.titan !== 'boolean') enabled.titan = true; if (typeof enabled.crewOnline !== 'boolean') enabled.crewOnline = true; }
   if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true;
   if (typeof enabled.titan !== 'boolean') enabled.titan = true;
   if (typeof enabled.lootChance !== 'boolean') enabled.lootChance = true;
   if (typeof enabled.crewOnline !== 'boolean') enabled.crewOnline = true;
   if (typeof enabled.profileFinder !== 'boolean') enabled.profileFinder = true;
   if (typeof enabled.wnm !== 'boolean') enabled.wnm = true;
-  if (typeof enabled.rankChat !== 'boolean') enabled.rankChat = true;
+  delete enabled.rankChat; // Usunięty moduł kolorowania nicków na czacie.
   const PROFILE_FINDER_GM_KEY = 'vickness_profileFinderEnabled';
   try {
     const storedProfileFinder = GM_getValue(PROFILE_FINDER_GM_KEY, undefined);
@@ -2987,7 +2815,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     const home = el.querySelector('#vxHomeView');
     if (home) {
       home.classList.toggle('vxNarrow', rect.width < 470);
-      home.classList.toggle('vxCompact', rect.width >= 470 && rect.width < 720);
     }
   }
 
@@ -3089,8 +2916,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     #vxStandaloneMini { border-color:var(--vx-accent-line); }
     #vxSettingsToolbar { border-bottom-color:var(--vx-accent-line); }
     /* Widok główny jest przewijany wewnątrz okna; stopka zostaje na dole. */
-    #vxHomeView { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); grid-auto-rows:minmax(76px,auto); align-content:start; align-items:stretch; gap:4px; padding:5px; flex:1 1 0%; height:0; min-height:0; max-height:none; overflow-y:auto; overflow-x:hidden; }
-    #vxHomeView.vxCompact { grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:minmax(72px,auto); }
+    #vxHomeView { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:minmax(70px,auto); align-content:start; align-items:stretch; gap:4px; padding:5px; flex:1 1 0%; height:0; min-height:0; max-height:none; overflow-y:auto; overflow-x:hidden; }
     #vxHomeView.vxNarrow { grid-template-columns:minmax(0,1fr); grid-auto-rows:minmax(68px,auto); }
     #vxHomeView, #vxSettingsView, #vxChangelogView, #vxAppearanceView { scrollbar-width:thin; scrollbar-color:rgba(201,162,39,.25) transparent; overscroll-behavior:contain; }
     #vxSettingsWnm .vxWnmControl { width:100%; box-sizing:border-box; padding:6px 8px; border:1px solid var(--vx-accent-line); border-radius:5px; color:#f3e7c5; background:#171717; font:12px Arial,sans-serif; }
@@ -3205,7 +3031,6 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">The Crew Online</span><span class="vxStandaloneDesc">Lista klanowiczów online bezpośrednio z Margonem</span><div class="vxStandaloneState" id="vxCrewOnlineState"></div><button type="button" class="vxOpenSettings" id="vxCrewOnlineOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxCrewOnlineSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Postacie online na profilach</span><span class="vxStandaloneDesc">Wyszukuje postacie konta na światach i podświetla znaleziony profil</span><div class="vxStandaloneState" id="vxProfileFinderState"></div><button type="button" class="vxOpenSettings" id="vxProfileFinderOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxProfileFinderSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Wróg na mapie</span><span class="vxStandaloneDesc">Alarm dźwiękowy o wrogach i graczach bez klanu</span><div class="vxStandaloneState" id="vxWnmState"></div><button type="button" class="vxOpenSettings" id="vxWnmOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxWnmSwitch" type="checkbox"><span></span></label></div>
-      <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Kolory rang Lootloga na czacie</span><span class="vxStandaloneDesc">Kolorowanie nicków nadawców według kolorów na liście członków Lootloga</span><div class="vxStandaloneState" id="vxRankChatState"></div><button type="button" class="vxOpenSettings" id="vxRankChatOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxRankChatSwitch" type="checkbox"><span></span></label></div>
     </div>
     <div id="vxSettingsView">
       <div id="vxSettingsToolbar"><button class="vxNavBtn" id="vxBackHome" type="button">← WSTECZ</button><span id="vxCurrentSetting">USTAWIENIA</span><button class="vxNavBtn" id="vxSwitchAddon" type="button">DRUGI DODATEK →</button></div>
@@ -3242,13 +3067,8 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div id="vxSettingsProfileFinder" class="vxSettingsSlot" hidden>
         <div class="vxLootlogInfo">Dodatek działa na stronach profilu Margonem (www.margonem.pl/profile/view,...). Sprawdza listy postaci online na znanych światach, pokazuje znalezioną postać i podświetla jej kartę na profilu. Wyszukiwanie odświeża się co 30 sekund. Przełącznik w kafelku włącza lub wyłącza dodatek także na profilach otwartych w innych kartach.</div>
       </div>
-      <div id="vxSettingsRankChat" class="vxSettingsSlot" hidden>
-        <div class="vxLootlogInfo">Dodatek odczytuje kolory nicków bezpośrednio z widoku Lootlog → The Crew → Ustawienia → Członkowie (organizacja The Crew). Otwórz tę stronę w osobnej karcie; Vickness zapisze widoczne kolory w pamięci Tampermonkey i użyje ich do kolorowania samych nicków nadawców na czacie Riventii. Po zmianie ról odśwież stronę Członkowie. Nie są pobierane wiadomości ani treść czatu z Lootloga.</div>
-        <div class="vxLootlogActions"><button type="button" id="vxRankChatSync">SYNCHRONIZUJ KOLORY Z OTWARTEGO LOOTLOGA</button></div>
-        <div class="vxLootlogInfo" id="vxRankChatDataState" style="margin-top:8px">Oczekiwanie na dane kolorów…</div>
-      </div>
       <div id="vxSettingsWnm" class="vxSettingsSlot" hidden>
-        <div class="vxLootlogInfo">Wróg na mapie 2.7 wykrywa wrogów i graczy bez klanu w pobliżu na Riventii. Alarm pojawia się na środku ekranu, kolejkuje nowe wykrycia i znika po wybranym czasie. Dostępnych jest 5 wbudowanych dźwięków generowanych lokalnie (bez zewnętrznych plików audio). Kliknięcie alarmu zamyka go natychmiast.</div>
+        <div class="vxLootlogInfo">Wróg na mapie 2.7 wykrywa wrogów i graczy bez klanu w pobliżu na Riventii. Alarm pojawia się na środku ekranu, kolejkuje nowe wykrycia i znika po wybranym czasie. Dostępnych jest 5 oryginalnych dźwięków z przesłanego skryptu Wróg na mapie 2.7. Kliknięcie alarmu zamyka go natychmiast.</div>
         <div class="vxLootlogInfo" style="margin-top:8px">
           <label style="display:flex;align-items:center;gap:8px;margin:7px 0"><input id="vxWnmNoClan" type="checkbox"> Gracze bez klanu</label>
           <label style="display:flex;align-items:center;gap:8px;margin:7px 0"><input id="vxWnmEnemies" type="checkbox"> Wrogowie i wrogowie klanowi</label>
@@ -3267,6 +3087,8 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.65</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto dodatek „Kolory rang Lootloga na czacie”: kafelek, ustawienia, eksport kolorów ze strony Lootloga, obserwatory DOM, mechanizm kolorowania nadawców i współdzielone dane. Pozostałe dodatki oraz ich ustawienia pozostają bez zmian.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.64</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Przywrócono wcześniejszy wygląd panelu Dodatki: dwa kafelki w rzędzie (jeden w wąskim widoku), z przewijaniem zawartości wewnątrz panelu. Usunięto syntetyczne melodie generowane przez Web Audio. „Wróg na mapie” korzysta ponownie wyłącznie z pięciu oryginalnych plików dźwiękowych przesłanych w skrypcie 2.7; nie ma losowych dźwięków zastępczych. Test dźwięku odtwarza wybrany plik i pokazuje komunikat, jeżeli przeglądarka lub hosting zablokuje odtwarzanie.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.63</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono automatyczne odświeżanie Klanowiczów online. Usunięto błąd z odwołaniem do niezdefiniowanej stałej interwału (timer uruchamiał pierwsze pobranie, ale nie tworzył harmonogramu kolejnych odświeżeń). Harmonogram korzysta teraz bezpośrednio z REFRESH_MS = 10 000 ms. Ukrycie pływającego okna Klanowiczów nie zatrzymuje pobierania; timer zatrzymuje się tylko po wyłączeniu dodatku, ukryciu karty lub zamknięciu strony. Dodano jawne uruchomienie i bezpieczną synchronizację timera.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.62</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono odczyt kolorów rang z aktualnego DOM Lootloga (linki /settings/members/ID i span z nickiem), a kolorowanie czatu rozszerzono o dokładniejsze rozpoznawanie nicku nadawcy w nowym i starszym interfejsie. Dźwięki „Wróg na mapie” są teraz generowane lokalnie przez Web Audio (5 różnych sygnałów), bez zależności od zewnętrznych plików; dodano odblokowanie audio po pierwszej interakcji z grą, a test wizualny nie uruchamia dźwięku. Panel Dodatków pokazuje 4 kafelki w rzędzie na szerokim oknie, 2 przy mniejszej szerokości i 1 w wąskim widoku; zawartość przewija się wewnątrz panelu.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.61</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono testy dodatku „Wróg na mapie”. Test powiadomienia działa również wtedy, gdy automatyczne wykrywanie jest wyłączone. Test dźwięku pokazuje wynik, a przy niedostępnym pliku audio próbuje odtworzyć krótki sygnał zastępczy. Dodano komunikat wyjaśniający, gdy wybrano „Bez dźwięku” lub moduł nie jest gotowy.</div></div>
@@ -3446,11 +3268,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxProfileFinderState').textContent = enabled.profileFinder ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxWnmSwitch').checked = !!enabled.wnm;
     root.querySelector('#vxWnmState').textContent = enabled.wnm ? 'WŁĄCZONY' : 'WYŁĄCZONY';
-    root.querySelector('#vxRankChatSwitch').checked = !!enabled.rankChat;
-    const rankChatSnapshot = (() => { try { return GM_getValue('vickness_lootlog_rank_chat_colors_v1', null); } catch (_) { return null; } })();
-    const rankChatCount = rankChatSnapshot?.colors ? Object.keys(rankChatSnapshot.colors).length : 0;
-    root.querySelector('#vxRankChatState').textContent = enabled.rankChat ? (rankChatCount ? `WŁĄCZONY · ${rankChatCount} KOLORÓW` : 'WŁĄCZONY · OCZEKUJE NA LOOTLOG') : 'WYŁĄCZONY';
-    if (typeof window.__vicknessSetRankChatEnabled === 'function') window.__vicknessSetRankChatEnabled(!!enabled.rankChat);
     if (typeof window.__vicknessSetWnmEnabled === 'function') window.__vicknessSetWnmEnabled(!!enabled.wnm);
     root.querySelector('#vxTitanState').textContent = enabled.titan ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxLootChanceState').textContent = enabled.lootChance ? 'WŁĄCZONY' : 'WYŁĄCZONY';
@@ -3478,7 +3295,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (tab === 'appearance') syncAppearanceControls();
   }
   function openSettings(which) {
-    if (!['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat'].includes(which)) which = 'dc';
+    if (!['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm'].includes(which)) which = 'dc';
     setActiveTab('addons');
     root.querySelector('#vxHomeView').style.display = 'none';
     root.querySelector('#vxChangelogView').style.display = 'none';
@@ -3496,11 +3313,10 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxSettingsCrewOnline').hidden = which !== 'crewOnline';
     root.querySelector('#vxSettingsProfileFinder').hidden = which !== 'profileFinder';
     root.querySelector('#vxSettingsWnm').hidden = which !== 'wnm';
-    root.querySelector('#vxSettingsRankChat').hidden = which !== 'rankChat';
-    root.querySelector('#vxCurrentSetting').textContent = which === 'loot' ? 'LOOT GLOW' : which === 'dc' ? 'DC WYKRYWACZ' : which === 'lootlog' ? 'BELKA LOOTÓW' : which === 'titan' ? 'TITAN TRACKER GOLD' : which === 'lootChance' ? 'PROCENT ŁUPU' : which === 'crewOnline' ? 'THE CREW ONLINE' : which === 'profileFinder' ? 'POSTACIE ONLINE NA PROFILACH' : which === 'wnm' ? 'WRÓG NA MAPIE' : 'KOLORY RANG LOOTLOGA NA CZACIE';
-    const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat'];
+    root.querySelector('#vxCurrentSetting').textContent = which === 'loot' ? 'LOOT GLOW' : which === 'dc' ? 'DC WYKRYWACZ' : which === 'lootlog' ? 'BELKA LOOTÓW' : which === 'titan' ? 'TITAN TRACKER GOLD' : which === 'lootChance' ? 'PROCENT ŁUPU' : which === 'crewOnline' ? 'THE CREW ONLINE' : which === 'profileFinder' ? 'POSTACIE ONLINE NA PROFILACH' : 'WRÓG NA MAPIE';
+    const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm'];
     const next = order[(order.indexOf(which) + 1) % order.length];
-    root.querySelector('#vxSwitchAddon').textContent = next === 'loot' ? 'LOOT GLOW →' : next === 'dc' ? 'DC WYKRYWACZ →' : next === 'lootlog' ? 'BELKA LOOTÓW →' : next === 'titan' ? 'TITAN TRACKER →' : next === 'lootChance' ? 'PROCENT ŁUPU →' : next === 'crewOnline' ? 'THE CREW ONLINE →' : next === 'profileFinder' ? 'POSTACIE ONLINE →' : next === 'wnm' ? 'WRÓG NA MAPIE →' : 'KOLORY RANG →';
+    root.querySelector('#vxSwitchAddon').textContent = next === 'loot' ? 'LOOT GLOW →' : next === 'dc' ? 'DC WYKRYWACZ →' : next === 'lootlog' ? 'BELKA LOOTÓW →' : next === 'titan' ? 'TITAN TRACKER →' : next === 'lootChance' ? 'PROCENT ŁUPU →' : next === 'crewOnline' ? 'THE CREW ONLINE →' : next === 'profileFinder' ? 'POSTACIE ONLINE →' : next === 'wnm' ? 'WRÓG NA MAPIE →' : 'WRÓG NA MAPIE →';
     applyToggles();
     setTimeout(dockWidgets, 100);
     setTimeout(dockWidgets, 600);
@@ -3809,11 +3625,6 @@ if (location.hostname === 'riventia.margonem.pl') {
         ? 'Wyświetlono testowe powiadomienie. Test działa niezależnie od przełącznika wykrywania.'
         : 'Nie udało się wyświetlić testowego powiadomienia.';
     });
-    root.querySelector('#vxRankChatSync').addEventListener('click', () => {
-      try { GM_setValue('vickness_lootlog_rank_chat_scan_request_v1', Date.now()); root.querySelector('#vxRankChatDataState').textContent = 'Wysłano prośbę do otwartej karty Lootlog. Pozostaw stronę Członkowie otwartą.'; }
-      catch (_) { root.querySelector('#vxRankChatDataState').textContent = 'Nie udało się wysłać prośby o synchronizację.'; }
-    });
-
     root.querySelector('#vxLootSwitch').addEventListener('change', e => { enabled.loot = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxDcSwitch').addEventListener('change', e => { enabled.dc = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxLootlogSwitch').addEventListener('change', e => {
@@ -3825,7 +3636,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxCrewOnlineSwitch').addEventListener('change', e => { enabled.crewOnline = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxProfileFinderSwitch').addEventListener('change', e => { enabled.profileFinder = e.target.checked; saveFlags(); saveProfileFinderFlag(); applyToggles(); });
     root.querySelector('#vxWnmSwitch').addEventListener('change', e => { enabled.wnm = e.target.checked; saveFlags(); applyToggles(); });
-    root.querySelector('#vxRankChatSwitch').addEventListener('change', e => { enabled.rankChat = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxLootOpen').addEventListener('click', () => openSettings('loot'));
     root.querySelector('#vxDcOpen').addEventListener('click', () => {
       if (dcWindowDetached) openDCWindow();
@@ -3838,7 +3648,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxCrewOnlineOpen').addEventListener('click', () => openSettings('crewOnline'));
     root.querySelector('#vxProfileFinderOpen').addEventListener('click', () => openSettings('profileFinder'));
     root.querySelector('#vxWnmOpen').addEventListener('click', () => openSettings('wnm'));
-    root.querySelector('#vxRankChatOpen').addEventListener('click', () => openSettings('rankChat'));
     root.querySelector('#vxTitanShow').addEventListener('click', () => { enabled.titan = true; saveFlags(); applyToggles(); const p = getPanel('rtt-panel'); if (p) p.style.setProperty('display', 'block', 'important'); });
     root.querySelector('#vxTitanDiscord').addEventListener('click', () => { enabled.titan = true; saveFlags(); applyToggles(); const p = getPanel('rtt-panel'); if (p) p.style.setProperty('display', 'block', 'important'); const settings = getPanel('rtt-settings-panel'); if (settings && settings.style.display === 'none') getPanel('rtt-settings')?.click(); });
     const crewAction = action => { if (typeof window.__vicknessCrewOnlineAction === 'function') window.__vicknessCrewOnlineAction(action); else window.__vicknessPendingCrewOnlineAction = action; };
@@ -3863,8 +3672,8 @@ if (location.hostname === 'riventia.margonem.pl') {
     });
     root.querySelector('#vxLayoutReset').addEventListener('click', resetPanelLayout);
     root.querySelector('#vxSwitchAddon').addEventListener('click', () => {
-      const current = !root.querySelector('#vxSettingsLoot').hidden ? 'loot' : !root.querySelector('#vxSettingsDc').hidden ? 'dc' : !root.querySelector('#vxSettingsLootlog').hidden ? 'lootlog' : !root.querySelector('#vxSettingsTitan').hidden ? 'titan' : !root.querySelector('#vxSettingsLootChance').hidden ? 'lootChance' : !root.querySelector('#vxSettingsCrewOnline').hidden ? 'crewOnline' : !root.querySelector('#vxSettingsProfileFinder').hidden ? 'profileFinder' : !root.querySelector('#vxSettingsWnm').hidden ? 'wnm' : 'rankChat';
-      const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat'];
+      const current = !root.querySelector('#vxSettingsLoot').hidden ? 'loot' : !root.querySelector('#vxSettingsDc').hidden ? 'dc' : !root.querySelector('#vxSettingsLootlog').hidden ? 'lootlog' : !root.querySelector('#vxSettingsTitan').hidden ? 'titan' : !root.querySelector('#vxSettingsLootChance').hidden ? 'lootChance' : !root.querySelector('#vxSettingsCrewOnline').hidden ? 'crewOnline' : !root.querySelector('#vxSettingsProfileFinder').hidden ? 'profileFinder' : 'wnm';
+      const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm'];
       openSettings(order[(order.indexOf(current) + 1) % order.length]);
     });
     root.querySelector('#vxLootlogRefresh').addEventListener('click', () => getPanel('vickness-lootbar')?.querySelector('.vl-refresh')?.click());
@@ -3909,7 +3718,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     // Zachowaj dotychczasową nawigację ustawień, ale nie używaj jej przy samym wykryciu.
     window.__vicknessOpenAddonSettings = function(which) {
       restore();
-      openSettings(['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat'].includes(which) ? which : 'dc');
+      openSettings(['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm'].includes(which) ? which : 'dc');
     };
 
     // Obsłuż wykrycie, które nastąpiło przed uruchomieniem menedżera Vickness.
@@ -7885,73 +7694,47 @@ if (location.hostname === 'riventia.margonem.pl') {
     try { return String(engine?.map?.d?.id ?? engine?.map?.d?.name ?? engine?.map?.id ?? 'unknown'); }
     catch (_) { return 'unknown'; }
   }
-  // Dźwięki są generowane lokalnie przez Web Audio. Nie zależą od hostingu MP3,
-  // CORS ani dostępności zewnętrznych plików. Pięć ustawień ma różne sekwencje tonów.
-  const SOUND_PATTERNS = {
-    '1': [880, 660],
-    '2': [660, 880, 990],
-    '3': [784, 1046, 784],
-    '4': [587, 740, 988],
-    '5': [1046, 784, 659, 784]
+  // Oryginalne pliki dźwiękowe z przesłanego przez użytkownika Wróg na mapie 2.7.
+  // Nie generujemy żadnych dodatkowych melodii ani zastępczych sygnałów.
+  const SOUND_LIST = {
+    '1': 'https://audio.jukehost.co.uk/01a18d43-edb0-7064-b23c-7f21fe743a9f',
+    '2': 'https://audio.jukehost.co.uk/01a18d61-318b-70ab-bca5-4870dee36b96',
+    '3': 'https://audio.jukehost.co.uk/01a18d61-3187-7016-8f92-a3b493ed7433',
+    '4': 'https://audio.jukehost.co.uk/01a18d61-318c-7311-812a-dde178534917',
+    '5': 'https://audio.jukehost.co.uk/zUxgyvfvc9K4AMGvcwSFor1r0EP8vgmU'
   };
-  let audioContext = null;
-
-  function getAudioContext() {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) return null;
-    if (!audioContext || audioContext.state === 'closed') audioContext = new AudioContextClass();
-    return audioContext;
-  }
-
-  function primeAudioFromGesture() {
-    try {
-      const context = getAudioContext();
-      if (context && context.state === 'suspended') {
-        // resume() musi być wywołane bezpośrednio w obsłudze gestu użytkownika.
-        const resumePromise = context.resume();
-        if (resumePromise?.catch) resumePromise.catch(() => {});
-      }
-    } catch (error) {
-      console.debug('[Wróg na mapie] Audio jeszcze nieodblokowane:', error);
-    }
-  }
-
-  document.addEventListener('pointerdown', primeAudioFromGesture, { capture: true, passive: true });
-  document.addEventListener('keydown', primeAudioFromGesture, { capture: true });
+  let audio = null;
 
   async function playSound() {
     const choice = String(settings.soundChoice);
-    if (choice === 'none' || !SOUND_PATTERNS[choice]) return { status: 'muted' };
-    let context;
-    try {
-      context = getAudioContext();
-      if (!context) return { status: 'failed', reason: 'Web Audio API niedostępne' };
-      // Wywołujemy resume natychmiast, zanim funkcja odda sterowanie przeglądarce.
-      const resumePromise = context.state === 'suspended' ? context.resume() : Promise.resolve();
-      await resumePromise;
-      if (context.state !== 'running') return { status: 'failed', reason: 'AudioContext nie został odblokowany' };
+    const url = SOUND_LIST[choice];
+    if (choice === 'none' || !url) return { status: 'muted' };
 
-      const notes = SOUND_PATTERNS[choice];
-      let at = context.currentTime + 0.025;
-      for (let index = 0; index < notes.length; index++) {
-        const oscillator = context.createOscillator();
-        const gain = context.createGain();
-        const noteDuration = 0.16;
-        oscillator.type = index % 2 === 0 ? 'triangle' : 'sine';
-        oscillator.frequency.setValueAtTime(notes[index], at);
-        gain.gain.setValueAtTime(0.0001, at);
-        gain.gain.exponentialRampToValueAtTime(0.14, at + 0.012);
-        gain.gain.exponentialRampToValueAtTime(0.0001, at + noteDuration);
-        oscillator.connect(gain);
-        gain.connect(context.destination);
-        oscillator.start(at);
-        oscillator.stop(at + noteDuration + 0.01);
-        at += 0.19;
+    try {
+      if (audio) {
+        try {
+          audio.pause();
+          audio.currentTime = 0;
+        } catch (_) {}
       }
-      return { status: 'played', source: 'webaudio' };
+
+      const player = new Audio(url);
+      audio = player;
+      player.preload = 'auto';
+      player.volume = 1;
+      player.addEventListener('ended', () => {
+        if (audio === player) audio = null;
+      }, { once: true });
+      await player.play();
+      return { status: 'played', source: 'original-audio-file' };
     } catch (error) {
-      console.warn('[Wróg na mapie] Nie udało się odtworzyć sygnału:', error);
-      return { status: 'failed', error };
+      console.warn('[Wróg na mapie] Nie udało się odtworzyć oryginalnego pliku audio:', error);
+      return {
+        status: 'failed',
+        reason: error?.name === 'NotAllowedError'
+          ? 'Przeglądarka zablokowała dźwięk. Kliknij TESTUJ DŹWIĘK lub wcześniej kliknij w obszar gry.'
+          : (error?.message || 'Nie udało się pobrać lub odtworzyć pliku dźwiękowego.')
+      };
     }
   }
   function getDistance(engine, other) {
@@ -8100,284 +7883,4 @@ if (location.hostname === 'riventia.margonem.pl') {
   });
   window.addEventListener('pagehide', () => { stop(); document.removeEventListener('visibilitychange', syncScanTimer); delete window.__vicknessSetWnmEnabled; delete window.__vicknessWnmAPI; }, { once: true });
   setEnabled(window.__vicknessAddonEnabled?.wnm !== false);
-})();
-
-
-
-// =============================================================
-// KOLORY RANG LOOTLOGA NA CZACIE — Vickness Addons 1.1.62
-// =============================================================
-(() => {
-  'use strict';
-  if (location.hostname !== 'riventia.margonem.pl' || window.top !== window.self) return;
-  if (window.__vicknessRankChatStarted) return;
-  window.__vicknessRankChatStarted = true;
-
-  const ORG_ID = '1384811864235704372';
-  const DATA_KEY = 'vickness_lootlog_rank_chat_colors_v1';
-  const normalize = value => String(value || '')
-    .normalize('NFKC')
-    .replace(/[\u200B-\u200D\uFE0E\uFE0F]/g, '')
-    .replace(/\p{Extended_Pictographic}/gu, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLocaleLowerCase('pl-PL');
-
-  let colors = Object.create(null);
-  let enabled = window.__vicknessAddonEnabled?.rankChat !== false;
-  let active = false;
-  let scheduled = false;
-  let bodyObserver = null;
-  const rootObservers = new Map();
-  const styled = new Map();
-  let dataListener = null;
-  let statusTimer = null;
-
-  function updateStatus() {
-    const state = document.querySelector('#vxRankChatState');
-    const details = document.querySelector('#vxRankChatDataState');
-    const count = Object.keys(colors).length;
-    if (state) state.textContent = enabled ? (count ? `WŁĄCZONY · ${count} KOLORÓW` : 'WŁĄCZONY · OCZEKUJE NA LOOTLOG') : 'WYŁĄCZONY';
-    if (details) {
-      const data = readStoredData();
-      details.textContent = count
-        ? `Zapisano ${count} kolorów nicków · aktualizacja ${data?.updatedAt ? new Date(data.updatedAt).toLocaleString('pl-PL') : '—'}. Po zmianie ról odśwież stronę Członkowie w Lootlogu.`
-        : 'Brak zapisanych kolorów. Otwórz Lootlog → The Crew → Ustawienia → Członkowie. Nicki są odczytywane z linków /settings/members/ID i ich kolorowych spanów.';
-    }
-  }
-
-  function readStoredData() {
-    try {
-      const value = GM_getValue(DATA_KEY, null);
-      if (!value || value.orgId !== ORG_ID || !value.colors || typeof value.colors !== 'object') return null;
-      return value;
-    } catch (_) { return null; }
-  }
-
-  function loadColors() {
-    const data = readStoredData();
-    colors = data ? data.colors : Object.create(null);
-    updateStatus();
-    if (active) scheduleScan();
-  }
-
-  function saveOriginal(element) {
-    if (styled.has(element)) return;
-    styled.set(element, {
-      color: element.style.getPropertyValue('color'),
-      priority: element.style.getPropertyPriority('color')
-    });
-  }
-
-  function restoreElement(element) {
-    const original = styled.get(element);
-    if (!original) return;
-    if (original.color) element.style.setProperty('color', original.color, original.priority);
-    else element.style.removeProperty('color');
-    styled.delete(element);
-  }
-
-  function applyColor(element, key) {
-    const color = colors[key];
-    if (!color || !/^#[0-9a-f]{6}$/i.test(color)) {
-      restoreElement(element);
-      return;
-    }
-    const existing = styled.get(element);
-    if (existing?.applied === color) return;
-    saveOriginal(element);
-    const original = styled.get(element);
-    styled.set(element, { ...original, applied: color });
-    element.style.setProperty('color', color, 'important');
-  }
-
-  function exactKey(element) {
-    if (!element || element.nodeType !== Node.ELEMENT_NODE) return '';
-    const candidates = [];
-    const full = normalize(element.innerText || element.textContent || '');
-    if (full) candidates.push(full);
-    let direct = '';
-    for (const node of element.childNodes) if (node.nodeType === Node.TEXT_NODE) direct += ` ${node.nodeValue || ''}`;
-    const directKey = normalize(direct);
-    if (directKey && directKey !== full) candidates.push(directKey);
-    // Chat templates can wrap the nickname in one or more nested spans/anchors.
-    // Check short leaf-like text nodes as well as the complete author container.
-    for (const child of element.querySelectorAll('span,a,strong,b,em')) {
-      const text = normalize(child.innerText || child.textContent || '');
-      if (text && text.length <= 42) candidates.push(text);
-    }
-    return candidates.find(key => key.length >= 2 && key.length <= 42 && Object.prototype.hasOwnProperty.call(colors, key)) || '';
-  }
-
-  function hasAuthorHint(element) {
-    const cls = typeof element.className === 'string' ? element.className : '';
-    const hint = `${cls} ${element.id || ''} ${element.getAttribute('data-testid') || ''}`;
-    const tip = String(element.tip || element.getAttribute('tip') || element.title || '');
-    const href = String(element.getAttribute('href') || '');
-    return /author|nick|sender|player-name|click-able|clickable/i.test(hint)
-      || element.hasAttribute('tip')
-      || element.hasAttribute('data-nick')
-      || /naciśnij.*napisać|profil|postać|gracz/i.test(tip)
-      || /profile\/view|player|char/i.test(href)
-      || element.getAttribute('onclick')?.includes('chatTo');
-  }
-
-  function colorCandidate(element, messageRoot, allowAuthorSection) {
-    if (!element || !element.isConnected || element.closest('input,textarea,select,button,[contenteditable="true"]')) return;
-    if (element.closest('#vicknessStandaloneRoot')) return;
-    const key = exactKey(element);
-    if (!key) return;
-    const isNewAuthor = allowAuthorSection && element.matches('.information-part .author-section, .information-part .author-section *');
-    if (!isNewAuthor && !hasAuthorHint(element)) return;
-    applyColor(element, key);
-  }
-
-  const MESSAGE_SELECTOR = [
-    '.new-chat-message',
-    '.one-message-wrapper',
-    '.chat-message',
-    '.chat-message-row',
-    '.chat-message-container',
-    '.chat-tpl .message',
-    '.chat-tpl .chat-line'
-  ].join(',');
-
-  function scanMessage(message) {
-    if (!message || !message.isConnected) return;
-    const newAuthors = message.querySelectorAll('.information-part .author-section, .information-part .author-section.click-able');
-    for (const author of newAuthors) {
-      const key = exactKey(author);
-      if (key) {
-        applyColor(author, key);
-        for (const child of author.querySelectorAll('span,a,strong,b,em')) {
-          if (exactKey(child) === key) applyColor(child, key);
-        }
-      } else {
-        colorCandidate(author, message, true);
-        for (const child of author.querySelectorAll('*')) colorCandidate(child, message, true);
-      }
-    }
-    if (message.matches('.new-chat-message .information-part .author-section')) colorCandidate(message, message, true);
-
-    const legacy = message.querySelectorAll(
-      '[class*="author"], [class*="nick"], [class*="sender"], [class*="player-name"], [tip], [data-nick], a[title], a'
-    );
-    for (const node of legacy) colorCandidate(node, message, false);
-  }
-
-  function scan() {
-    scheduled = false;
-    if (!active || document.visibilityState === 'hidden' || !document.body) return;
-    attachChatRoots();
-    const messages = document.querySelectorAll(MESSAGE_SELECTOR);
-    const start = Math.max(0, messages.length - 240);
-    for (let i = start; i < messages.length; i++) scanMessage(messages[i]);
-    // Gdy interfejs jeszcze się ładuje, skanuj również znane sekcje przewijania.
-    if (!messages.length) {
-      for (const root of document.querySelectorAll('.new-chat-window .chat-message-wrapper .scroll-pane, .chat-tpl')) {
-        for (const node of root.querySelectorAll('.information-part .author-section, [class*="author"], [class*="nick"], [class*="sender"], [tip], [data-nick]')) {
-          colorCandidate(node, root, true);
-        }
-      }
-    }
-    for (const [element] of styled) if (!element.isConnected) styled.delete(element);
-  }
-
-  function scheduleScan() {
-    if (!active || scheduled || document.visibilityState === 'hidden') return;
-    scheduled = true;
-    requestAnimationFrame(scan);
-  }
-
-  const CHAT_ROOT_SELECTOR = [
-    '.new-chat-window .chat-message-wrapper .scroll-pane',
-    '.new-chat-window .chat-message-wrapper',
-    '.chat-tpl',
-    '.chat-message-wrapper'
-  ].join(',');
-
-  function attachChatRoots() {
-    for (const root of document.querySelectorAll(CHAT_ROOT_SELECTOR)) {
-      if (rootObservers.has(root)) continue;
-      const observer = new MutationObserver(() => scheduleScan());
-      observer.observe(root, { childList: true, subtree: true, characterData: true });
-      rootObservers.set(root, observer);
-    }
-  }
-
-  function startObservers() {
-    if (bodyObserver || !document.body) return;
-    attachChatRoots();
-    bodyObserver = new MutationObserver(mutations => {
-      let shouldAttach = false;
-      let shouldScanMessages = false;
-      for (const mutation of mutations) {
-        for (const node of mutation.addedNodes) {
-          if (node.nodeType !== Node.ELEMENT_NODE) continue;
-          if (node.matches?.(CHAT_ROOT_SELECTOR) || node.querySelector?.(CHAT_ROOT_SELECTOR)) shouldAttach = true;
-          // Margonem may mount the chat after the game window itself. Trigger a
-          // scan as soon as a real message node appears, even if its wrapper
-          // uses a different class than the known chat-root selectors.
-          if (node.matches?.(MESSAGE_SELECTOR) || node.querySelector?.(MESSAGE_SELECTOR)) shouldScanMessages = true;
-        }
-      }
-      if (shouldAttach) attachChatRoots();
-      if (shouldAttach || shouldScanMessages) scheduleScan();
-    });
-    bodyObserver.observe(document.body, { childList: true, subtree: true });
-  }
-
-  function stopObservers() {
-    if (bodyObserver) bodyObserver.disconnect();
-    bodyObserver = null;
-    for (const observer of rootObservers.values()) observer.disconnect();
-    rootObservers.clear();
-  }
-
-  function setEnabled(value) {
-    enabled = !!value;
-    window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || {};
-    window.__vicknessAddonEnabled.rankChat = enabled;
-    if (!enabled) {
-      active = false;
-      stopObservers();
-      for (const element of Array.from(styled.keys())) restoreElement(element);
-      updateStatus();
-      return;
-    }
-    active = true;
-    loadColors();
-    startObservers();
-    scheduleScan();
-    updateStatus();
-  }
-
-  try {
-    if (typeof GM_addValueChangeListener === 'function') {
-      dataListener = GM_addValueChangeListener(DATA_KEY, () => loadColors());
-    }
-  } catch (_) {}
-
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && enabled) {
-      active = true;
-      startObservers();
-      scheduleScan();
-    } else if (document.visibilityState === 'hidden') {
-      stopObservers();
-    }
-  });
-
-  window.__vicknessSetRankChatEnabled = setEnabled;
-  window.__vicknessRankChatAPI = { refresh: scheduleScan, getColorCount: () => Object.keys(colors).length };
-  setEnabled(enabled);
-
-  window.addEventListener('pagehide', () => {
-    stopObservers();
-    for (const element of Array.from(styled.keys())) restoreElement(element);
-    try { if (dataListener !== null && typeof GM_removeValueChangeListener === 'function') GM_removeValueChangeListener(dataListener); } catch (_) {}
-    delete window.__vicknessSetRankChatEnabled;
-    delete window.__vicknessRankChatAPI;
-    delete window.__vicknessRankChatStarted;
-  }, { once: true });
 })();
