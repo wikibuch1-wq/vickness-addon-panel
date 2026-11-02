@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.71
-// @description  Vickness Addons 1.1.71: integracja Darmowych Nagród z pauzą podczas przelogowania
+// @version      1.1.72
+// @description  Vickness Addons 1.1.72: stabilizacja Darmowych Nagród i bezpieczne przelogowanie
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2541,7 +2541,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.71 — panel sterowania dodatkami
+// VICKNESS ADDON PANEL 1.1.72 — panel sterowania dodatkami
 // =============================================================
 (() => {
   'use strict';
@@ -3104,6 +3104,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.72</span><span class="vxChangelogDate">bieżące wydanie</span><div>Stabilizacja „Darmowych Nagród”: każda operacja i kliknięcie są przypisane do konkretnej postaci i unieważniane po wyłączeniu modułu lub rozpoczęciu przelogowania. Dodano bezpieczne sprzątanie paneli, klas CSS i timerów, rozpoznawanie przycisków kalendarza/aktualności oraz klikanie właściwego przycisku zakupu darmowej oferty. Moduł nie zamyka paneli otwartych przez użytkownika i wznawia pracę dopiero po gotowości nowej postaci. Pozostałe dodatki zachowano.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.71</span><span class="vxChangelogDate">bieżące wydanie</span><div>Zintegrowano „Darmowe Nagrody” z panelem Vickness Addons. Dodano przełącznik, ustawienia, przeciągane okno i odbieranie nagrody kalendarza oraz darmowych ofert z aktualności. Moduł czeka na gotowość silnika i postaci, wstrzymuje pracę podczas przelogowania i pisania na czacie, przerywa sekwencję odbierania po utracie gotowości oraz wznawia sprawdzanie po załadowaniu postaci. Automatyczne sprawdzanie startuje po 5 sekundach i powtarza się co godzinę. Pozostałe moduły zachowano.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.68</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono moduł kolorowania nicków na przesłany Lootlog Nick Colors 2.7.0. Dodano ręczne pobieranie konta offline 7239525 z powiązaniem Discord ID 606168243232833566 oraz diagnostykę postaci Piekielna Wika. Zachowano cache v24, odświeżanie rang co 24 godziny, listy kont online co 5 minut, ponawianie pobierania profili i bezpieczne włączanie/wyłączanie modułu z panelu. Rozszerzono rozpoznawanie nicków i selektory czatu, pozostawiając zoptymalizowaną obserwację tylko odpowiednich elementów. Pozostałe dodatki bez zmian.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.67</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono wbudowany moduł kolorowania nicków na przesłany Lootlog Nick Colors 2.5.0. Zastosowano nowy cache v24 z migracją zapisanych profili z v23, odświeżanie rang maksymalnie co 24 godziny, sprawdzanie nowych kont online co 5 minut oraz ponawianie prób po błędach Lootlog Gateway (8 prób co 3 sekundy). Zachowano integrację z kafelkiem, przełącznikiem, przyciskiem ręcznej synchronizacji i zoptymalizowaną obserwacją nicków na czacie. Pozostałe dodatki bez zmian.</div></div>
@@ -8803,7 +8804,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
 
 // =============================================================
-// DARMOWE NAGRODY 4.8 — integracja z panelem Vickness Addons 1.1.71
+// DARMOWE NAGRODY 4.8 — integracja z panelem Vickness Addons 1.1.72
 // =============================================================
 (() => {
   'use strict';
@@ -8832,6 +8833,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   let statusText = 'Oczekiwanie na załadowanie postaci…';
   let openedByUs = { calendar: false, news: false };
   let disposed = false;
+  let runEpoch = 0;
 
   const sleep = ms => new Promise(resolve => window.setTimeout(resolve, ms));
   const isChatBeingEdited = () => {
@@ -8842,15 +8844,19 @@ if (location.hostname === 'riventia.margonem.pl') {
       !!active.closest('.chat-tpl, .chat, [class*="chat"]');
   };
   function getReadyEngine() {
-    // Preferuj tę samą bramkę gotowości, której używa The Crew Online.
+    // Preferuj dokładnie tę samą bramkę gotowości, której używa The Crew Online.
     if (typeof window.__vicknessGetReadyCharacter === 'function') {
-      return window.__vicknessGetReadyCharacter();
+      const shared = window.__vicknessGetReadyCharacter();
+      if (!shared?.engine || !shared.engine.hero?.d) return null;
+      const hero = shared.engine.hero.d;
+      const heroId = String(shared.heroId || hero.id || hero.nick || hero.name || '');
+      return heroId ? { engine: shared.engine, heroId } : null;
     }
     const engine = PAGE.Engine;
     if (!engine || engine.logOff || !engine.hero?.d || isChatBeingEdited()) return null;
     const hero = engine.hero.d;
-    if (!(hero.id != null || hero.nick || hero.name)) return null;
-    return { engine, heroId: String(hero.id ?? hero.nick ?? hero.name) };
+    const heroId = String(hero.id || hero.nick || hero.name || '');
+    return heroId ? { engine, heroId } : null;
   }
   function stillSameCharacter(snapshot) {
     const current = getReadyEngine();
@@ -8937,6 +8943,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   function pause(reason = 'Pauza — oczekiwanie na gotowość postaci…') {
     paused = true;
     removeHideStyle();
+    document.querySelectorAll('.vxrw-scanning').forEach(el => el.classList.remove('vxrw-scanning'));
     if (widget) widget.style.display = 'none';
     // Zamknij wyłącznie te panele, które moduł sam otworzył.
     // Podczas logOff nie klikamy. Zachowujemy informację o panelach otwartych
@@ -8955,8 +8962,8 @@ if (location.hostname === 'riventia.margonem.pl') {
     applyHideStyle();
     return true;
   }
-  function isRunnable(snapshot = null) {
-    if (!enabled || disposed || document.visibilityState === 'hidden') return false;
+  function isRunnable(snapshot = null, epoch = runEpoch) {
+    if (!enabled || disposed || epoch !== runEpoch || document.visibilityState === 'hidden') return false;
     const ready = getReadyEngine();
     if (!ready) return false;
     return !snapshot || (ready.engine === snapshot.engine && ready.heroId === snapshot.heroId);
@@ -8972,8 +8979,8 @@ if (location.hostname === 'riventia.margonem.pl') {
     const panel = document.querySelector(panelSelector);
     const keywords = kind === 'calendar' ? /calendar|kalendarz|nagrod/i : /news|aktualno|wiadomo/i;
     const direct = kind === 'calendar'
-      ? ['#calendar', '#calendar-button', '.calendar-button', '.icon-calendar', '[data-panel="calendar"]', '[data-action="calendar"]']
-      : ['#news', '#news-button', '.news-button', '.icon-news', '[data-panel="news"]', '[data-action="news"]'];
+      ? ['.widget-rewards-calendar-icon', '.widget-button[widget-name="rewards-calendar-icon"]', '#calendar', '#calendar-button', '.calendar-button', '.icon-calendar', '[data-panel="calendar"]', '[data-action="calendar"]']
+      : ['.widget-button[widget-name="news-icon"]', '#news', '#news-button', '.news-button', '.icon-news', '[data-panel="news"]', '[data-action="news"]'];
     for (const selector of direct) {
       const candidate = document.querySelector(selector);
       if (candidate && !panel?.contains(candidate)) {
@@ -8989,11 +8996,11 @@ if (location.hostname === 'riventia.margonem.pl') {
       return keywords.test(meta) && typeof el.click === 'function';
     }) || null;
   }
-  async function openPanel(kind, snapshot) {
+  async function openPanel(kind, snapshot, epoch) {
     const selector = kind === 'calendar' ? '.rewards-calendar' : '.news-panel';
     let panel = document.querySelector(selector);
     if (panelVisible(panel)) return panel;
-    if (!isRunnable(snapshot)) return null;
+    if (!isRunnable(snapshot, epoch)) return null;
     const toggle = findPanelToggle(kind);
     if (!toggle) throw new Error(kind === 'calendar'
       ? 'Nie znaleziono przycisku kalendarza nagród.'
@@ -9001,7 +9008,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     toggle.click();
     openedByUs[kind] = true;
     await sleep(350);
-    if (!isRunnable(snapshot)) return null;
+    if (!isRunnable(snapshot, epoch)) return null;
     panel = document.querySelector(selector);
     if (!panel) throw new Error(kind === 'calendar'
       ? 'Kalendarz nagród nie pojawił się po otwarciu.'
@@ -9011,6 +9018,13 @@ if (location.hostname === 'riventia.margonem.pl') {
   function closePanel(kind, snapshot = null) {
     if (!openedByUs[kind]) return;
     if (snapshot ? !stillSameCharacter(snapshot) : !getReadyEngine()) return;
+    const panel = document.querySelector(kind === 'calendar' ? '.rewards-calendar' : '.news-panel');
+    // Po zmianie postaci DOM panelu może już nie istnieć. W takim przypadku
+    // kasujemy wyłącznie znacznik własności — nie klikamy ikony nowej postaci.
+    if (!panel) { openedByUs[kind] = false; return; }
+    const scanning = panel.classList.contains('vxrw-scanning');
+    if (scanning) panel.classList.remove('vxrw-scanning');
+    if (!panelVisible(panel)) { openedByUs[kind] = false; return; }
     const toggle = findPanelToggle(kind);
     try { toggle?.click(); } catch (_) {}
     openedByUs[kind] = false;
@@ -9020,9 +9034,13 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
   function getFreeNewsOffers() {
     return [...document.querySelectorAll('.news-panel .news-classic-tile')].filter(tile => {
-      const text = (tile.innerText || tile.textContent || '').replace(/\u00a0/g, ' ').toUpperCase();
+      const price = tile.querySelector('.buy-info');
+      const button = tile.querySelector('.buy-button-wrapper .button');
       const classes = String(tile.className || '').toLowerCase();
-      return /(?:^|\s)0\s*SŁ(?:\s|$)/i.test(text) &&
+      const text = (tile.innerText || tile.textContent || '').replace(/\u00a0/g, ' ').toLowerCase();
+      if (!price || !button || tile.classList.contains('is-used') || tile.classList.contains('news-time-promo-tile')) return false;
+      const normalizedPrice = price.textContent.replace(/\s/g, '').toUpperCase();
+      return normalizedPrice === '0SŁ' &&
         !/used|taken|claimed|is-open|promo|promoted|wykorzyst|odebran|promocj/.test(classes + ' ' + text);
     });
   }
@@ -9034,30 +9052,32 @@ if (location.hostname === 'riventia.margonem.pl') {
       return;
     }
     checking = true;
+    const epoch = runEpoch;
     firstScanDone = true;
     resume();
     let calendarCount = 0, newsCount = 0;
     try {
-      const calendar = await openPanel('calendar', snapshot);
-      if (!calendar || !isRunnable(snapshot)) return;
+      const calendar = await openPanel('calendar', snapshot, epoch);
+      if (!calendar || !isRunnable(snapshot, epoch)) return;
       calendar.classList.add('vxrw-scanning');
       calendarCount = getCalendarRewards().length;
       closePanel('calendar', snapshot);
 
-      const news = await openPanel('news', snapshot);
-      if (!news || !isRunnable(snapshot)) return;
+      const news = await openPanel('news', snapshot, epoch);
+      if (!news || !isRunnable(snapshot, epoch)) return;
       news.classList.add('vxrw-scanning');
       newsCount = getFreeNewsOffers().length;
       closePanel('news', snapshot);
 
-      if (!isRunnable(snapshot)) return;
+      if (!isRunnable(snapshot, epoch)) return;
       finished = calendarCount + newsCount === 0;
       setStatus(calendarCount + newsCount
         ? `Znaleziono: nagroda kalendarza ${calendarCount}, darmowe oferty ${newsCount}.`
         : 'Nie znaleziono nowych darmowych nagród.');
       if (calendarCount + newsCount) showWidget();
+      else if (widget) widget.style.display = 'none';
     } catch (error) {
-      if (isRunnable(snapshot)) setStatus(`Błąd sprawdzania: ${error?.message || 'nieznany błąd'}`);
+      if (isRunnable(snapshot, epoch)) setStatus(`Błąd sprawdzania: ${error?.message || 'nieznany błąd'}`);
     } finally {
       document.querySelectorAll('.vxrw-scanning').forEach(el => el.classList.remove('vxrw-scanning'));
       closePanel('calendar', snapshot);
@@ -9070,42 +9090,46 @@ if (location.hostname === 'riventia.margonem.pl') {
     const snapshot = getReadyEngine();
     if (!snapshot) { pause(); return; }
     checking = true;
+    const epoch = runEpoch;
     let received = 0;
     try {
       setStatus('Odbieranie nagród…');
-      const calendar = await openPanel('calendar', snapshot);
-      if (!calendar || !isRunnable(snapshot)) return;
+      const calendar = await openPanel('calendar', snapshot, epoch);
+      if (!calendar || !isRunnable(snapshot, epoch)) return;
       calendar.classList.add('vxrw-scanning');
       const rewards = getCalendarRewards();
       for (const reward of rewards) {
-        if (!isRunnable(snapshot)) return;
+        if (!isRunnable(snapshot, epoch)) return;
         if (!reward.isConnected || reward.classList.contains('is-open')) continue;
         reward.click();
         received++;
         await sleep(CLICK_GAP_MS);
-        if (!isRunnable(snapshot)) return;
+        if (!isRunnable(snapshot, epoch)) return;
       }
       closePanel('calendar', snapshot);
 
-      const news = await openPanel('news', snapshot);
-      if (!news || !isRunnable(snapshot)) return;
+      const news = await openPanel('news', snapshot, epoch);
+      if (!news || !isRunnable(snapshot, epoch)) return;
       news.classList.add('vxrw-scanning');
       const offers = getFreeNewsOffers();
       for (const offer of offers) {
-        if (!isRunnable(snapshot)) return;
+        if (!isRunnable(snapshot, epoch)) return;
         if (!offer.isConnected) continue;
-        offer.click();
+        const buyButton = offer.querySelector('.buy-button-wrapper .button');
+        const price = offer.querySelector('.buy-info');
+        if (!buyButton || !price || price.textContent.replace(/\s/g, '').toUpperCase() !== '0SŁ') continue;
+        buyButton.click();
         received++;
         await sleep(CLICK_GAP_MS);
-        if (!isRunnable(snapshot)) return;
+        if (!isRunnable(snapshot, epoch)) return;
       }
       closePanel('news', snapshot);
-      if (!isRunnable(snapshot)) return;
+      if (!isRunnable(snapshot, epoch)) return;
       finished = true;
       setStatus(received ? `Zakończono odbieranie. Kliknięto ${received} elementów.` : 'Nie ma nowych nagród do odebrania.');
       if (widget) widget.style.display = 'none';
     } catch (error) {
-      if (isRunnable(snapshot)) setStatus(`Nie udało się odebrać wszystkich nagród: ${error?.message || 'błąd'}`);
+      if (isRunnable(snapshot, epoch)) setStatus(`Nie udało się odebrać wszystkich nagród: ${error?.message || 'błąd'}`);
     } finally {
       closePanel('calendar', snapshot);
       closePanel('news', snapshot);
@@ -9133,6 +9157,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   function start() {
     if (disposed || enabled) return;
     enabled = true;
+    runEpoch++;
     finished = false;
     setStatus('Oczekiwanie na gotowość postaci…');
     ensureWidget();
@@ -9146,6 +9171,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
   function stop() {
     enabled = false;
+    runEpoch++;
     paused = true;
     if (pollTimer !== null) window.clearInterval(pollTimer);
     if (hourlyTimer !== null) window.clearInterval(hourlyTimer);
@@ -9154,9 +9180,11 @@ if (location.hostname === 'riventia.margonem.pl') {
     removeHideStyle();
     closePanel('calendar');
     closePanel('news');
+    document.querySelectorAll('.vxrw-scanning').forEach(el => el.classList.remove('vxrw-scanning'));
     if (widget) widget.remove();
     widget = null;
-    checking = false;
+    // checking zwalnia dopiero finally przerwanej operacji; zapobiega to
+    // uruchomieniu drugiej kolejki przed zakończeniem pierwszej.
     setStatus('Moduł wyłączony.');
   }
   function setEnabled(value) {
