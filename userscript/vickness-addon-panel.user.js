@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.76
-// @description  Vickness Addons 1.1.76: oczekiwanie na załadowanie darmowych ofert aktualności
+// @version      1.1.78
+// @description  Vickness Addons 1.1.78: trwałe ukrywanie okien skanowanych nagród
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -8805,7 +8805,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
 
 // =============================================================
-// DARMOWE NAGRODY 4.8 — integracja z panelem Vickness Addons 1.1.76
+// DARMOWE NAGRODY 4.8 — integracja z panelem Vickness Addons 1.1.78
 // =============================================================
 (() => {
   'use strict';
@@ -8931,9 +8931,9 @@ if (location.hostname === 'riventia.margonem.pl') {
     style = null;
   }
   function applyHideStyle() {
-    // Ukrywanie instalujemy od razu po włączeniu modułu, także podczas
-    // oczekiwania na gotowość postaci. Dzięki temu okna nie zdążą mignąć
-    // po odświeżeniu strony, zanim rozpocznie się pierwszy skan.
+    // Ukrywanie pozostaje aktywne przez cały czas działania modułu.
+    // Nie zdejmujemy go po skanowaniu: panel aktualności może zamykać się
+    // asynchronicznie, a zdjęcie stylu zbyt wcześnie odsłaniało całe okno.
     if (style || !enabled) return;
     style = document.createElement('style');
     style.id = 'vickness-rewards-hide-style';
@@ -8946,6 +8946,12 @@ if (location.hostname === 'riventia.margonem.pl') {
       .modal:has(.news-panel),
       [role="dialog"]:has(.rewards-calendar),
       [role="dialog"]:has(.news-panel),
+      .ui-dialog:has(.rewards-calendar),
+      .ui-dialog:has(.news-panel),
+      .popup:has(.rewards-calendar),
+      .popup:has(.news-panel),
+      .window-container:has(.rewards-calendar),
+      .window-container:has(.news-panel),
       .rewards-calendar,
       .news-panel {
         visibility: hidden !important;
@@ -8958,7 +8964,8 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
   function pause(reason = 'Pauza — oczekiwanie na gotowość postaci…') {
     paused = true;
-    removeHideStyle();
+    // Warstwa ukrywająca pozostaje aktywna również podczas pauzy/przelogowania.
+    if (enabled) applyHideStyle();
     document.querySelectorAll('.vxrw-scanning').forEach(el => el.classList.remove('vxrw-scanning'));
     if (widget) widget.style.display = 'none';
     // Nie przenoś własności paneli na nową postać po zmianie świata/bohatera.
@@ -9125,7 +9132,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       closePanel('calendar', snapshot);
       closePanel('news', snapshot);
       document.querySelectorAll('.vxrw-scanning').forEach(el => el.classList.remove('vxrw-scanning'));
-      removeHideStyle();
+      // Nie zdejmuj ukrywania po skanie — panel może jeszcze być w trakcie zamykania.
       checking = false;
     }
   }
@@ -9180,7 +9187,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       closePanel('calendar', snapshot);
       closePanel('news', snapshot);
       document.querySelectorAll('.vxrw-scanning').forEach(el => el.classList.remove('vxrw-scanning'));
-      removeHideStyle();
+      // Nie zdejmuj ukrywania po skanie — panel może jeszcze być w trakcie zamykania.
       checking = false;
     }
   }
