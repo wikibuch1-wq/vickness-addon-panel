@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.75
-// @description  Vickness Addons 1.1.75: ukrywanie okien nagród od startu modułu
+// @version      1.1.76
+// @description  Vickness Addons 1.1.76: oczekiwanie na załadowanie darmowych ofert aktualności
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -8805,7 +8805,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
 
 // =============================================================
-// DARMOWE NAGRODY 4.8 — integracja z panelem Vickness Addons 1.1.75
+// DARMOWE NAGRODY 4.8 — integracja z panelem Vickness Addons 1.1.76
 // =============================================================
 (() => {
   'use strict';
@@ -9073,6 +9073,17 @@ if (location.hostname === 'riventia.margonem.pl') {
         !/used|taken|claimed|is-open|promo|promoted|wykorzyst|odebran|promocj/.test(classes + ' ' + text);
     });
   }
+  async function waitForFreeNewsOffers(snapshot, epoch, timeout = 2500) {
+    // Aktualności doładowują kafelki asynchronicznie; nie odczytujemy ich
+    // natychmiast po otwarciu panelu, tylko czekamy na darmową ofertę.
+    const deadline = Date.now() + timeout;
+    let offers = getFreeNewsOffers();
+    while (!offers.length && Date.now() < deadline && isRunnable(snapshot, epoch)) {
+      await sleep(100);
+      offers = getFreeNewsOffers();
+    }
+    return offers;
+  }
   async function scan() {
     if (checking || !enabled || disposed) return;
     const snapshot = getReadyEngine();
@@ -9096,7 +9107,9 @@ if (location.hostname === 'riventia.margonem.pl') {
       const news = await openPanel('news', snapshot, epoch);
       if (!news || !isRunnable(snapshot, epoch)) return;
       news.classList.add('vxrw-scanning');
-      newsCount = getFreeNewsOffers().length;
+      const newsOffers = await waitForFreeNewsOffers(snapshot, epoch);
+      if (!isRunnable(snapshot, epoch)) return;
+      newsCount = newsOffers.length;
       closePanel('news', snapshot);
 
       if (!isRunnable(snapshot, epoch)) return;
@@ -9143,7 +9156,8 @@ if (location.hostname === 'riventia.margonem.pl') {
       const news = await openPanel('news', snapshot, epoch);
       if (!news || !isRunnable(snapshot, epoch)) return;
       news.classList.add('vxrw-scanning');
-      const offers = getFreeNewsOffers();
+      const offers = await waitForFreeNewsOffers(snapshot, epoch);
+      if (!isRunnable(snapshot, epoch)) return;
       for (const offer of offers) {
         if (!isRunnable(snapshot, epoch)) return;
         if (!offer.isConnected) continue;
