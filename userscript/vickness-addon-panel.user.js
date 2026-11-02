@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.70
+// @version      1.1.81
 // @description  Vickness Addons 1.1.70: stabilizacja Klanowiczów i diagnostyka alarmu
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
