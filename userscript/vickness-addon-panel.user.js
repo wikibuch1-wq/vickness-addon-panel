@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.72
-// @description  Vickness Addons 1.1.71: zintegrowany moduł Darmowe Nagrody
+// @version      1.1.71
+// @description  Vickness Addons 1.1.71: integracja Darmowych Nagród z pauzą podczas przelogowania
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -63,7 +63,7 @@
 
 // Stan dodatków gry istnieje wyłącznie na Riventii.
 if (location.hostname === 'riventia.margonem.pl') {
-    window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true, freeRewards: true };
+    window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true, rewards: true };
 }
 
 // Wszystkie moduły gry, panel oraz belki działają wyłącznie na Riventii.
@@ -2541,7 +2541,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 })();
 
 // =============================================================
-// VICKNESS ADDON PANEL 1.1.68 — panel sterowania dodatkami
+// VICKNESS ADDON PANEL 1.1.71 — panel sterowania dodatkami
 // =============================================================
 (() => {
   'use strict';
@@ -2551,8 +2551,9 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   const KEY = 'vickness_addon_panel_layout_v2';
   const FLAGS_KEY = 'vickness_addon_enabled_v1';
-  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true, freeRewards: true });
+  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true });
   if (typeof enabled.profileFinder !== 'boolean') enabled.profileFinder = true;
+  if (typeof enabled.rewards !== 'boolean') enabled.rewards = true;
   try {
     const saved = JSON.parse(localStorage.getItem(FLAGS_KEY) || '{}');
     if (typeof saved.loot === 'boolean') enabled.loot = saved.loot;
@@ -2567,8 +2568,8 @@ if (location.hostname === 'riventia.margonem.pl') {
     else if (typeof enabled.crewOnline !== 'boolean') enabled.crewOnline = true;
     if (typeof saved.wnm === 'boolean') enabled.wnm = saved.wnm;
     if (typeof saved.rankChat === 'boolean') enabled.rankChat = saved.rankChat;
-    if (typeof saved.freeRewards === 'boolean') enabled.freeRewards = saved.freeRewards;
-  } catch (_) { if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true; if (typeof enabled.titan !== 'boolean') enabled.titan = true; if (typeof enabled.crewOnline !== 'boolean') enabled.crewOnline = true; if (typeof enabled.rankChat !== 'boolean') enabled.rankChat = true; }
+    if (typeof saved.rewards === 'boolean') enabled.rewards = saved.rewards;
+  } catch (_) { if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true; if (typeof enabled.titan !== 'boolean') enabled.titan = true; if (typeof enabled.crewOnline !== 'boolean') enabled.crewOnline = true; if (typeof enabled.rankChat !== 'boolean') enabled.rankChat = true; if (typeof enabled.rewards !== 'boolean') enabled.rewards = true; }
   if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true;
   if (typeof enabled.titan !== 'boolean') enabled.titan = true;
   if (typeof enabled.lootChance !== 'boolean') enabled.lootChance = true;
@@ -2576,7 +2577,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   if (typeof enabled.profileFinder !== 'boolean') enabled.profileFinder = true;
   if (typeof enabled.wnm !== 'boolean') enabled.wnm = true;
   if (typeof enabled.rankChat !== 'boolean') enabled.rankChat = true;
-  if (typeof enabled.freeRewards !== 'boolean') enabled.freeRewards = true;
+  if (typeof enabled.rewards !== 'boolean') enabled.rewards = true;
   const PROFILE_FINDER_GM_KEY = 'vickness_profileFinderEnabled';
   try {
     const storedProfileFinder = GM_getValue(PROFILE_FINDER_GM_KEY, undefined);
@@ -3035,7 +3036,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Postacie online na profilach</span><span class="vxStandaloneDesc">Wyszukuje postacie konta na światach i podświetla znaleziony profil</span><div class="vxStandaloneState" id="vxProfileFinderState"></div><button type="button" class="vxOpenSettings" id="vxProfileFinderOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxProfileFinderSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Wróg na mapie</span><span class="vxStandaloneDesc">Alarm dźwiękowy o wrogach i graczach bez klanu</span><div class="vxStandaloneState" id="vxWnmState"></div><button type="button" class="vxOpenSettings" id="vxWnmOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxWnmSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Kolory rang Lootloga na czacie</span><span class="vxStandaloneDesc">Koloruje nicki nadawców według rang The Crew na Lootlogu</span><div class="vxStandaloneState" id="vxRankChatState"></div><button type="button" class="vxOpenSettings" id="vxRankChatOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxRankChatSwitch" type="checkbox"><span></span></label></div>
-      <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Darmowe nagrody</span><span class="vxStandaloneDesc">Wykrywa darmową nagrodę z kalendarza i oferty 0 SŁ</span><div class="vxStandaloneState" id="vxFreeRewardsState"></div></div><label class="vxToggle"><input id="vxFreeRewardsSwitch" type="checkbox"><span></span></label></div>
+      <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Darmowe Nagrody</span><span class="vxStandaloneDesc">Wykrywa i odbiera dzisiejszą nagrodę oraz darmowe oferty</span><div class="vxStandaloneState" id="vxRewardsState"></div><button type="button" class="vxOpenSettings" id="vxRewardsOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxRewardsSwitch" type="checkbox"><span></span></label></div>
     </div>
     <div id="vxSettingsView">
       <div id="vxSettingsToolbar"><button class="vxNavBtn" id="vxBackHome" type="button">← WSTECZ</button><span id="vxCurrentSetting">USTAWIENIA</span><button class="vxNavBtn" id="vxSwitchAddon" type="button">DRUGI DODATEK →</button></div>
@@ -3088,6 +3089,11 @@ if (location.hostname === 'riventia.margonem.pl') {
         <div class="vxLootlogActions"><button type="button" id="vxWnmTestSound">TESTUJ DŹWIĘK</button><button type="button" id="vxWnmTestAlert">TESTUJ POWIADOMIENIE</button></div>
         <div class="vxLootlogInfo" id="vxWnmTestStatus" role="status" aria-live="polite" style="margin-top:8px">Testy możesz uruchomić niezależnie od automatycznego wykrywania.</div>
       </div>
+      <div id="vxSettingsRewards" class="vxSettingsSlot" hidden>
+        <div class="vxLootlogInfo">Moduł sprawdza dzisiejszą nagrodę kalendarza i darmowe oferty w aktualnościach. Przycisk „ODBIERZ WSZYSTKO” uruchamia odbieranie po kolei. Podczas przelogowania moduł wstrzymuje skanowanie i klikanie, a po załadowaniu postaci wznawia pracę.</div>
+        <div class="vxLootlogInfo" id="vxRewardsRuntimeStatus" role="status" aria-live="polite">Oczekiwanie na uruchomienie modułu…</div>
+        <div class="vxLootlogActions"><button type="button" id="vxRewardsCheck">SPRAWDŹ TERAZ</button><button type="button" id="vxRewardsShow">POKAŻ OKNO NAGRÓD</button></div>
+      </div>
       <div id="vxSettingsRankChat" class="vxSettingsSlot" hidden>
         <div class="vxLootlogInfo">Kolory rang są pobierane z API Lootloga dla The Crew, konta online przez Lootlog Game Client API, a postacie kont z profili Margonem. Moduł 2.7.0 używa cache v24, obsługuje ręcznie wskazane konto offline (7239525), ponawia próby po błędach gateway i koloruje nicki nadawców oraz nazwy postaci. Rangi odświeżają się maksymalnie raz na 24 godziny, konta online co 5 minut. Profile są zapisywane w pamięci Tampermonkey.</div>
         <div class="vxLootlogActions"><button type="button" id="vxRankChatRefresh">SYNCHRONIZUJ TERAZ</button></div>
@@ -3098,12 +3104,48 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
         <div class="vxPageNote">Najnowsze zmiany panelu i wbudowanych dodatków.</div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.71</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano dodatek: Darmowe nagrody do odebrania (kalendarz + aktualności. Pozostałe dodatki oraz ich ustawienia pozostają bez zmian.</div></div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.70</span><span class="vxChangelogDate">bieżące wydanie</span><div>Stabilizacja Klanowiczów online: oczekiwanie na gotowość postaci, komunikacji i handlera klanu nie jest już raportowane jako błąd w konsoli; dodano lekkie ponawianie próby po załadowaniu postaci, po przelogowaniu lub po zakończeniu pisania na czacie. Zachowano automatyczne odświeżanie co 10 sekund i blokadę nakładających się żądań. „Wróg na mapie” otrzymał bezpieczniejsze odczyty listy graczy z zachowaniem ID z kluczy obiektów, rozszerzone statusy diagnostyczne i szczegółowe komunikaty testu audio. Odtwarzanie używa elementu audio DOM, sprawdza zdarzenia błędów i próbuje najpierw oryginalnych adresów JukeHost bez rozszerzenia, potem wariantu .mp3; nie dodano sztucznych dźwięków zastępczych. Pozostałe moduły i ich ustawienia bez zmian.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.69</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono „Wróg na mapie”: silnik gry i listę graczy odczytuje teraz z unsafeWindow (kontekst strony), co jest wymagane przy uprawnieniach GM_* Tampermonkey. Rozszerzono zgodne odczyty listy graczy, identyfikatorów, danych postaci, klanu i relacji wroga. Dodano diagnostykę stanu skanowania w ustawieniach dodatku oraz poprawiono reset alarmu po wyjściu gracza z mapy. Naprawiono zatrzymywanie audio (bez odwołania do nieistniejącego audioContext). Dźwięki zachowują pięć oryginalnych nagrań; odtwarzanie próbuje najpierw adresu JukeHost z .mp3, a następnie oryginalnego adresu bez rozszerzenia. Testy wizualny i dźwiękowy są niezależne od skanera.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.71</span><span class="vxChangelogDate">bieżące wydanie</span><div>Zintegrowano „Darmowe Nagrody” z panelem Vickness Addons. Dodano przełącznik, ustawienia, przeciągane okno i odbieranie nagrody kalendarza oraz darmowych ofert z aktualności. Moduł czeka na gotowość silnika i postaci, wstrzymuje pracę podczas przelogowania i pisania na czacie, przerywa sekwencję odbierania po utracie gotowości oraz wznawia sprawdzanie po załadowaniu postaci. Automatyczne sprawdzanie startuje po 5 sekundach i powtarza się co godzinę. Pozostałe moduły zachowano.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.68</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono moduł kolorowania nicków na przesłany Lootlog Nick Colors 2.7.0. Dodano ręczne pobieranie konta offline 7239525 z powiązaniem Discord ID 606168243232833566 oraz diagnostykę postaci Piekielna Wika. Zachowano cache v24, odświeżanie rang co 24 godziny, listy kont online co 5 minut, ponawianie pobierania profili i bezpieczne włączanie/wyłączanie modułu z panelu. Rozszerzono rozpoznawanie nicków i selektory czatu, pozostawiając zoptymalizowaną obserwację tylko odpowiednich elementów. Pozostałe dodatki bez zmian.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.67</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono wbudowany moduł kolorowania nicków na przesłany Lootlog Nick Colors 2.5.0. Zastosowano nowy cache v24 z migracją zapisanych profili z v23, odświeżanie rang maksymalnie co 24 godziny, sprawdzanie nowych kont online co 5 minut oraz ponawianie prób po błędach Lootlog Gateway (8 prób co 3 sekundy). Zachowano integrację z kafelkiem, przełącznikiem, przyciskiem ręcznej synchronizacji i zoptymalizowaną obserwacją nicków na czacie. Pozostałe dodatki bez zmian.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.66</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano ponownie „Kolory rang Lootloga na czacie” na podstawie nowego skryptu 2.3.0. Kolory rang są pobierane z API Lootloga, konta online z Lootlog Game Client API, a postacie Riventii z profili Margonem. Nicki nadawców są kolorowane na czacie bez zmiany treści wiadomości. Dodano przełącznik i ręczną synchronizację w ustawieniach. Moduł działa wyłącznie na Riventii.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.65</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto dodatek „Kolory rang Lootloga na czacie”: kafelek, ustawienia, eksport kolorów ze strony Lootloga, obserwatory DOM, mechanizm kolorowania nadawców i współdzielone dane. Pozostałe dodatki oraz ich ustawienia pozostają bez zmian.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.64</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Przywrócono wcześniejszy wygląd panelu Dodatki: dwa kafelki w rzędzie (jeden w wąskim widoku), z przewijaniem zawartości wewnątrz panelu. Usunięto syntetyczne melodie generowane przez Web Audio. „Wróg na mapie” korzysta ponownie wyłącznie z pięciu oryginalnych plików dźwiękowych przesłanych w skrypcie 2.7; nie ma losowych dźwięków zastępczych. Test dźwięku odtwarza wybrany plik i pokazuje komunikat, jeżeli przeglądarka lub hosting zablokuje odtwarzanie.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.63</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono automatyczne odświeżanie Klanowiczów online. Usunięto błąd z odwołaniem do niezdefiniowanej stałej interwału (timer uruchamiał pierwsze pobranie, ale nie tworzył harmonogramu kolejnych odświeżeń). Harmonogram korzysta teraz bezpośrednio z REFRESH_MS = 10 000 ms. Ukrycie pływającego okna Klanowiczów nie zatrzymuje pobierania; timer zatrzymuje się tylko po wyłączeniu dodatku, ukryciu karty lub zamknięciu strony. Dodano jawne uruchomienie i bezpieczną synchronizację timera.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.62</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono odczyt kolorów rang z aktualnego DOM Lootloga (linki /settings/members/ID i span z nickiem), a kolorowanie czatu rozszerzono o dokładniejsze rozpoznawanie nicku nadawcy w nowym i starszym interfejsie. Dźwięki „Wróg na mapie” są teraz generowane lokalnie przez Web Audio (5 różnych sygnałów), bez zależności od zewnętrznych plików; dodano odblokowanie audio po pierwszej interakcji z grą, a test wizualny nie uruchamia dźwięku. Panel Dodatków pokazuje 4 kafelki w rzędzie na szerokim oknie, 2 przy mniejszej szerokości i 1 w wąskim widoku; zawartość przewija się wewnątrz panelu.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.61</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono testy dodatku „Wróg na mapie”. Test powiadomienia działa również wtedy, gdy automatyczne wykrywanie jest wyłączone. Test dźwięku pokazuje wynik, a przy niedostępnym pliku audio próbuje odtworzyć krótki sygnał zastępczy. Dodano komunikat wyjaśniający, gdy wybrano „Bez dźwięku” lub moduł nie jest gotowy.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.60</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano „Kolory rang Lootloga na czacie”. Na stronie Lootlog → The Crew → Ustawienia → Członkowie skrypt zapisuje widoczne kolory nicków do pamięci Tampermonkey, a na Riventii koloruje wyłącznie nicki nadawców w czacie. Dodano przełącznik i ręczną synchronizację z otwartej karty Lootloga.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.59</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono The Crew Online na podstawie przesłanego skryptu 3.4.0: odpowiedź listy klanu jest odbierana przez Engine.communication.dispatcher.on_members po żądaniu clan&amp;a=members. Parser obsługuje spłaszczoną odpowiedź Margonem z rekordami po 11 pól. Lista online, nicki, poziomy, profesje, mapy i współrzędne pochodzą bezpośrednio z klanu; całkowicie usunięto pobieranie listy i dodatkowych danych z Lootloga. Odświeżanie co 10 sekund, bez callbacku do _g.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.57</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano czytelną instrukcję aktualizacji istniejącej instalacji Vickness Addons przez Tampermonkey na dole zakładki Dziennik zmian. Nie dodano instalatora ani aktualizatora do panelu.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.56</span><span class="vxChangelogDate">bieżące wydanie</span><div>Przyspieszono wykrywanie zmiany mapy/canvasu z 100 ms do 50 ms. Kontrola gotowości silnika również pozostaje ustawiona na 50 ms; rozmiar canvasu nadal obsługuje ResizeObserver, bez skanowania całego DOM.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.55</span><span class="vxChangelogDate">bieżące wydanie</span><div>Przyspieszono automatyczne nakładanie przyciemnienia mapy: natychmiastowa próba przy starcie, oczekiwanie na silnik gry co 50 ms i wykrywanie zmiany mapy/canvasu co 100 ms. Kontrola wymiarów pozostaje oparta na ResizeObserver i zdarzeniach okna, bez kosztownego skanowania całego DOM.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.54</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto aktualizator z głównego panelu: brak automatycznego sprawdzania, przycisków aktualizacji i otwierania surowego pliku GitHub. Aktualizacje należy wykonywać przez Tampermonkey, który korzysta z tych samych metadanych userscriptu.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.53</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono automatyczne Klanowicze online: lista jest pobierana z API klienta Lootlog co 10 sekund. Usunięto wywołanie PAGE._g(&quot;clan&amp;a=members&quot;), które otwierało listę klanu w interfejsie gry, oraz całkowicie usunięto przechwytywanie dispatcher.on_members. Przy błędzie API panel pokazuje ostatnią poprawną listę zamiast wywoływać komunikację gry. Belka Lootów pozostaje ustawiona na 10 minut.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.52</span><span class="vxChangelogDate">bieżące wydanie</span><div>Klanowicze online automatycznie pobierają listę klanu co 10 sekund bez otwierania zakładki klanu. Żądanie jest wykonywane dopiero po ustabilizowaniu obiektu postaci; w czasie zaniku/zmiany postaci jest wstrzymywane. Odpowiedź zawsze przechodzi przez oryginalny handler gry — dodatek nie pomija ani nie zastępuje jego działania. Zachowano Loot Bar co 10 minut, pamięć podręczną i dotychczasowe optymalizacje panelu.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.51</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Optymalizacja całego panelu i dodatków: Loot Bar odświeża się co 10 minut (cache i ręczne odświeżanie pozostają), Klanowicze online odświeżają widok co 10 sekund na podstawie pasywnych danych gry bez automatycznych żądań clan&amp;a=members. Ograniczono zbędne pętle panelu i przyciemniania mapy; Titan Tracker pracuje co 2 s i całkowicie wstrzymuje timer po wyłączeniu lub ukryciu karty, a Procent łupu rzadziej wykonuje kontrolę zapasową. Wróg na mapie skanuje co 1 sekundę i wstrzymuje skanowanie w tle. Cięższe odświeżanie jest pomijane, gdy karta nie jest widoczna.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.50</span><span class="vxChangelogDate">bieżące wydanie</span><div>Optymalizacja Loot Bar i The Crew Online pod kątem bezpiecznego przelogowywania: The Crew nie wysyła już automatycznie clan&amp;a=members i nie blokuje natywnego handlera gry; listę klanu odczytuje pasywnie. Odświeżanie Klanowiczów ograniczono do 30 s, dane uzupełniające Lootloga są cache’owane przez 2 minuty. Loot Bar odświeża się co 5 minut i wstrzymuje zapytania, gdy dodatek jest wyłączony lub karta działa w tle.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.49</span><span class="vxChangelogDate">bieżące wydanie</span><div>Zaktualizowano „Wróg na mapie” do wersji 2.7. Dodano piąty dźwięk alarmu, zachowano dotychczasowe ustawienia i test dźwięku w głównym panelu. Moduł nadal działa wyłącznie na Riventii.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.48</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Dodano „Wróg na mapie 2.6” do zakładki Dodatki. Alarm wykrywa wrogów i graczy bez klanu, ma ustawienia dźwięku, koloru, czasu powiadomienia oraz testy alarmu. Moduł działa wyłącznie na Riventii i nie tworzy drugiego panelu ustawień.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.47</span><span class="vxChangelogDate">bieżące wydanie</span><div>Wzmocniono izolację domen: dodatki gry działają tylko na Riventii, a na profilach Margonem ukrywane są również panele pozostawione przez starsze kopie skryptów. Wyszukiwarka profili obsługuje adresy z www i bez www.</div></div><div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.46</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Naprawiono zakres działania dodatków do Riventii, a wyszukiwarkę profili ograniczono do stron profili Margonem.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.45</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano dodatek „Postacie online na profilach” do zakładki Dodatki. Na profilach Margonem wyszukuje postacie konta na światach, pokazuje status online i podświetla znalezioną kartę; przełącznik panelu steruje dodatkiem również między kartami.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.44</span><span class="vxChangelogDate">bieżące wydanie</span><div>Usunięto opis o harmonogramie aktualizacji z GitHuba. Po kliknięciu „SPRAWDŹ PONOWNIE” status wyświetla „Sprawdzam aktualizację...”.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.43</span><span class="vxChangelogDate">bieżące wydanie</span><div>Zmniejszono wyskakujące okno Margonem DC: węższy panel, niższy nagłówek i przyciski, mniejsze odstępy oraz czytelniejsza, ujednolicona czcionka informacji o wykryciu.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.42</span><span class="vxChangelogDate">bieżące wydanie</span><div>Poprawiono czcionkę bocznych kafelków Dodatki, Log zmian i Wygląd: wymuszono czytelną czcionkę bezszeryfową i ujednolicono rozmiar, grubość oraz odstępy, niezależnie od stylów strony gry.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.41</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono mechanizm Złotego przyciemnienia mapy na rdzeń ze skryptu v8.0. Pozostawiono sterowanie w zakładce Wygląd, dodano nakładanie filtra maksymalnie raz na klatkę podczas przeciągania suwaka oraz zachowano zapis ustawień i wykrywanie zmiany mapy/canvasu.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.40</span><span class="vxChangelogDate">bieżące wydanie</span><div>Optymalizacja płynności: mniej kosztownych skanów DOM, ograniczenie zbędnych aktualizacji paneli, filtrowanie obserwatora mapy i rzadsze kontrole pomocnicze. Dodatki i ich funkcje pozostają zachowane.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.39</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono belkę na kod Loot Bar 4.4.7 z załącznika. Zachowano szybsze ładowanie: równoległe zapytania, odświeżanie co 3 minuty, limit żądania 12 sekund, lokalna pamięć podręczna i przycisk ponowienia po błędzie.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.38</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono belkę na Loot Bar 4.4.9. Skrócono okres automatycznego odświeżania do 3 minut, równolegle pobierane są dane zwykłe i legendarne, a ostatnie łupy są pokazywane od razu z lokalnej pamięci podręcznej podczas odświeżania.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.37</span><span class="vxChangelogDate">bieżące wydanie</span><div>Naprawiono obsługę ładowania belki Loot Bar 4.4.8: widoczny stan podczas ładowania, komunikat diagnostyczny i przycisk ponowienia przy błędzie API. Przywrócono pełny moduł Titan Tracker Gold 5.0.2 do scalonego skryptu.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.36</span><span class="vxChangelogDate">bieżące wydanie</span><div>Podmieniono belkę lootów na Loot Bar by Vickness 4.4.8 z załącznika. Pozostawiono osobną kolorystykę belki niezależną od motywu głównego panelu oraz zachowano jej sterowanie z zakładek Vickness.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.35</span><span class="vxChangelogDate">bieżące wydanie</span><div>Zaktualizowano mechanizm Złotego przyciemnienia mapy do wersji 7.0 z automatycznym dopasowaniem do rozmiaru gry i ponownym nakładaniem po zmianie canvasu. Dodano trzy motywy: czarno-niebieski, czarno-zielony i czarno-różowy. Belka Lootlog zachowuje własną kolorystykę niezależnie od motywu Vickness.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.34</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Ujednolicono i powiększono czcionki w zakładkach Dodatki, Log zmian i Wygląd. Wybrany motyw zmienia teraz również akcenty, obramowania i tabelki w oknach Loot Glow, belki Lootlog, DC Wykrywacza, Titan Trackera i The Crew Online.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.33</span><span class="vxChangelogDate">bieżące wydanie</span><div>Dodano motyw czarno-czerwony i zaktualizowano Titan Tracker Gold do 5.0.2: kolejność wejścia graczy, komunikaty Discord inline oraz automatyczne rozwijanie po wykryciu tytana.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.32</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Podmieniono The Crew Online na 3.4.0. Zmniejszono czcionki, przełączniki i odstępy kart, żeby zawartość lepiej mieściła się w każdym polu.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.31</span><span class="vxChangelogDate">bieżące wydanie</span><div>Poprawiono karty dodatków: zmniejszono czcionki i odstępy, dopasowano przełączniki oraz przyciski, a długie nazwy i opisy mogą się zawijać bez wychodzenia poza kartę.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.30</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Przeniesiono Złote przyciemnienie mapy na początek zakładki Wygląd, aby przycisk i suwak były widoczne od razu. Poprawiono przewijanie zawartości kółkiem myszy.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.29</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Dodano wyraźny przycisk WŁĄCZ/WYŁĄCZ ZŁOTE PRZYCIEMNIENIE w zakładce Wygląd. Etykieta przycisku synchronizuje się ze stanem filtra.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.28</span><span class="vxChangelogDate">poprzednie wydanie</span><div>Dodano Złote przyciemnienie mapy w zakładce Wygląd z suwakiem, przełącznikiem i przywracaniem jasności. Zaktualizowano The Crew Online do 3.3.9.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.27</span><div>Dodano zakładki Dodatki, Log zmian i Wygląd, sprawdzanie nowszej wersji z GitHuba oraz ustawienia przezroczystości, rozmycia i motywu.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.26</span><div>The Crew Online 3.1.0; skrócony widok graczy i wyróżnianie członków drużyny.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.25</span><div>DC Wykrywacz działa w osobnym oknie po wykryciu NPC.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.24</span><div>The Crew Online 2.7.0 oraz poprawki wyróżniania członków drużyny.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.23</span><div>Zmiana rozmiaru głównego panelu z proporcjonalnym skalowaniem czcionek i zapamiętywaniem pozycji.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.20</span><div>Poprawki odczytu API Lootloga i integracja Procentu łupu 5.11.0 oraz The Crew Online.</div></div>
       </div>
       <div class="vxPageCard" id="vxTampermonkeyHelp">
         <span class="vxPageTitle">Jak aktualizować Vickness Addons przez Tampermonkey?</span>
@@ -3248,10 +3290,10 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxWnmSwitch').checked = !!enabled.wnm;
     root.querySelector('#vxWnmState').textContent = enabled.wnm ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxRankChatSwitch').checked = !!enabled.rankChat;
+    root.querySelector('#vxRewardsSwitch').checked = !!enabled.rewards;
+    root.querySelector('#vxRewardsState').textContent = enabled.rewards ? 'WŁĄCZONY' : 'WYŁĄCZONY';
+    if (typeof window.__vicknessSetRewardsEnabled === 'function') window.__vicknessSetRewardsEnabled(!!enabled.rewards);
     root.querySelector('#vxRankChatState').textContent = enabled.rankChat ? 'WŁĄCZONY' : 'WYŁĄCZONY';
-    root.querySelector('#vxFreeRewardsSwitch').checked = !!enabled.freeRewards;
-    root.querySelector('#vxFreeRewardsState').textContent = enabled.freeRewards ? 'WŁĄCZONY' : 'WYŁĄCZONY';
-    if (typeof window.__vicknessFreeRewardsSetEnabled === 'function') window.__vicknessFreeRewardsSetEnabled(!!enabled.freeRewards);
     if (typeof window.__vicknessRankChatSetEnabled === 'function') window.__vicknessRankChatSetEnabled(!!enabled.rankChat);
     if (typeof window.__vicknessSetWnmEnabled === 'function') window.__vicknessSetWnmEnabled(!!enabled.wnm);
     root.querySelector('#vxTitanState').textContent = enabled.titan ? 'WŁĄCZONY' : 'WYŁĄCZONY';
@@ -3280,7 +3322,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (tab === 'appearance') syncAppearanceControls();
   }
   function openSettings(which) {
-    if (!['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat'].includes(which)) which = 'dc';
+    if (!['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat', 'rewards'].includes(which)) which = 'dc';
     setActiveTab('addons');
     root.querySelector('#vxHomeView').style.display = 'none';
     root.querySelector('#vxChangelogView').style.display = 'none';
@@ -3299,10 +3341,11 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxSettingsProfileFinder').hidden = which !== 'profileFinder';
     root.querySelector('#vxSettingsWnm').hidden = which !== 'wnm';
     root.querySelector('#vxSettingsRankChat').hidden = which !== 'rankChat';
-    root.querySelector('#vxCurrentSetting').textContent = which === 'loot' ? 'LOOT GLOW' : which === 'dc' ? 'DC WYKRYWACZ' : which === 'lootlog' ? 'BELKA LOOTÓW' : which === 'titan' ? 'TITAN TRACKER GOLD' : which === 'lootChance' ? 'PROCENT ŁUPU' : which === 'crewOnline' ? 'THE CREW ONLINE' : which === 'profileFinder' ? 'POSTACIE ONLINE NA PROFILACH' : which === 'rankChat' ? 'KOLORY RANG NA CZACIE' : 'WRÓG NA MAPIE';
-    const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat'];
+    root.querySelector('#vxSettingsRewards').hidden = which !== 'rewards';
+    root.querySelector('#vxCurrentSetting').textContent = which === 'loot' ? 'LOOT GLOW' : which === 'dc' ? 'DC WYKRYWACZ' : which === 'lootlog' ? 'BELKA LOOTÓW' : which === 'titan' ? 'TITAN TRACKER GOLD' : which === 'lootChance' ? 'PROCENT ŁUPU' : which === 'crewOnline' ? 'THE CREW ONLINE' : which === 'profileFinder' ? 'POSTACIE ONLINE NA PROFILACH' : which === 'rankChat' ? 'KOLORY RANG NA CZACIE' : which === 'rewards' ? 'DARMOWE NAGRODY' : 'WRÓG NA MAPIE';
+    const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat', 'rewards'];
     const next = order[(order.indexOf(which) + 1) % order.length];
-    root.querySelector('#vxSwitchAddon').textContent = next === 'loot' ? 'LOOT GLOW →' : next === 'dc' ? 'DC WYKRYWACZ →' : next === 'lootlog' ? 'BELKA LOOTÓW →' : next === 'titan' ? 'TITAN TRACKER →' : next === 'lootChance' ? 'PROCENT ŁUPU →' : next === 'crewOnline' ? 'THE CREW ONLINE →' : next === 'profileFinder' ? 'POSTACIE ONLINE →' : next === 'wnm' ? 'WRÓG NA MAPIE →' : 'KOLORY RANG →';
+    root.querySelector('#vxSwitchAddon').textContent = next === 'loot' ? 'LOOT GLOW →' : next === 'dc' ? 'DC WYKRYWACZ →' : next === 'lootlog' ? 'BELKA LOOTÓW →' : next === 'titan' ? 'TITAN TRACKER →' : next === 'lootChance' ? 'PROCENT ŁUPU →' : next === 'crewOnline' ? 'THE CREW ONLINE →' : next === 'profileFinder' ? 'POSTACIE ONLINE →' : next === 'wnm' ? 'WRÓG NA MAPIE →' : next === 'rankChat' ? 'KOLORY RANG →' : 'DARMOWE NAGRODY →';
     applyToggles();
     setTimeout(dockWidgets, 100);
     setTimeout(dockWidgets, 600);
@@ -3630,7 +3673,10 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxProfileFinderSwitch').addEventListener('change', e => { enabled.profileFinder = e.target.checked; saveFlags(); saveProfileFinderFlag(); applyToggles(); });
     root.querySelector('#vxWnmSwitch').addEventListener('change', e => { enabled.wnm = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxRankChatSwitch').addEventListener('change', e => { enabled.rankChat = e.target.checked; saveFlags(); applyToggles(); });
-    root.querySelector('#vxFreeRewardsSwitch').addEventListener('change', e => { enabled.freeRewards = e.target.checked; saveFlags(); applyToggles(); });
+    root.querySelector('#vxRewardsSwitch').addEventListener('change', e => { enabled.rewards = e.target.checked; saveFlags(); applyToggles(); });
+    root.querySelector('#vxRewardsOpen').addEventListener('click', () => openSettings('rewards'));
+    root.querySelector('#vxRewardsCheck').addEventListener('click', () => window.__vicknessRewardsAPI?.checkNow?.());
+    root.querySelector('#vxRewardsShow').addEventListener('click', () => window.__vicknessRewardsAPI?.showWidget?.());
     root.querySelector('#vxRankChatOpen').addEventListener('click', () => openSettings('rankChat'));
     root.querySelector('#vxRankChatRefresh').addEventListener('click', async () => {
       const status = root.querySelector('#vxRankChatStatus');
@@ -3678,8 +3724,8 @@ if (location.hostname === 'riventia.margonem.pl') {
     });
     root.querySelector('#vxLayoutReset').addEventListener('click', resetPanelLayout);
     root.querySelector('#vxSwitchAddon').addEventListener('click', () => {
-      const current = !root.querySelector('#vxSettingsLoot').hidden ? 'loot' : !root.querySelector('#vxSettingsDc').hidden ? 'dc' : !root.querySelector('#vxSettingsLootlog').hidden ? 'lootlog' : !root.querySelector('#vxSettingsTitan').hidden ? 'titan' : !root.querySelector('#vxSettingsLootChance').hidden ? 'lootChance' : !root.querySelector('#vxSettingsCrewOnline').hidden ? 'crewOnline' : !root.querySelector('#vxSettingsProfileFinder').hidden ? 'profileFinder' : !root.querySelector('#vxSettingsWnm').hidden ? 'wnm' : 'rankChat';
-      const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat'];
+      const current = !root.querySelector('#vxSettingsLoot').hidden ? 'loot' : !root.querySelector('#vxSettingsDc').hidden ? 'dc' : !root.querySelector('#vxSettingsLootlog').hidden ? 'lootlog' : !root.querySelector('#vxSettingsTitan').hidden ? 'titan' : !root.querySelector('#vxSettingsLootChance').hidden ? 'lootChance' : !root.querySelector('#vxSettingsCrewOnline').hidden ? 'crewOnline' : !root.querySelector('#vxSettingsProfileFinder').hidden ? 'profileFinder' : !root.querySelector('#vxSettingsWnm').hidden ? 'wnm' : !root.querySelector('#vxSettingsRankChat').hidden ? 'rankChat' : 'rewards';
+      const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat', 'rewards'];
       openSettings(order[(order.indexOf(current) + 1) % order.length]);
     });
     root.querySelector('#vxLootlogRefresh').addEventListener('click', () => getPanel('vickness-lootbar')?.querySelector('.vl-refresh')?.click());
@@ -3724,7 +3770,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     // Zachowaj dotychczasową nawigację ustawień, ale nie używaj jej przy samym wykryciu.
     window.__vicknessOpenAddonSettings = function(which) {
       restore();
-      openSettings(['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat'].includes(which) ? which : 'dc');
+      openSettings(['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat', 'rewards'].includes(which) ? which : 'dc');
     };
 
     // Obsłuż wykrycie, które nastąpiło przed uruchomieniem menedżera Vickness.
@@ -3753,6 +3799,19 @@ if (location.hostname === 'riventia.margonem.pl') {
 
 // =============================================================
 // BELKA LOOTÓW ZINTEGROWANA Z LOOTLOGIEM — Loot Bar 4.4.7, odświeżanie co 10 minut
+// ==UserScript==
+// @name         Loot Bar by Vickness - Riventia
+// @namespace    vickness.riventia.lootbar
+// @version      4.4.7
+// @description  Loot Bar Riventia - 10 najnowszych heroików Elity II i 5 najnowszych legend ze wszystkich źródeł
+// @match        https://riventia.margonem.pl/*
+// @run-at       document-idle
+// @grant        GM_xmlhttpRequest
+// @connect      api.lootlog.pl
+// @connect      lootlog.pl
+// @connect      micc.garmory-cdn.cloud
+// @connect      www.margonem.pl
+// ==/UserScript==
 
 (() => {
   'use strict';
@@ -6755,6 +6814,15 @@ if (location.hostname === 'riventia.margonem.pl') {
      return engine;
    };
 
+   // Wspólna bramka gotowości dla modułów wymagających aktywnej postaci.
+   // Warunki są identyczne jak w The Crew Online: Engine, !logOff, hero.d i brak edycji czatu.
+   window.__vicknessGetReadyCharacter = () => {
+     const engine = getCurrentEngine();
+     if (!engine) return null;
+     const hero = engine.hero.d;
+     return { engine, heroId: String(hero.id ?? hero.nick ?? '') };
+   };
+
    const isSamePendingCharacter = pending => {
      const currentEngine = PAGE.Engine;
      const currentHero = currentEngine?.hero?.d;
@@ -7225,6 +7293,7 @@ if (location.hostname === 'riventia.margonem.pl') {
      crewRetryTimer = null;
      clearTimeout(resizeTimer);
      document.removeEventListener('visibilitychange', syncCrewRefreshTimer);
+     delete window.__vicknessGetReadyCharacter;
    }, { once: true });
  })();
 
@@ -8732,383 +8801,384 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 })();
 
-/* ===== VICKNESS INTERNAL MODULE: DARMOWE NAGRODY 4.8 ===== */
+
+// =============================================================
+// DARMOWE NAGRODY 4.8 — integracja z panelem Vickness Addons 1.1.71
+// =============================================================
 (() => {
   'use strict';
+  if (location.hostname !== 'riventia.margonem.pl' || window.top !== window.self) return;
+  if (window.__vicknessRewardsModuleStarted) return;
+  window.__vicknessRewardsModuleStarted = true;
 
-  const WAIT = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const PAGE = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+  const INITIAL_DELAY_MS = 5000;
+  const READY_RETRY_MS = 1200;
+  const CHAT_RETRY_MS = 2500;
+  const HOURLY_MS = 60 * 60 * 1000;
+  const CLICK_GAP_MS = 250;
 
-  const CLICK_WAIT = 250;
-  const LOAD_WAIT = 180;
-  const HOURLY_REFRESH = 60 * 60 * 1000;
-
+  let enabled = false;
   let checking = false;
   let finished = false;
-  let widget = null;
-  let panelStyle = null;
-  let moduleEnabled = false;
-  let initialTimer = null;
+  let firstScanDone = false;
+  let chatResumeAt = 0;
+  let paused = true;
+  let pollTimer = null;
   let hourlyTimer = null;
+  let initialTimer = null;
+  let widget = null;
+  let style = null;
+  let statusText = 'Oczekiwanie na załadowanie postaci…';
+  let openedByUs = { calendar: false, news: false };
+  let disposed = false;
 
-  function hidePanels() {
-    if (panelStyle) return;
-
-    panelStyle = document.createElement('style');
-    panelStyle.id = 'mg-hide-reward-panels';
-    panelStyle.textContent = `
-      .c-window:has(.rewards-calendar),
-      .c-window:has(.news-panel),
-      .rewards-calendar,
-      .news-panel {
-        visibility: hidden !important;
-        opacity: 0 !important;
-        pointer-events: none !important;
-      }
-    `;
-    (document.head || document.documentElement).appendChild(panelStyle);
-  }
-
-  function showPanels() {
-    panelStyle?.remove();
-    panelStyle = null;
-  }
-
-  function panelExists(type) {
-    return type === 'calendar'
-      ? !!document.querySelector('.rewards-calendar')
-      : !!document.querySelector('.news-panel');
-  }
-
-  function findPanelButton(type) {
-    return document.querySelector(
-      type === 'calendar'
-        ? '.widget-rewards-calendar-icon, .widget-button[widget-name="rewards-calendar-icon"]'
-        : '.widget-button[widget-name="news-icon"]'
-    );
-  }
-
-  async function openPanel(type) {
-    if (panelExists(type)) {
-      return { type, button: null, opened: false };
+  const sleep = ms => new Promise(resolve => window.setTimeout(resolve, ms));
+  const isChatBeingEdited = () => {
+    const active = document.activeElement;
+    if (!active) return false;
+    if (active.isContentEditable) return true;
+    return /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName) &&
+      !!active.closest('.chat-tpl, .chat, [class*="chat"]');
+  };
+  function getReadyEngine() {
+    // Preferuj tę samą bramkę gotowości, której używa The Crew Online.
+    if (typeof window.__vicknessGetReadyCharacter === 'function') {
+      return window.__vicknessGetReadyCharacter();
     }
-
-    const button = findPanelButton(type);
-    if (!button) return { type, button: null, opened: false };
-
-    button.click();
-
-    for (let i = 0; i < 30; i++) {
-      await WAIT(LOAD_WAIT);
-
-      if (panelExists(type)) {
-        await WAIT(300);
-        return { type, button, opened: true };
-      }
-    }
-
-    return { type, button: null, opened: false };
+    const engine = PAGE.Engine;
+    if (!engine || engine.logOff || !engine.hero?.d || isChatBeingEdited()) return null;
+    const hero = engine.hero.d;
+    if (!(hero.id != null || hero.nick || hero.name)) return null;
+    return { engine, heroId: String(hero.id ?? hero.nick ?? hero.name) };
   }
-
-  function closeOpenedPanel(result) {
-    if (!result?.opened || !result.button) return;
-    if (panelExists(result.type)) result.button.click();
+  function stillSameCharacter(snapshot) {
+    const current = getReadyEngine();
+    return !!current && current.engine === snapshot.engine && current.heroId === snapshot.heroId;
   }
-
-  function findCalendarReward() {
-    const reward = document.querySelector(
-      '.rewards-calendar .day.today .reward'
-    );
-
-    return reward &&
-      reward.classList.contains('can-open') &&
-      !reward.classList.contains('is-open')
-      ? reward
-      : null;
+  function setStatus(message) {
+    statusText = message;
+    const el = document.querySelector('#vxRewardsRuntimeStatus');
+    if (el) el.textContent = message;
+    if (widget?.querySelector('.vxrw-status')) widget.querySelector('.vxrw-status').textContent = message;
   }
-
-  function findFreeNewsOffers() {
-    return [...document.querySelectorAll(
-      '.news-panel .news-classic-tile'
-    )].filter(tile => {
-      if (
-        tile.classList.contains('is-used') ||
-        tile.classList.contains('news-time-promo-tile')
-      ) return false;
-
-      const price = tile.querySelector('.buy-info');
-      const button = tile.querySelector('.buy-button-wrapper .button');
-
-      if (!price || !button) return false;
-
-      return price.textContent.replace(/\s/g, '').toUpperCase() === '0SŁ';
-    });
-  }
-
-  function removeWidget() {
-    widget?.remove();
-    widget = null;
-  }
-
-  function createWidget(calendar, news) {
-    if (!moduleEnabled) return;
-    removeWidget();
-
-    widget = document.createElement('div');
-    widget.id = 'mg-free-rewards-widget';
-
+  function ensureWidget() {
+    if (widget?.isConnected) return;
+    widget = document.createElement('section');
+    widget.id = 'vickness-free-rewards-widget';
     Object.assign(widget.style, {
-      position: 'fixed',
-      left: '50%',
-      top: '40%',
-      right: 'auto',
-      bottom: 'auto',
-      transform: 'translate(-50%, -50%)',
-      zIndex: '999999',
-      width: '205px',
-      padding: '12px',
-      boxSizing: 'border-box',
-      background: 'rgba(8, 8, 8, 0.78)',
-      color: '#e8c45a',
-      border: '1px solid rgba(196, 155, 54, 0.85)',
-      borderRadius: '7px',
-      boxShadow: '0 0 9px rgba(0,0,0,0.45)',
-      backdropFilter: 'blur(3px)',
-      fontFamily: 'Arial, sans-serif',
-      textAlign: 'center',
-      cursor: 'move',
-      fontSize: '13px'
+      position: 'fixed', zIndex: '2147483000', right: '24px', top: '150px',
+      width: '260px', padding: '12px', borderRadius: '10px',
+      background: 'rgba(24,22,18,.96)', color: '#f5e6bd',
+      border: '1px solid #b99a50', boxShadow: '0 5px 22px #0009',
+      font: '13px Arial,sans-serif', display: paused ? 'none' : 'block',
+      userSelect: 'none'
     });
-
-    const heading = document.createElement('div');
-    heading.textContent = 'DARMOWE NAGRODY';
-
-    Object.assign(heading.style, {
-      fontWeight: 'bold',
-      fontSize: '13px',
-      marginBottom: '8px'
-    });
-
-    const info = document.createElement('div');
-    info.textContent =
-      (calendar ? 'Kalendarz: 1' : 'Kalendarz: 0') +
-      ' | Oferty: ' + news.length;
-
-    Object.assign(info.style, {
-      fontSize: '12px',
-      marginBottom: '9px'
-    });
-
-    const button = document.createElement('button');
-    button.textContent = 'ODBIERZ WSZYSTKO';
-
-    Object.assign(button.style, {
-      width: '100%',
-      padding: '8px 4px',
-      background: 'rgba(189, 150, 61, 0.92)',
-      color: '#080808',
-      border: '1px solid #f1d27a',
-      borderRadius: '4px',
-      fontSize: '12px',
-      fontWeight: 'bold',
-      cursor: 'pointer'
-    });
-
-    button.addEventListener('click', async event => {
-      event.stopPropagation();
-      if (!moduleEnabled || checking || finished) return;
-
-      checking = true;
-      button.disabled = true;
-      button.textContent = 'ODBIERANIE...';
-
-      let calPanel = null;
-      let newsPanel = null;
-
-      try {
-        hidePanels();
-
-        calPanel = await openPanel('calendar');
-        newsPanel = await openPanel('news');
-
-        await WAIT(200);
-
-        const calendarReward = findCalendarReward();
-        const newsOffers = findFreeNewsOffers();
-
-        if (calendarReward) {
-          calendarReward.click();
-          await WAIT(CLICK_WAIT);
-        }
-
-        for (const tile of newsOffers) {
-          if (!tile.isConnected || tile.classList.contains('is-used')) {
-            continue;
-          }
-
-          const price = tile.querySelector('.buy-info');
-          const buyButton = tile.querySelector(
-            '.buy-button-wrapper .button'
-          );
-
-          if (
-            price &&
-            price.textContent.replace(/\s/g, '').toUpperCase() === '0SŁ' &&
-            buyButton
-          ) {
-            buyButton.click();
-            await WAIT(CLICK_WAIT);
-          }
-        }
-
-        await WAIT(250);
-        finished = true;
-        removeWidget();
-
-      } catch (error) {
-        console.error('[Nagrody] Błąd odbierania:', error);
-        button.disabled = false;
-        button.textContent = 'SPRÓBUJ PONOWNIE';
-
-      } finally {
-        closeOpenedPanel(newsPanel);
-        closeOpenedPanel(calPanel);
-        showPanels();
-        checking = false;
-      }
-    });
-
-    const close = document.createElement('span');
+    const head = document.createElement('div');
+    head.textContent = 'DARMOWE NAGRODY';
+    Object.assign(head.style, { fontWeight: 'bold', letterSpacing: '.5px', cursor: 'move', marginBottom: '8px' });
+    const status = document.createElement('div');
+    status.className = 'vxrw-status';
+    status.textContent = statusText;
+    Object.assign(status.style, { fontSize: '11px', opacity: '.85', marginBottom: '9px', lineHeight: '1.4' });
+    const receive = document.createElement('button');
+    receive.type = 'button';
+    receive.textContent = 'ODBIERZ WSZYSTKO';
+    Object.assign(receive.style, { width: '100%', padding: '9px', border: '0', borderRadius: '6px', background: '#c5a34e', color: '#17130a', fontWeight: 'bold', cursor: 'pointer' });
+    receive.addEventListener('click', () => void receiveAll());
+    const close = document.createElement('button');
+    close.type = 'button';
     close.textContent = '×';
+    Object.assign(close.style, { position: 'absolute', top: '5px', right: '7px', border: '0', background: 'transparent', color: '#fff', fontSize: '18px', cursor: 'pointer' });
+    close.addEventListener('click', () => { widget.style.display = 'none'; });
+    widget.append(head, status, receive, close);
+    (document.body || document.documentElement).appendChild(widget);
 
-    Object.assign(close.style, {
-      position: 'absolute',
-      top: '2px',
-      right: '7px',
-      cursor: 'pointer',
-      color: '#e8c45a',
-      fontSize: '16px'
-    });
-
-    close.addEventListener('click', removeWidget);
-
-    widget.append(heading, info, button, close);
-    document.body.appendChild(widget);
-
-    // Przeciąganie okienka.
-    let dragging = false;
-    let offsetX = 0;
-    let offsetY = 0;
-
-    widget.addEventListener('mousedown', event => {
-      if (event.target === button || event.target === close) return;
-
-      dragging = true;
-
+    let drag = null;
+    head.addEventListener('pointerdown', event => {
+      if (event.button !== 0) return;
       const rect = widget.getBoundingClientRect();
-      offsetX = event.clientX - rect.left;
-      offsetY = event.clientY - rect.top;
-
-      widget.style.transform = 'none';
-      widget.style.left = rect.left + 'px';
-      widget.style.top = rect.top + 'px';
-
+      drag = { x: event.clientX, y: event.clientY, left: rect.left, top: rect.top };
+      head.setPointerCapture?.(event.pointerId);
       event.preventDefault();
     });
-
-    document.addEventListener('mousemove', event => {
-      if (!dragging || !widget) return;
-
-      widget.style.left = (event.clientX - offsetX) + 'px';
-      widget.style.top = (event.clientY - offsetY) + 'px';
+    head.addEventListener('pointermove', event => {
+      if (!drag) return;
+      widget.style.left = `${Math.max(0, Math.min(innerWidth - widget.offsetWidth, drag.left + event.clientX - drag.x))}px`;
+      widget.style.top = `${Math.max(0, Math.min(innerHeight - widget.offsetHeight, drag.top + event.clientY - drag.y))}px`;
+      widget.style.right = 'auto';
     });
-
-    document.addEventListener('mouseup', () => {
-      dragging = false;
+    const endDrag = () => { drag = null; };
+    head.addEventListener('pointerup', endDrag);
+    head.addEventListener('pointercancel', endDrag);
+  }
+  function showWidget() {
+    if (!enabled || !getReadyEngine()) return false;
+    ensureWidget();
+    widget.style.display = 'block';
+    setStatus(statusText);
+    return true;
+  }
+  function removeHideStyle() {
+    if (style) style.remove();
+    style = null;
+  }
+  function applyHideStyle() {
+    // CSS jest aktywny wyłącznie podczas pracy na załadowanej postaci.
+    if (style || paused || !enabled) return;
+    style = document.createElement('style');
+    style.id = 'vickness-rewards-hide-style';
+    style.textContent = `
+      .rewards-calendar.vxrw-scanning,
+      .news-panel.vxrw-scanning { visibility: hidden !important; }
+    `;
+    (document.head || document.documentElement).appendChild(style);
+  }
+  function pause(reason = 'Pauza — oczekiwanie na gotowość postaci…') {
+    paused = true;
+    removeHideStyle();
+    if (widget) widget.style.display = 'none';
+    // Zamknij wyłącznie te panele, które moduł sam otworzył.
+    // Podczas logOff nie klikamy. Zachowujemy informację o panelach otwartych
+    // przez moduł, aby zamknąć je dopiero po bezpiecznym powrocie postaci.
+    setStatus(reason);
+  }
+  function resume() {
+    if (!enabled || disposed || !getReadyEngine()) return false;
+    // Jeżeli przelogowanie przerwało skan, zamknij wcześniej otwarte panele
+    // dopiero teraz, gdy nowa postać jest już gotowa.
+    closePanel('calendar');
+    closePanel('news');
+    paused = false;
+    ensureWidget();
+    widget.style.display = 'block';
+    applyHideStyle();
+    return true;
+  }
+  function isRunnable(snapshot = null) {
+    if (!enabled || disposed || document.visibilityState === 'hidden') return false;
+    const ready = getReadyEngine();
+    if (!ready) return false;
+    return !snapshot || (ready.engine === snapshot.engine && ready.heroId === snapshot.heroId);
+  }
+  function panelVisible(panel) {
+    if (!panel) return false;
+    const rect = panel.getBoundingClientRect();
+    const css = getComputedStyle(panel);
+    return rect.width > 0 && rect.height > 0 && css.display !== 'none' && css.visibility !== 'hidden';
+  }
+  function findPanelToggle(kind) {
+    const panelSelector = kind === 'calendar' ? '.rewards-calendar' : '.news-panel';
+    const panel = document.querySelector(panelSelector);
+    const keywords = kind === 'calendar' ? /calendar|kalendarz|nagrod/i : /news|aktualno|wiadomo/i;
+    const direct = kind === 'calendar'
+      ? ['#calendar', '#calendar-button', '.calendar-button', '.icon-calendar', '[data-panel="calendar"]', '[data-action="calendar"]']
+      : ['#news', '#news-button', '.news-button', '.icon-news', '[data-panel="news"]', '[data-action="news"]'];
+    for (const selector of direct) {
+      const candidate = document.querySelector(selector);
+      if (candidate && !panel?.contains(candidate)) {
+        const clickable = candidate.closest('button,a,[role="button"]') || candidate;
+        if (typeof clickable.click === 'function') return clickable;
+      }
+    }
+    const candidates = [...document.querySelectorAll('button,a,[role="button"],[title],[aria-label],[class*="calendar"],[class*="news"]')];
+    return candidates.find(el => {
+      if (panel && (el === panel || panel.contains(el))) return false;
+      const meta = [el.getAttribute('title'), el.getAttribute('aria-label'), el.className, el.id, el.textContent]
+        .filter(v => typeof v === 'string').join(' ').toLowerCase();
+      return keywords.test(meta) && typeof el.click === 'function';
+    }) || null;
+  }
+  async function openPanel(kind, snapshot) {
+    const selector = kind === 'calendar' ? '.rewards-calendar' : '.news-panel';
+    let panel = document.querySelector(selector);
+    if (panelVisible(panel)) return panel;
+    if (!isRunnable(snapshot)) return null;
+    const toggle = findPanelToggle(kind);
+    if (!toggle) throw new Error(kind === 'calendar'
+      ? 'Nie znaleziono przycisku kalendarza nagród.'
+      : 'Nie znaleziono przycisku aktualności.');
+    toggle.click();
+    openedByUs[kind] = true;
+    await sleep(350);
+    if (!isRunnable(snapshot)) return null;
+    panel = document.querySelector(selector);
+    if (!panel) throw new Error(kind === 'calendar'
+      ? 'Kalendarz nagród nie pojawił się po otwarciu.'
+      : 'Panel aktualności nie pojawił się po otwarciu.');
+    return panel;
+  }
+  function closePanel(kind, snapshot = null) {
+    if (!openedByUs[kind]) return;
+    if (snapshot ? !stillSameCharacter(snapshot) : !getReadyEngine()) return;
+    const toggle = findPanelToggle(kind);
+    try { toggle?.click(); } catch (_) {}
+    openedByUs[kind] = false;
+  }
+  function getCalendarRewards() {
+    return [...document.querySelectorAll('.rewards-calendar .day.today .reward.can-open:not(.is-open)')];
+  }
+  function getFreeNewsOffers() {
+    return [...document.querySelectorAll('.news-panel .news-classic-tile')].filter(tile => {
+      const text = (tile.innerText || tile.textContent || '').replace(/\u00a0/g, ' ').toUpperCase();
+      const classes = String(tile.className || '').toLowerCase();
+      return /(?:^|\s)0\s*SŁ(?:\s|$)/i.test(text) &&
+        !/used|taken|claimed|is-open|promo|promoted|wykorzyst|odebran|promocj/.test(classes + ' ' + text);
     });
   }
-
-  async function initialCheck() {
-    if (!moduleEnabled || checking || finished) return;
-
+  async function scan() {
+    if (checking || !enabled || disposed) return;
+    const snapshot = getReadyEngine();
+    if (!snapshot) {
+      pause('Pauza — oczekiwanie na załadowanie postaci…');
+      return;
+    }
     checking = true;
-
-    let calPanel = null;
-    let newsPanel = null;
-
+    firstScanDone = true;
+    resume();
+    let calendarCount = 0, newsCount = 0;
     try {
-      for (let i = 0; i < 60 && moduleEnabled; i++) {
-        if (findPanelButton('calendar') && findPanelButton('news')) break;
-        await WAIT(1000);
-      }
+      const calendar = await openPanel('calendar', snapshot);
+      if (!calendar || !isRunnable(snapshot)) return;
+      calendar.classList.add('vxrw-scanning');
+      calendarCount = getCalendarRewards().length;
+      closePanel('calendar', snapshot);
 
-      if (!moduleEnabled || !findPanelButton('calendar') || !findPanelButton('news')) {
-        return;
-      }
+      const news = await openPanel('news', snapshot);
+      if (!news || !isRunnable(snapshot)) return;
+      news.classList.add('vxrw-scanning');
+      newsCount = getFreeNewsOffers().length;
+      closePanel('news', snapshot);
 
-      hidePanels();
-
-      calPanel = await openPanel('calendar');
-      newsPanel = await openPanel('news');
-
-      await WAIT(200);
-
-      const calendar = findCalendarReward();
-      const news = findFreeNewsOffers();
-
-      closeOpenedPanel(newsPanel);
-      newsPanel = null;
-
-      closeOpenedPanel(calPanel);
-      calPanel = null;
-
-      if (moduleEnabled && (calendar || news.length > 0)) {
-        createWidget(calendar, news);
-      } else {
-        finished = true;
-      }
-
+      if (!isRunnable(snapshot)) return;
+      finished = calendarCount + newsCount === 0;
+      setStatus(calendarCount + newsCount
+        ? `Znaleziono: nagroda kalendarza ${calendarCount}, darmowe oferty ${newsCount}.`
+        : 'Nie znaleziono nowych darmowych nagród.');
+      if (calendarCount + newsCount) showWidget();
     } catch (error) {
-      console.error('[Nagrody] Błąd sprawdzania:', error);
-
+      if (isRunnable(snapshot)) setStatus(`Błąd sprawdzania: ${error?.message || 'nieznany błąd'}`);
     } finally {
-      closeOpenedPanel(newsPanel);
-      closeOpenedPanel(calPanel);
-      showPanels();
+      document.querySelectorAll('.vxrw-scanning').forEach(el => el.classList.remove('vxrw-scanning'));
+      closePanel('calendar', snapshot);
+      closePanel('news', snapshot);
       checking = false;
     }
   }
+  async function receiveAll() {
+    if (checking || !enabled) return;
+    const snapshot = getReadyEngine();
+    if (!snapshot) { pause(); return; }
+    checking = true;
+    let received = 0;
+    try {
+      setStatus('Odbieranie nagród…');
+      const calendar = await openPanel('calendar', snapshot);
+      if (!calendar || !isRunnable(snapshot)) return;
+      calendar.classList.add('vxrw-scanning');
+      const rewards = getCalendarRewards();
+      for (const reward of rewards) {
+        if (!isRunnable(snapshot)) return;
+        if (!reward.isConnected || reward.classList.contains('is-open')) continue;
+        reward.click();
+        received++;
+        await sleep(CLICK_GAP_MS);
+        if (!isRunnable(snapshot)) return;
+      }
+      closePanel('calendar', snapshot);
 
-  function setEnabled(value) {
-    const next = !!value;
-    if (next === moduleEnabled) return;
-    moduleEnabled = next;
-
-    if (!moduleEnabled) {
-      if (initialTimer) clearTimeout(initialTimer);
-      if (hourlyTimer) clearInterval(hourlyTimer);
-      initialTimer = null;
-      hourlyTimer = null;
-      removeWidget();
-      showPanels();
+      const news = await openPanel('news', snapshot);
+      if (!news || !isRunnable(snapshot)) return;
+      news.classList.add('vxrw-scanning');
+      const offers = getFreeNewsOffers();
+      for (const offer of offers) {
+        if (!isRunnable(snapshot)) return;
+        if (!offer.isConnected) continue;
+        offer.click();
+        received++;
+        await sleep(CLICK_GAP_MS);
+        if (!isRunnable(snapshot)) return;
+      }
+      closePanel('news', snapshot);
+      if (!isRunnable(snapshot)) return;
+      finished = true;
+      setStatus(received ? `Zakończono odbieranie. Kliknięto ${received} elementów.` : 'Nie ma nowych nagród do odebrania.');
+      if (widget) widget.style.display = 'none';
+    } catch (error) {
+      if (isRunnable(snapshot)) setStatus(`Nie udało się odebrać wszystkich nagród: ${error?.message || 'błąd'}`);
+    } finally {
+      closePanel('calendar', snapshot);
+      closePanel('news', snapshot);
+      document.querySelectorAll('.vxrw-scanning').forEach(el => el.classList.remove('vxrw-scanning'));
+      checking = false;
+    }
+  }
+  function tick() {
+    if (!enabled || disposed) return;
+    const ready = getReadyEngine();
+    if (!ready) {
+      if (isChatBeingEdited()) chatResumeAt = Date.now() + CHAT_RETRY_MS;
+      if (!paused) pause(isChatBeingEdited()
+        ? 'Pauza — pisanie na czacie. Wznowię po 2,5 s.'
+        : 'Pauza — przelogowanie lub ładowanie postaci…');
       return;
     }
-
-    finished = false;
-    initialTimer = setTimeout(() => {
-      initialTimer = null;
-      initialCheck();
-    }, 5000);
-
-    // Ponowne sprawdzanie co godzinę bez odświeżania strony.
-    hourlyTimer = setInterval(() => {
-      if (!moduleEnabled || checking) return;
-      finished = false;
-      removeWidget();
-      initialCheck();
-    }, HOURLY_REFRESH);
+    if (Date.now() < chatResumeAt) return;
+    if (paused) {
+      resume();
+      setStatus('Postać gotowa. Wznawiam sprawdzanie…');
+      if (firstScanDone) void scan();
+    }
   }
+  function start() {
+    if (disposed || enabled) return;
+    enabled = true;
+    finished = false;
+    setStatus('Oczekiwanie na gotowość postaci…');
+    ensureWidget();
+    widget.style.display = 'none';
+    pollTimer = window.setInterval(tick, READY_RETRY_MS);
+    initialTimer = window.setTimeout(() => { initialTimer = null; if (enabled && !disposed) void scan(); }, INITIAL_DELAY_MS);
+    hourlyTimer = window.setInterval(() => {
+      if (enabled && !disposed && getReadyEngine()) void scan();
+    }, HOURLY_MS);
+    tick();
+  }
+  function stop() {
+    enabled = false;
+    paused = true;
+    if (pollTimer !== null) window.clearInterval(pollTimer);
+    if (hourlyTimer !== null) window.clearInterval(hourlyTimer);
+    if (initialTimer !== null) window.clearTimeout(initialTimer);
+    pollTimer = hourlyTimer = initialTimer = null;
+    removeHideStyle();
+    closePanel('calendar');
+    closePanel('news');
+    if (widget) widget.remove();
+    widget = null;
+    checking = false;
+    setStatus('Moduł wyłączony.');
+  }
+  function setEnabled(value) {
+    if (value) start();
+    else stop();
+  }
+  function checkNow() {
+    if (!enabled) { setStatus('Włącz „Darmowe Nagrody” przełącznikiem w panelu.'); return; }
+    if (!getReadyEngine()) { pause(); return; }
+    void scan();
+  }
+  window.__vicknessSetRewardsEnabled = setEnabled;
+  window.__vicknessRewardsAPI = { checkNow, showWidget, getStatus: () => statusText };
+  document.addEventListener('visibilitychange', tick);
+  window.addEventListener('pagehide', () => {
+    disposed = true;
+    stop();
+    document.removeEventListener('visibilitychange', tick);
+    delete window.__vicknessSetRewardsEnabled;
+    delete window.__vicknessRewardsAPI;
+    delete window.__vicknessRewardsModuleStarted;
+  }, { once: true });
 
-  window.__vicknessFreeRewardsSetEnabled = setEnabled;
-  setEnabled(!!(window.__vicknessAddonEnabled && window.__vicknessAddonEnabled.freeRewards));
-
+  setEnabled(window.__vicknessAddonEnabled?.rewards !== false);
 })();
