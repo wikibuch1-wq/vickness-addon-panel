@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.72
-// @description  Vickness Addons 1.1.72: stabilizacja Darmowych Nagród i bezpieczne przelogowanie
+// @version      1.1.73
+// @description  Vickness Addons 1.1.73: skanowanie nagród w tle bez migania okien
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -8804,7 +8804,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
 
 // =============================================================
-// DARMOWE NAGRODY 4.8 — integracja z panelem Vickness Addons 1.1.72
+// DARMOWE NAGRODY 4.8 — integracja z panelem Vickness Addons 1.1.73
 // =============================================================
 (() => {
   'use strict';
@@ -8877,7 +8877,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       width: '260px', padding: '12px', borderRadius: '10px',
       background: 'rgba(24,22,18,.96)', color: '#f5e6bd',
       border: '1px solid #b99a50', boxShadow: '0 5px 22px #0009',
-      font: '13px Arial,sans-serif', display: paused ? 'none' : 'block',
+      font: '13px Arial,sans-serif', display: 'none',
       userSelect: 'none'
     });
     const head = document.createElement('div');
@@ -8935,8 +8935,17 @@ if (location.hostname === 'riventia.margonem.pl') {
     style = document.createElement('style');
     style.id = 'vickness-rewards-hide-style';
     style.textContent = `
-      .rewards-calendar.vxrw-scanning,
-      .news-panel.vxrw-scanning { visibility: hidden !important; }
+      .c-window:has(.rewards-calendar),
+      .c-window:has(.news-panel),
+      .window:has(.rewards-calendar),
+      .window:has(.news-panel),
+      .rewards-calendar,
+      .news-panel {
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transition: none !important;
+      }
     `;
     (document.head || document.documentElement).appendChild(style);
   }
@@ -8945,6 +8954,9 @@ if (location.hostname === 'riventia.margonem.pl') {
     removeHideStyle();
     document.querySelectorAll('.vxrw-scanning').forEach(el => el.classList.remove('vxrw-scanning'));
     if (widget) widget.style.display = 'none';
+    // Nie przenoś własności paneli na nową postać po zmianie świata/bohatera.
+    const rawEngine = PAGE.Engine;
+    if (!rawEngine || rawEngine.logOff || !rawEngine.hero?.d) openedByUs = { calendar: false, news: false };
     // Zamknij wyłącznie te panele, które moduł sam otworzył.
     // Podczas logOff nie klikamy. Zachowujemy informację o panelach otwartych
     // przez moduł, aby zamknąć je dopiero po bezpiecznym powrocie postaci.
@@ -8958,8 +8970,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     closePanel('news');
     paused = false;
     ensureWidget();
-    widget.style.display = 'block';
-    applyHideStyle();
+    // Widget pozostaje ukryty podczas skanowania; pokaże go dopiero wynik z nagrodami.
     return true;
   }
   function isRunnable(snapshot = null, epoch = runEpoch) {
@@ -8970,9 +8981,21 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
   function panelVisible(panel) {
     if (!panel) return false;
-    const rect = panel.getBoundingClientRect();
-    const css = getComputedStyle(panel);
-    return rect.width > 0 && rect.height > 0 && css.display !== 'none' && css.visibility !== 'hidden';
+    // Nasz arkusz ukrywa panel i jego okno nadrzędne. Wyłączamy go synchronicznie
+    // tylko na czas odczytu widoczności, bez oddania przeglądarce klatki do renderu.
+    const wasDisabled = style?.disabled;
+    if (style) style.disabled = true;
+    let visible = false;
+    try {
+      const rect = panel.getBoundingClientRect();
+      const css = getComputedStyle(panel);
+      const parentCss = panel.parentElement ? getComputedStyle(panel.parentElement) : null;
+      visible = rect.width > 0 && rect.height > 0 && css.display !== 'none' &&
+        css.visibility !== 'hidden' && (!parentCss || parentCss.display !== 'none');
+    } finally {
+      if (style) style.disabled = !!wasDisabled;
+    }
+    return visible;
   }
   function findPanelToggle(kind) {
     const panelSelector = kind === 'calendar' ? '.rewards-calendar' : '.news-panel';
@@ -9022,10 +9045,9 @@ if (location.hostname === 'riventia.margonem.pl') {
     // Po zmianie postaci DOM panelu może już nie istnieć. W takim przypadku
     // kasujemy wyłącznie znacznik własności — nie klikamy ikony nowej postaci.
     if (!panel) { openedByUs[kind] = false; return; }
-    const scanning = panel.classList.contains('vxrw-scanning');
-    if (scanning) panel.classList.remove('vxrw-scanning');
-    if (!panelVisible(panel)) { openedByUs[kind] = false; return; }
     const toggle = findPanelToggle(kind);
+    // Panele otwarte przez nas zamykamy przed zdjęciem arkusza ukrywającego.
+    // Nie sprawdzamy tu widoczności, bo w trakcie skanowania jest celowo ukryty.
     try { toggle?.click(); } catch (_) {}
     openedByUs[kind] = false;
   }
@@ -9055,6 +9077,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     const epoch = runEpoch;
     firstScanDone = true;
     resume();
+    applyHideStyle();
     let calendarCount = 0, newsCount = 0;
     try {
       const calendar = await openPanel('calendar', snapshot, epoch);
@@ -9079,9 +9102,10 @@ if (location.hostname === 'riventia.margonem.pl') {
     } catch (error) {
       if (isRunnable(snapshot, epoch)) setStatus(`Błąd sprawdzania: ${error?.message || 'nieznany błąd'}`);
     } finally {
-      document.querySelectorAll('.vxrw-scanning').forEach(el => el.classList.remove('vxrw-scanning'));
       closePanel('calendar', snapshot);
       closePanel('news', snapshot);
+      document.querySelectorAll('.vxrw-scanning').forEach(el => el.classList.remove('vxrw-scanning'));
+      removeHideStyle();
       checking = false;
     }
   }
@@ -9092,6 +9116,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     checking = true;
     const epoch = runEpoch;
     let received = 0;
+    applyHideStyle();
     try {
       setStatus('Odbieranie nagród…');
       const calendar = await openPanel('calendar', snapshot, epoch);
@@ -9134,6 +9159,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       closePanel('calendar', snapshot);
       closePanel('news', snapshot);
       document.querySelectorAll('.vxrw-scanning').forEach(el => el.classList.remove('vxrw-scanning'));
+      removeHideStyle();
       checking = false;
     }
   }
