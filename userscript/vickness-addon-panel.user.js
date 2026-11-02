@@ -2,8 +2,13 @@
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
 // @version      1.1.71
-// @description  Vickness Addon Panel 1.1.71 z wbudowanym modułem Darmowe Nagrody 4.8
+// @description  Vickness Addons 1.1.71: zintegrowany moduł Darmowe Nagrody
 // @match        https://riventia.margonem.pl/*
+// @match        http://riventia.margonem.pl/*
+// @match        https://www.margonem.pl/profile/view,*
+// @match        http://www.margonem.pl/profile/view,*
+// @match        https://margonem.pl/profile/view,*
+// @match        http://margonem.pl/profile/view,*
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        unsafeWindow
@@ -3030,7 +3035,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Postacie online na profilach</span><span class="vxStandaloneDesc">Wyszukuje postacie konta na światach i podświetla znaleziony profil</span><div class="vxStandaloneState" id="vxProfileFinderState"></div><button type="button" class="vxOpenSettings" id="vxProfileFinderOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxProfileFinderSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Wróg na mapie</span><span class="vxStandaloneDesc">Alarm dźwiękowy o wrogach i graczach bez klanu</span><div class="vxStandaloneState" id="vxWnmState"></div><button type="button" class="vxOpenSettings" id="vxWnmOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxWnmSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Kolory rang Lootloga na czacie</span><span class="vxStandaloneDesc">Koloruje nicki nadawców według rang The Crew na Lootlogu</span><div class="vxStandaloneState" id="vxRankChatState"></div><button type="button" class="vxOpenSettings" id="vxRankChatOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxRankChatSwitch" type="checkbox"><span></span></label></div>
-      <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Darmowe nagrody</span><span class="vxStandaloneDesc">Wykrywa i odbiera darmową nagrodę z kalendarza oraz oferty 0 SŁ</span><div class="vxStandaloneState" id="vxFreeRewardsState"></div></div><label class="vxToggle"><input id="vxFreeRewardsSwitch" type="checkbox"><span></span></label></div>
+      <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Darmowe nagrody</span><span class="vxStandaloneDesc">Wykrywa darmową nagrodę z kalendarza i oferty 0 SŁ</span><div class="vxStandaloneState" id="vxFreeRewardsState"></div></div><label class="vxToggle"><input id="vxFreeRewardsSwitch" type="checkbox"><span></span></label></div>
     </div>
     <div id="vxSettingsView">
       <div id="vxSettingsToolbar"><button class="vxNavBtn" id="vxBackHome" type="button">← WSTECZ</button><span id="vxCurrentSetting">USTAWIENIA</span><button class="vxNavBtn" id="vxSwitchAddon" type="button">DRUGI DODATEK →</button></div>
@@ -3279,10 +3284,10 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxWnmSwitch').checked = !!enabled.wnm;
     root.querySelector('#vxWnmState').textContent = enabled.wnm ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxRankChatSwitch').checked = !!enabled.rankChat;
+    root.querySelector('#vxRankChatState').textContent = enabled.rankChat ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxFreeRewardsSwitch').checked = !!enabled.freeRewards;
     root.querySelector('#vxFreeRewardsState').textContent = enabled.freeRewards ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     if (typeof window.__vicknessFreeRewardsSetEnabled === 'function') window.__vicknessFreeRewardsSetEnabled(!!enabled.freeRewards);
-    root.querySelector('#vxRankChatState').textContent = enabled.rankChat ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     if (typeof window.__vicknessRankChatSetEnabled === 'function') window.__vicknessRankChatSetEnabled(!!enabled.rankChat);
     if (typeof window.__vicknessSetWnmEnabled === 'function') window.__vicknessSetWnmEnabled(!!enabled.wnm);
     root.querySelector('#vxTitanState').textContent = enabled.titan ? 'WŁĄCZONY' : 'WYŁĄCZONY';
@@ -3784,19 +3789,6 @@ if (location.hostname === 'riventia.margonem.pl') {
 
 // =============================================================
 // BELKA LOOTÓW ZINTEGROWANA Z LOOTLOGIEM — Loot Bar 4.4.7, odświeżanie co 10 minut
-// ==UserScript==
-// @name         Loot Bar by Vickness - Riventia
-// @namespace    vickness.riventia.lootbar
-// @version      4.4.7
-// @description  Loot Bar Riventia - 10 najnowszych heroików Elity II i 5 najnowszych legend ze wszystkich źródeł
-// @match        https://riventia.margonem.pl/*
-// @run-at       document-idle
-// @grant        GM_xmlhttpRequest
-// @connect      api.lootlog.pl
-// @connect      lootlog.pl
-// @connect      micc.garmory-cdn.cloud
-// @connect      www.margonem.pl
-// ==/UserScript==
 
 (() => {
   'use strict';
@@ -8776,14 +8768,11 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 })();
 
-// =============================================================
-// MODUŁ DARMOWE NAGRODY 4.8 — zintegrowany z przełącznikiem panelu
-// =============================================================
+/* ===== VICKNESS INTERNAL MODULE: DARMOWE NAGRODY 4.8 ===== */
 (() => {
   'use strict';
 
   const WAIT = ms => new Promise(resolve => setTimeout(resolve, ms));
-  const isEnabled = () => window.__vicknessAddonEnabled?.freeRewards !== false;
 
   const CLICK_WAIT = 250;
   const LOAD_WAIT = 180;
@@ -8793,6 +8782,9 @@ if (location.hostname === 'riventia.margonem.pl') {
   let finished = false;
   let widget = null;
   let panelStyle = null;
+  let moduleEnabled = false;
+  let initialTimer = null;
+  let hourlyTimer = null;
 
   function hidePanels() {
     if (panelStyle) return;
@@ -8832,7 +8824,6 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   async function openPanel(type) {
-    if (!isEnabled()) return { type, button: null, opened: false };
     if (panelExists(type)) {
       return { type, button: null, opened: false };
     }
@@ -8844,7 +8835,6 @@ if (location.hostname === 'riventia.margonem.pl') {
 
     for (let i = 0; i < 30; i++) {
       await WAIT(LOAD_WAIT);
-      if (!isEnabled()) return { type, button: null, opened: false };
 
       if (panelExists(type)) {
         await WAIT(300);
@@ -8896,6 +8886,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   function createWidget(calendar, news) {
+    if (!moduleEnabled) return;
     removeWidget();
 
     widget = document.createElement('div');
@@ -8960,7 +8951,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
     button.addEventListener('click', async event => {
       event.stopPropagation();
-      if (!isEnabled() || checking || finished) return;
+      if (!moduleEnabled || checking || finished) return;
 
       checking = true;
       button.disabled = true;
@@ -8977,7 +8968,6 @@ if (location.hostname === 'riventia.margonem.pl') {
 
         await WAIT(200);
 
-        if (!isEnabled()) return;
         const calendarReward = findCalendarReward();
         const newsOffers = findFreeNewsOffers();
 
@@ -8987,7 +8977,6 @@ if (location.hostname === 'riventia.margonem.pl') {
         }
 
         for (const tile of newsOffers) {
-          if (!isEnabled()) break;
           if (!tile.isConnected || tile.classList.contains('is-used')) {
             continue;
           }
@@ -9075,7 +9064,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   async function initialCheck() {
-    if (!isEnabled() || checking || finished) return;
+    if (!moduleEnabled || checking || finished) return;
 
     checking = true;
 
@@ -9083,13 +9072,12 @@ if (location.hostname === 'riventia.margonem.pl') {
     let newsPanel = null;
 
     try {
-      for (let i = 0; i < 60; i++) {
-        if (!isEnabled()) return;
+      for (let i = 0; i < 60 && moduleEnabled; i++) {
         if (findPanelButton('calendar') && findPanelButton('news')) break;
         await WAIT(1000);
       }
 
-      if (!isEnabled() || !findPanelButton('calendar') || !findPanelButton('news')) {
+      if (!moduleEnabled || !findPanelButton('calendar') || !findPanelButton('news')) {
         return;
       }
 
@@ -9100,7 +9088,6 @@ if (location.hostname === 'riventia.margonem.pl') {
 
       await WAIT(200);
 
-      if (!isEnabled()) return;
       const calendar = findCalendarReward();
       const news = findFreeNewsOffers();
 
@@ -9110,7 +9097,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       closeOpenedPanel(calPanel);
       calPanel = null;
 
-      if (calendar || news.length > 0) {
+      if (moduleEnabled && (calendar || news.length > 0)) {
         createWidget(calendar, news);
       } else {
         finished = true;
@@ -9127,21 +9114,37 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
   }
 
-  window.__vicknessFreeRewardsSetEnabled = value => {
-    if (value) { finished = false; setTimeout(initialCheck, 250); }
-    else { removeWidget(); showPanels(); }
-  };
+  function setEnabled(value) {
+    const next = !!value;
+    if (next === moduleEnabled) return;
+    moduleEnabled = next;
 
-  setTimeout(initialCheck, 5000);
-
-  // Ponowne sprawdzanie co godzinę bez odświeżania strony.
-  setInterval(() => {
-    if (!isEnabled() || checking) return;
+    if (!moduleEnabled) {
+      if (initialTimer) clearTimeout(initialTimer);
+      if (hourlyTimer) clearInterval(hourlyTimer);
+      initialTimer = null;
+      hourlyTimer = null;
+      removeWidget();
+      showPanels();
+      return;
+    }
 
     finished = false;
-    removeWidget();
-    initialCheck();
-  }, HOURLY_REFRESH);
+    initialTimer = setTimeout(() => {
+      initialTimer = null;
+      initialCheck();
+    }, 5000);
 
+    // Ponowne sprawdzanie co godzinę bez odświeżania strony.
+    hourlyTimer = setInterval(() => {
+      if (!moduleEnabled || checking) return;
+      finished = false;
+      removeWidget();
+      initialCheck();
+    }, HOURLY_REFRESH);
+  }
+
+  window.__vicknessFreeRewardsSetEnabled = setEnabled;
+  setEnabled(!!(window.__vicknessAddonEnabled && window.__vicknessAddonEnabled.freeRewards));
 
 })();
