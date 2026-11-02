@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.71
+// @version      1.1.72
 // @description  Vickness Addons 1.1.71: zintegrowany moduł Darmowe Nagrody
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
