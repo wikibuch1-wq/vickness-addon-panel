@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.74
-// @description  Vickness Addons 1.1.74: skanowanie nagród w tle bez migania okien
+// @version      1.1.75
+// @description  Vickness Addons 1.1.75: ukrywanie okien nagród od startu modułu
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -8805,7 +8805,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
 
 // =============================================================
-// DARMOWE NAGRODY 4.8 — integracja z panelem Vickness Addons 1.1.73
+// DARMOWE NAGRODY 4.8 — integracja z panelem Vickness Addons 1.1.75
 // =============================================================
 (() => {
   'use strict';
@@ -8931,8 +8931,10 @@ if (location.hostname === 'riventia.margonem.pl') {
     style = null;
   }
   function applyHideStyle() {
-    // CSS jest aktywny wyłącznie podczas pracy na załadowanej postaci.
-    if (style || paused || !enabled) return;
+    // Ukrywanie instalujemy od razu po włączeniu modułu, także podczas
+    // oczekiwania na gotowość postaci. Dzięki temu okna nie zdążą mignąć
+    // po odświeżeniu strony, zanim rozpocznie się pierwszy skan.
+    if (style || !enabled) return;
     style = document.createElement('style');
     style.id = 'vickness-rewards-hide-style';
     style.textContent = `
@@ -8940,6 +8942,10 @@ if (location.hostname === 'riventia.margonem.pl') {
       .c-window:has(.news-panel),
       .window:has(.rewards-calendar),
       .window:has(.news-panel),
+      .modal:has(.rewards-calendar),
+      .modal:has(.news-panel),
+      [role="dialog"]:has(.rewards-calendar),
+      [role="dialog"]:has(.news-panel),
       .rewards-calendar,
       .news-panel {
         visibility: hidden !important;
@@ -9184,6 +9190,8 @@ if (location.hostname === 'riventia.margonem.pl') {
   function start() {
     if (disposed || enabled) return;
     enabled = true;
+    // Załóż warstwę ukrywającą natychmiast — nie czekaj na pierwszy timer skanu.
+    applyHideStyle();
     runEpoch++;
     finished = false;
     setStatus('Oczekiwanie na gotowość postaci…');
