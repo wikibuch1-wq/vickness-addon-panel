@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Vickness Addon Panel + Darmowe Nagrody
+// @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
 // @version      1.1.71
-// @description  Vickness Addon Panel 1.1.70 z modułem automatycznego odbierania darmowych nagród 4.8
+// @description  Vickness Addon Panel 1.1.71 z wbudowanym modułem Darmowe Nagrody 4.8
 // @match        https://riventia.margonem.pl/*
 // @grant        GM_getValue
 // @grant        GM_setValue
