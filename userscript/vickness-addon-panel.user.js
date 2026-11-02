@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.78
-// @description  Vickness Addons 1.1.78: trwałe ukrywanie okien skanowanych nagród
+// @version      1.1.80
+// @description  Vickness Addons 1.1.80: trwałe ukrywanie okien skanowanych nagród
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -8805,7 +8805,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
 
 // =============================================================
-// DARMOWE NAGRODY 4.8 — integracja z panelem Vickness Addons 1.1.78
+// DARMOWE NAGRODY 4.8 — integracja z panelem Vickness Addons 1.1.80
 // =============================================================
 (() => {
   'use strict';
@@ -8964,8 +8964,8 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
   function pause(reason = 'Pauza — oczekiwanie na gotowość postaci…') {
     paused = true;
-    // Warstwa ukrywająca pozostaje aktywna również podczas pauzy/przelogowania.
-    if (enabled) applyHideStyle();
+    // W pauzie nie ukrywamy paneli: gracz może otwierać je ręcznie.
+    removeHideStyle();
     document.querySelectorAll('.vxrw-scanning').forEach(el => el.classList.remove('vxrw-scanning'));
     if (widget) widget.style.display = 'none';
     // Nie przenoś własności paneli na nową postać po zmianie świata/bohatera.
@@ -9074,13 +9074,17 @@ if (location.hostname === 'riventia.margonem.pl') {
       const button = tile.querySelector('.buy-button-wrapper .button');
       const classes = String(tile.className || '').toLowerCase();
       const text = (tile.innerText || tile.textContent || '').replace(/\u00a0/g, ' ').toLowerCase();
-      if (!price || !button || tile.classList.contains('is-used') || tile.classList.contains('news-time-promo-tile')) return false;
+
+      // Darmowe przedmioty mogą mieć klasę news-time-promo-tile lub tekst „promo”.
+      // Nie odrzucamy ich z tego powodu — decyduje dokładna cena 0 SŁ,
+      // obecność przycisku zakupu i brak oznaczenia jako odebrane.
+      if (!price || !button || tile.classList.contains('is-used')) return false;
       const normalizedPrice = price.textContent.replace(/\s/g, '').toUpperCase();
       return normalizedPrice === '0SŁ' &&
-        !/used|taken|claimed|is-open|promo|promoted|wykorzyst|odebran|promocj/.test(classes + ' ' + text);
+        !/used|taken|claimed|is-open|wykorzyst|odebran/.test(classes + ' ' + text);
     });
   }
-  async function waitForFreeNewsOffers(snapshot, epoch, timeout = 2500) {
+  async function waitForFreeNewsOffers(snapshot, epoch, timeout = 6500) {
     // Aktualności doładowują kafelki asynchronicznie; nie odczytujemy ich
     // natychmiast po otwarciu panelu, tylko czekamy na darmową ofertę.
     const deadline = Date.now() + timeout;
@@ -9132,7 +9136,8 @@ if (location.hostname === 'riventia.margonem.pl') {
       closePanel('calendar', snapshot);
       closePanel('news', snapshot);
       document.querySelectorAll('.vxrw-scanning').forEach(el => el.classList.remove('vxrw-scanning'));
-      // Nie zdejmuj ukrywania po skanie — panel może jeszcze być w trakcie zamykania.
+      // Po skanie zdejmujemy ukrywanie, aby ręczne otwieranie paneli działało normalnie.
+      removeHideStyle();
       checking = false;
     }
   }
@@ -9187,7 +9192,8 @@ if (location.hostname === 'riventia.margonem.pl') {
       closePanel('calendar', snapshot);
       closePanel('news', snapshot);
       document.querySelectorAll('.vxrw-scanning').forEach(el => el.classList.remove('vxrw-scanning'));
-      // Nie zdejmuj ukrywania po skanie — panel może jeszcze być w trakcie zamykania.
+      // Po skanie zdejmujemy ukrywanie, aby ręczne otwieranie paneli działało normalnie.
+      removeHideStyle();
       checking = false;
     }
   }
@@ -9211,8 +9217,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   function start() {
     if (disposed || enabled) return;
     enabled = true;
-    // Załóż warstwę ukrywającą natychmiast — nie czekaj na pierwszy timer skanu.
-    applyHideStyle();
+    // Nie ukrywaj okien stale — warstwa jest zakładana wyłącznie na czas skanu.
     runEpoch++;
     finished = false;
     setStatus('Oczekiwanie na gotowość postaci…');
