@@ -1,14 +1,9 @@
 // ==UserScript==
-// @name         Vickness Addon Panel - Standalone
+// @name         Vickness Addon Panel + Darmowe Nagrody
 // @namespace    Vickness
-// @version      1.1.70
-// @description  Vickness Addons 1.1.70: stabilizacja Klanowiczów i diagnostyka alarmu
+// @version      1.1.71
+// @description  Vickness Addon Panel 1.1.70 z modułem automatycznego odbierania darmowych nagród 4.8
 // @match        https://riventia.margonem.pl/*
-// @match        http://riventia.margonem.pl/*
-// @match        https://www.margonem.pl/profile/view,*
-// @match        http://www.margonem.pl/profile/view,*
-// @match        https://margonem.pl/profile/view,*
-// @match        http://margonem.pl/profile/view,*
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        unsafeWindow
@@ -63,7 +58,7 @@
 
 // Stan dodatków gry istnieje wyłącznie na Riventii.
 if (location.hostname === 'riventia.margonem.pl') {
-    window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true };
+    window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true, freeRewards: true };
 }
 
 // Wszystkie moduły gry, panel oraz belki działają wyłącznie na Riventii.
@@ -2551,7 +2546,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   const KEY = 'vickness_addon_panel_layout_v2';
   const FLAGS_KEY = 'vickness_addon_enabled_v1';
-  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true });
+  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true, freeRewards: true });
   if (typeof enabled.profileFinder !== 'boolean') enabled.profileFinder = true;
   try {
     const saved = JSON.parse(localStorage.getItem(FLAGS_KEY) || '{}');
@@ -2567,6 +2562,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     else if (typeof enabled.crewOnline !== 'boolean') enabled.crewOnline = true;
     if (typeof saved.wnm === 'boolean') enabled.wnm = saved.wnm;
     if (typeof saved.rankChat === 'boolean') enabled.rankChat = saved.rankChat;
+    if (typeof saved.freeRewards === 'boolean') enabled.freeRewards = saved.freeRewards;
   } catch (_) { if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true; if (typeof enabled.titan !== 'boolean') enabled.titan = true; if (typeof enabled.crewOnline !== 'boolean') enabled.crewOnline = true; if (typeof enabled.rankChat !== 'boolean') enabled.rankChat = true; }
   if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true;
   if (typeof enabled.titan !== 'boolean') enabled.titan = true;
@@ -2575,6 +2571,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   if (typeof enabled.profileFinder !== 'boolean') enabled.profileFinder = true;
   if (typeof enabled.wnm !== 'boolean') enabled.wnm = true;
   if (typeof enabled.rankChat !== 'boolean') enabled.rankChat = true;
+  if (typeof enabled.freeRewards !== 'boolean') enabled.freeRewards = true;
   const PROFILE_FINDER_GM_KEY = 'vickness_profileFinderEnabled';
   try {
     const storedProfileFinder = GM_getValue(PROFILE_FINDER_GM_KEY, undefined);
@@ -3033,6 +3030,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Postacie online na profilach</span><span class="vxStandaloneDesc">Wyszukuje postacie konta na światach i podświetla znaleziony profil</span><div class="vxStandaloneState" id="vxProfileFinderState"></div><button type="button" class="vxOpenSettings" id="vxProfileFinderOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxProfileFinderSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Wróg na mapie</span><span class="vxStandaloneDesc">Alarm dźwiękowy o wrogach i graczach bez klanu</span><div class="vxStandaloneState" id="vxWnmState"></div><button type="button" class="vxOpenSettings" id="vxWnmOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxWnmSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Kolory rang Lootloga na czacie</span><span class="vxStandaloneDesc">Koloruje nicki nadawców według rang The Crew na Lootlogu</span><div class="vxStandaloneState" id="vxRankChatState"></div><button type="button" class="vxOpenSettings" id="vxRankChatOpen">USTAWIENIA</button></div><label class="vxToggle"><input id="vxRankChatSwitch" type="checkbox"><span></span></label></div>
+      <div class="vxStandaloneRow"><div><span class="vxStandaloneName">Darmowe nagrody</span><span class="vxStandaloneDesc">Wykrywa i odbiera darmową nagrodę z kalendarza oraz oferty 0 SŁ</span><div class="vxStandaloneState" id="vxFreeRewardsState"></div></div><label class="vxToggle"><input id="vxFreeRewardsSwitch" type="checkbox"><span></span></label></div>
     </div>
     <div id="vxSettingsView">
       <div id="vxSettingsToolbar"><button class="vxNavBtn" id="vxBackHome" type="button">← WSTECZ</button><span id="vxCurrentSetting">USTAWIENIA</span><button class="vxNavBtn" id="vxSwitchAddon" type="button">DRUGI DODATEK →</button></div>
@@ -3281,6 +3279,9 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxWnmSwitch').checked = !!enabled.wnm;
     root.querySelector('#vxWnmState').textContent = enabled.wnm ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxRankChatSwitch').checked = !!enabled.rankChat;
+    root.querySelector('#vxFreeRewardsSwitch').checked = !!enabled.freeRewards;
+    root.querySelector('#vxFreeRewardsState').textContent = enabled.freeRewards ? 'WŁĄCZONY' : 'WYŁĄCZONY';
+    if (typeof window.__vicknessFreeRewardsSetEnabled === 'function') window.__vicknessFreeRewardsSetEnabled(!!enabled.freeRewards);
     root.querySelector('#vxRankChatState').textContent = enabled.rankChat ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     if (typeof window.__vicknessRankChatSetEnabled === 'function') window.__vicknessRankChatSetEnabled(!!enabled.rankChat);
     if (typeof window.__vicknessSetWnmEnabled === 'function') window.__vicknessSetWnmEnabled(!!enabled.wnm);
@@ -3660,6 +3661,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxProfileFinderSwitch').addEventListener('change', e => { enabled.profileFinder = e.target.checked; saveFlags(); saveProfileFinderFlag(); applyToggles(); });
     root.querySelector('#vxWnmSwitch').addEventListener('change', e => { enabled.wnm = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxRankChatSwitch').addEventListener('change', e => { enabled.rankChat = e.target.checked; saveFlags(); applyToggles(); });
+    root.querySelector('#vxFreeRewardsSwitch').addEventListener('change', e => { enabled.freeRewards = e.target.checked; saveFlags(); applyToggles(); });
     root.querySelector('#vxRankChatOpen').addEventListener('click', () => openSettings('rankChat'));
     root.querySelector('#vxRankChatRefresh').addEventListener('click', async () => {
       const status = root.querySelector('#vxRankChatStatus');
@@ -8772,4 +8774,374 @@ if (location.hostname === 'riventia.margonem.pl') {
     window.__vicknessPendingRankChatRefresh = false;
     if (active) void refreshNow(true);
   }
+})();
+
+// =============================================================
+// MODUŁ DARMOWE NAGRODY 4.8 — zintegrowany z przełącznikiem panelu
+// =============================================================
+(() => {
+  'use strict';
+
+  const WAIT = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const isEnabled = () => window.__vicknessAddonEnabled?.freeRewards !== false;
+
+  const CLICK_WAIT = 250;
+  const LOAD_WAIT = 180;
+  const HOURLY_REFRESH = 60 * 60 * 1000;
+
+  let checking = false;
+  let finished = false;
+  let widget = null;
+  let panelStyle = null;
+
+  function hidePanels() {
+    if (panelStyle) return;
+
+    panelStyle = document.createElement('style');
+    panelStyle.id = 'mg-hide-reward-panels';
+    panelStyle.textContent = `
+      .c-window:has(.rewards-calendar),
+      .c-window:has(.news-panel),
+      .rewards-calendar,
+      .news-panel {
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+    `;
+    (document.head || document.documentElement).appendChild(panelStyle);
+  }
+
+  function showPanels() {
+    panelStyle?.remove();
+    panelStyle = null;
+  }
+
+  function panelExists(type) {
+    return type === 'calendar'
+      ? !!document.querySelector('.rewards-calendar')
+      : !!document.querySelector('.news-panel');
+  }
+
+  function findPanelButton(type) {
+    return document.querySelector(
+      type === 'calendar'
+        ? '.widget-rewards-calendar-icon, .widget-button[widget-name="rewards-calendar-icon"]'
+        : '.widget-button[widget-name="news-icon"]'
+    );
+  }
+
+  async function openPanel(type) {
+    if (!isEnabled()) return { type, button: null, opened: false };
+    if (panelExists(type)) {
+      return { type, button: null, opened: false };
+    }
+
+    const button = findPanelButton(type);
+    if (!button) return { type, button: null, opened: false };
+
+    button.click();
+
+    for (let i = 0; i < 30; i++) {
+      await WAIT(LOAD_WAIT);
+      if (!isEnabled()) return { type, button: null, opened: false };
+
+      if (panelExists(type)) {
+        await WAIT(300);
+        return { type, button, opened: true };
+      }
+    }
+
+    return { type, button: null, opened: false };
+  }
+
+  function closeOpenedPanel(result) {
+    if (!result?.opened || !result.button) return;
+    if (panelExists(result.type)) result.button.click();
+  }
+
+  function findCalendarReward() {
+    const reward = document.querySelector(
+      '.rewards-calendar .day.today .reward'
+    );
+
+    return reward &&
+      reward.classList.contains('can-open') &&
+      !reward.classList.contains('is-open')
+      ? reward
+      : null;
+  }
+
+  function findFreeNewsOffers() {
+    return [...document.querySelectorAll(
+      '.news-panel .news-classic-tile'
+    )].filter(tile => {
+      if (
+        tile.classList.contains('is-used') ||
+        tile.classList.contains('news-time-promo-tile')
+      ) return false;
+
+      const price = tile.querySelector('.buy-info');
+      const button = tile.querySelector('.buy-button-wrapper .button');
+
+      if (!price || !button) return false;
+
+      return price.textContent.replace(/\s/g, '').toUpperCase() === '0SŁ';
+    });
+  }
+
+  function removeWidget() {
+    widget?.remove();
+    widget = null;
+  }
+
+  function createWidget(calendar, news) {
+    removeWidget();
+
+    widget = document.createElement('div');
+    widget.id = 'mg-free-rewards-widget';
+
+    Object.assign(widget.style, {
+      position: 'fixed',
+      left: '50%',
+      top: '40%',
+      right: 'auto',
+      bottom: 'auto',
+      transform: 'translate(-50%, -50%)',
+      zIndex: '999999',
+      width: '205px',
+      padding: '12px',
+      boxSizing: 'border-box',
+      background: 'rgba(8, 8, 8, 0.78)',
+      color: '#e8c45a',
+      border: '1px solid rgba(196, 155, 54, 0.85)',
+      borderRadius: '7px',
+      boxShadow: '0 0 9px rgba(0,0,0,0.45)',
+      backdropFilter: 'blur(3px)',
+      fontFamily: 'Arial, sans-serif',
+      textAlign: 'center',
+      cursor: 'move',
+      fontSize: '13px'
+    });
+
+    const heading = document.createElement('div');
+    heading.textContent = 'DARMOWE NAGRODY';
+
+    Object.assign(heading.style, {
+      fontWeight: 'bold',
+      fontSize: '13px',
+      marginBottom: '8px'
+    });
+
+    const info = document.createElement('div');
+    info.textContent =
+      (calendar ? 'Kalendarz: 1' : 'Kalendarz: 0') +
+      ' | Oferty: ' + news.length;
+
+    Object.assign(info.style, {
+      fontSize: '12px',
+      marginBottom: '9px'
+    });
+
+    const button = document.createElement('button');
+    button.textContent = 'ODBIERZ WSZYSTKO';
+
+    Object.assign(button.style, {
+      width: '100%',
+      padding: '8px 4px',
+      background: 'rgba(189, 150, 61, 0.92)',
+      color: '#080808',
+      border: '1px solid #f1d27a',
+      borderRadius: '4px',
+      fontSize: '12px',
+      fontWeight: 'bold',
+      cursor: 'pointer'
+    });
+
+    button.addEventListener('click', async event => {
+      event.stopPropagation();
+      if (!isEnabled() || checking || finished) return;
+
+      checking = true;
+      button.disabled = true;
+      button.textContent = 'ODBIERANIE...';
+
+      let calPanel = null;
+      let newsPanel = null;
+
+      try {
+        hidePanels();
+
+        calPanel = await openPanel('calendar');
+        newsPanel = await openPanel('news');
+
+        await WAIT(200);
+
+        if (!isEnabled()) return;
+        const calendarReward = findCalendarReward();
+        const newsOffers = findFreeNewsOffers();
+
+        if (calendarReward) {
+          calendarReward.click();
+          await WAIT(CLICK_WAIT);
+        }
+
+        for (const tile of newsOffers) {
+          if (!isEnabled()) break;
+          if (!tile.isConnected || tile.classList.contains('is-used')) {
+            continue;
+          }
+
+          const price = tile.querySelector('.buy-info');
+          const buyButton = tile.querySelector(
+            '.buy-button-wrapper .button'
+          );
+
+          if (
+            price &&
+            price.textContent.replace(/\s/g, '').toUpperCase() === '0SŁ' &&
+            buyButton
+          ) {
+            buyButton.click();
+            await WAIT(CLICK_WAIT);
+          }
+        }
+
+        await WAIT(250);
+        finished = true;
+        removeWidget();
+
+      } catch (error) {
+        console.error('[Nagrody] Błąd odbierania:', error);
+        button.disabled = false;
+        button.textContent = 'SPRÓBUJ PONOWNIE';
+
+      } finally {
+        closeOpenedPanel(newsPanel);
+        closeOpenedPanel(calPanel);
+        showPanels();
+        checking = false;
+      }
+    });
+
+    const close = document.createElement('span');
+    close.textContent = '×';
+
+    Object.assign(close.style, {
+      position: 'absolute',
+      top: '2px',
+      right: '7px',
+      cursor: 'pointer',
+      color: '#e8c45a',
+      fontSize: '16px'
+    });
+
+    close.addEventListener('click', removeWidget);
+
+    widget.append(heading, info, button, close);
+    document.body.appendChild(widget);
+
+    // Przeciąganie okienka.
+    let dragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    widget.addEventListener('mousedown', event => {
+      if (event.target === button || event.target === close) return;
+
+      dragging = true;
+
+      const rect = widget.getBoundingClientRect();
+      offsetX = event.clientX - rect.left;
+      offsetY = event.clientY - rect.top;
+
+      widget.style.transform = 'none';
+      widget.style.left = rect.left + 'px';
+      widget.style.top = rect.top + 'px';
+
+      event.preventDefault();
+    });
+
+    document.addEventListener('mousemove', event => {
+      if (!dragging || !widget) return;
+
+      widget.style.left = (event.clientX - offsetX) + 'px';
+      widget.style.top = (event.clientY - offsetY) + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      dragging = false;
+    });
+  }
+
+  async function initialCheck() {
+    if (!isEnabled() || checking || finished) return;
+
+    checking = true;
+
+    let calPanel = null;
+    let newsPanel = null;
+
+    try {
+      for (let i = 0; i < 60; i++) {
+        if (!isEnabled()) return;
+        if (findPanelButton('calendar') && findPanelButton('news')) break;
+        await WAIT(1000);
+      }
+
+      if (!isEnabled() || !findPanelButton('calendar') || !findPanelButton('news')) {
+        return;
+      }
+
+      hidePanels();
+
+      calPanel = await openPanel('calendar');
+      newsPanel = await openPanel('news');
+
+      await WAIT(200);
+
+      if (!isEnabled()) return;
+      const calendar = findCalendarReward();
+      const news = findFreeNewsOffers();
+
+      closeOpenedPanel(newsPanel);
+      newsPanel = null;
+
+      closeOpenedPanel(calPanel);
+      calPanel = null;
+
+      if (calendar || news.length > 0) {
+        createWidget(calendar, news);
+      } else {
+        finished = true;
+      }
+
+    } catch (error) {
+      console.error('[Nagrody] Błąd sprawdzania:', error);
+
+    } finally {
+      closeOpenedPanel(newsPanel);
+      closeOpenedPanel(calPanel);
+      showPanels();
+      checking = false;
+    }
+  }
+
+  window.__vicknessFreeRewardsSetEnabled = value => {
+    if (value) { finished = false; setTimeout(initialCheck, 250); }
+    else { removeWidget(); showPanels(); }
+  };
+
+  setTimeout(initialCheck, 5000);
+
+  // Ponowne sprawdzanie co godzinę bez odświeżania strony.
+  setInterval(() => {
+    if (!isEnabled() || checking) return;
+
+    finished = false;
+    removeWidget();
+    initialCheck();
+  }, HOURLY_REFRESH);
+
+
 })();
