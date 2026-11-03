@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Vickness Addons - Loader
+// @name         Riventia Addons - Loader
 // @namespace    https://github.com/wikibuch1-wq/vickness-addon-panel
-// @version      1.1.0
-// @description  Ładuje Vickness Addons z GitHuba z przekazaniem API Tampermonkey
+// @version      1.1.2
+// @description  Ładuje Riventia Addons z GitHuba z przekazaniem API Tampermonkey
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @run-at       document-idle
@@ -28,7 +28,6 @@
   const MAIN_URL =
     'https://raw.githubusercontent.com/wikibuch1-wq/vickness-addon-panel/main/userscript/vickness-addon-panel.user.js';
 
-  // Zabezpieczenie przed przypadkowym uruchomieniem loadera więcej niż raz.
   if (window.__vicknessLoaderStarted) return;
   window.__vicknessLoaderStarted = true;
 
@@ -52,8 +51,6 @@
       }
 
       try {
-        // Kod główny uruchamiamy z API przekazanym jawnie jako argumenty.
-        // Dzięki temu GM_xmlhttpRequest i pozostałe GM_* nie giną w zakresie @require.
         const runMain = new Function(
           'GM_getValue',
           'GM_setValue',
