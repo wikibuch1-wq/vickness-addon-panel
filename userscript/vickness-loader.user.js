@@ -1,16 +1,17 @@
 // ==UserScript==
 // @name         Vickness Addons - Loader
 // @namespace    https://github.com/wikibuch1-wq/vickness-addon-panel
-// @version      1.0.1
-// @description  Loader pobierający pełny Vickness Addons Pack z GitHuba
+// @version      1.0.2
+// @description  Loader Vickness Addons Pack dla Riventia
 // @match        https://riventia.margonem.pl/*
+// @match        http://riventia.margonem.pl/*
 // @run-at       document-idle
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        unsafeWindow
 // @grant        GM_xmlhttpRequest
 // @grant        GM_addValueChangeListener
 // @grant        GM_removeValueChangeListener
-// @grant        unsafeWindow
 // @connect      discord.com
 // @connect      discordapp.com
 // @connect      micc.garmory-cdn.cloud
