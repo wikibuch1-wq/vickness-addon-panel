@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.88
-// @description  Vickness Addons 1.1.88: dodano trzy specjalne NPC do DC Wykrywacza
+// @version      1.1.89
+// @description  Vickness Addons 1.1.89: dodano Kolorowanie przedmiotów na czacie
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -64,7 +64,7 @@
 
 // Stan dodatków gry istnieje wyłącznie na Riventii.
 if (location.hostname === 'riventia.margonem.pl') {
-    window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true };
+    window.__vicknessAddonEnabled = window.__vicknessAddonEnabled || { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true, itemChat: true };
 }
 
 // Wszystkie moduły gry, panel oraz belki działają wyłącznie na Riventii.
@@ -2560,6 +2560,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   const HOURLY_REFRESH = 60 * 60 * 1000;
   const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = {});
   if (typeof enabled.freeRewards !== 'boolean') enabled.freeRewards = true;
+  if (typeof enabled.itemChat !== 'boolean') enabled.itemChat = true;
 
   let checking = false;
   let finished = false;
@@ -2846,7 +2847,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   const KEY = 'vickness_addon_panel_layout_v2';
   const FLAGS_KEY = 'vickness_addon_enabled_v1';
-  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true, freeRewards: true });
+  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true, freeRewards: true, itemChat: true });
   if (typeof enabled.profileFinder !== 'boolean') enabled.profileFinder = true;
   try {
     const saved = JSON.parse(localStorage.getItem(FLAGS_KEY) || '{}');
@@ -2863,6 +2864,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (typeof saved.wnm === 'boolean') enabled.wnm = saved.wnm;
     if (typeof saved.rankChat === 'boolean') enabled.rankChat = saved.rankChat;
     if (typeof saved.freeRewards === 'boolean') enabled.freeRewards = saved.freeRewards;
+    if (typeof saved.itemChat === 'boolean') enabled.itemChat = saved.itemChat;
   } catch (_) { if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true; if (typeof enabled.titan !== 'boolean') enabled.titan = true; if (typeof enabled.crewOnline !== 'boolean') enabled.crewOnline = true; if (typeof enabled.rankChat !== 'boolean') enabled.rankChat = true; }
   if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true;
   if (typeof enabled.titan !== 'boolean') enabled.titan = true;
@@ -4060,6 +4062,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">⌖</span>Wróg na mapie<button type="button" class="vxInfoBtn" data-vx-info="Wróg na mapie" aria-label="Informacje: Wróg na mapie" title="Informacje">?</button><button type="button" class="vxOpenSettings" id="vxWnmOpen">⚙</button></span><span class="vxStandaloneDesc">Alarm dźwiękowy o wrogach i graczach bez klanu</span><div class="vxStandaloneState" id="vxWnmState"></div></div><label class="vxToggle"><input id="vxWnmSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">▤</span>Kolory rang Lootloga na czacie<button type="button" class="vxInfoBtn" data-vx-info="Kolory rang Lootloga na czacie" aria-label="Informacje: Kolory rang Lootloga na czacie" title="Informacje">?</button><button type="button" class="vxOpenSettings" id="vxRankChatOpen">⚙</button></span><span class="vxStandaloneDesc">Koloruje nicki nadawców według rang The Crew na Lootlogu</span><div class="vxStandaloneState" id="vxRankChatState"></div></div><label class="vxToggle"><input id="vxRankChatSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">✧</span>Darmowe Nagrody<button type="button" class="vxInfoBtn" data-vx-info="Darmowe Nagrody" aria-label="Informacje: Darmowe Nagrody" title="Informacje">?</button><button type="button" class="vxOpenSettings" id="vxFreeRewardsOpen">⚙</button></span><span class="vxStandaloneDesc">Automatyczne wykrywanie darmowych nagród z kalendarza i ofert</span><div class="vxStandaloneState" id="vxFreeRewardsState"></div></div><label class="vxToggle"><input id="vxFreeRewardsSwitch" type="checkbox"><span></span></label></div>
+      <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">✧</span>Kolorowanie przedmiotów na czacie<button type="button" class="vxInfoBtn" data-vx-info="Kolorowanie przedmiotów na czacie" aria-label="Informacje: Kolorowanie przedmiotów na czacie" title="Informacje">?</button><button type="button" class="vxOpenSettings" id="vxItemChatOpen">⚙</button></span><span class="vxStandaloneDesc">Koloruje nazwy połączonych przedmiotów według rzadkości i dodaje delikatną poświatę</span><div class="vxStandaloneState" id="vxItemChatState"></div></div><label class="vxToggle"><input id="vxItemChatSwitch" type="checkbox"><span></span></label></div>
     </div>
     <div id="vxSettingsView">
       <div id="vxSettingsToolbar"><button class="vxNavBtn" id="vxBackHome" type="button">← WSTECZ</button><span id="vxCurrentSetting">USTAWIENIA</span><button class="vxNavBtn" id="vxSwitchAddon" type="button">DRUGI DODATEK →</button></div>
@@ -4117,6 +4120,9 @@ if (location.hostname === 'riventia.margonem.pl') {
         <div class="vxLootlogActions"><button type="button" id="vxFreeRewardsCheck">SPRAWDŹ TERAZ</button></div>
         <div class="vxLootlogInfo" id="vxFreeRewardsStatus" role="status" aria-live="polite" style="margin-top:8px">Sprawdzanie uruchamia się automatycznie po wejściu do gry.</div>
       </div>
+      <div id="vxSettingsItemChat" class="vxSettingsSlot" hidden>
+        <div class="vxLootlogInfo">Kolorowanie przedmiotów na czacie rozpoznaje rzadkość połączonych przedmiotów i koloruje wyłącznie ich nazwy: legendarne na czerwono, heroiczne na niebiesko, unikatowe na złoto, ulepszone na turkusowo, a pospolite na szaro. Dodaje subtelną poświatę i nie zmienia koloru pozostałej treści wiadomości.</div>
+      </div>
       <div id="vxSettingsRankChat" class="vxSettingsSlot" hidden>
         <div class="vxLootlogInfo">Kolory rang są pobierane z API Lootloga dla The Crew, konta online przez Lootlog Game Client API, a postacie kont z profili Margonem. Moduł 2.7.0 używa cache v24, obsługuje ręcznie wskazane konto offline (7239525), ponawia próby po błędach gateway i koloruje nicki nadawców oraz nazwy postaci. Rangi odświeżają się maksymalnie raz na 24 godziny, konta online co 5 minut. Profile są zapisywane w pamięci Tampermonkey.</div>
         <div class="vxLootlogActions"><button type="button" id="vxRankChatRefresh">SYNCHRONIZUJ TERAZ</button></div>
@@ -4126,7 +4132,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     <div id="vxChangelogView" class="vxExtraView">
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.89</span><div>Dodano dodatek Kolorowanie przedmiotów na czacie z przełącznikiem w panelu. Koloruje nazwy przedmiotów według rzadkości.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.77</span><div>Powiększono panel oraz czcionki w nagłówku, menu, kafelkach i opisach dodatków. Zwiększono również ikony i przełączniki.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.76</span><div>Naprawiono przełączanie zakładek, aby zawartość Dodatków, Wyglądu, Aktualizacji i Logu zmian nie wyświetlała się jednocześnie.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.75</span><div>Poprawiono układ zawartości zakładek i przewijanie panelu.</div></div>
@@ -4272,6 +4278,9 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxRankChatState').textContent = enabled.rankChat ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxFreeRewardsSwitch').checked = !!enabled.freeRewards;
     root.querySelector('#vxFreeRewardsState').textContent = enabled.freeRewards ? 'WŁĄCZONY' : 'WYŁĄCZONY';
+    root.querySelector('#vxItemChatSwitch').checked = !!enabled.itemChat;
+    root.querySelector('#vxItemChatState').textContent = enabled.itemChat ? 'WŁĄCZONY' : 'WYŁĄCZONY';
+    if (typeof window.__vicknessItemChatSetEnabled === 'function') window.__vicknessItemChatSetEnabled(!!enabled.itemChat);
     if (typeof window.__vicknessFreeRewardsSetEnabled === 'function') window.__vicknessFreeRewardsSetEnabled(!!enabled.freeRewards);
     if (typeof window.__vicknessRankChatSetEnabled === 'function') window.__vicknessRankChatSetEnabled(!!enabled.rankChat);
     if (typeof window.__vicknessSetWnmEnabled === 'function') window.__vicknessSetWnmEnabled(!!enabled.wnm);
@@ -4281,12 +4290,12 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxLootState').textContent = enabled.loot ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxDcState').textContent = enabled.dc ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxLootlogState').textContent = enabled.lootlog ? 'WŁĄCZONY' : 'WYŁĄCZONY';
-    const addonKeys = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat', 'freeRewards'];
+    const addonKeys = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat', 'freeRewards', 'itemChat'];
     const enabledCount = addonKeys.reduce((sum, key) => sum + (enabled[key] ? 1 : 0), 0);
     const countLabel = root.querySelector('#vxAddonCount');
     if (countLabel) countLabel.textContent = `${enabledCount} / ${addonKeys.length} dodatków`;
     const miniCount = root.querySelector('#vxMiniAddonCount');
-    if (miniCount) miniCount.textContent = `${enabledCount}/10`;
+    if (miniCount) miniCount.textContent = `${enabledCount}/11`;
     dockWidgets();
   }
   function setActiveTab(tab) {
@@ -4320,7 +4329,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (tab === 'appearance') syncAppearanceControls();
   }
   function openSettings(which) {
-    if (!['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat', 'freeRewards'].includes(which)) which = 'dc';
+    if (!['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat', 'freeRewards', 'itemChat'].includes(which)) which = 'dc';
     setActiveTab('addons');
     root.querySelector('#vxHomeView').style.display = 'none';
     root.querySelector('#vxChangelogView').style.display = 'none';
@@ -4340,8 +4349,9 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxSettingsWnm').hidden = which !== 'wnm';
     root.querySelector('#vxSettingsRankChat').hidden = which !== 'rankChat';
     root.querySelector('#vxSettingsFreeRewards').hidden = which !== 'freeRewards';
-    root.querySelector('#vxCurrentSetting').textContent = which === 'loot' ? 'LOOT GLOW' : which === 'dc' ? 'DC WYKRYWACZ' : which === 'lootlog' ? 'BELKA LOOTÓW' : which === 'titan' ? 'TITAN TRACKER GOLD' : which === 'lootChance' ? 'PROCENT ŁUPU' : which === 'crewOnline' ? 'THE CREW ONLINE' : which === 'profileFinder' ? 'POSTACIE ONLINE NA PROFILACH' : which === 'rankChat' ? 'KOLORY RANG NA CZACIE' : which === 'freeRewards' ? 'DARMOWE NAGRODY' : 'WRÓG NA MAPIE';
-    const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat', 'freeRewards'];
+    root.querySelector('#vxSettingsItemChat').hidden = which !== 'itemChat';
+    root.querySelector('#vxCurrentSetting').textContent = which === 'loot' ? 'LOOT GLOW' : which === 'dc' ? 'DC WYKRYWACZ' : which === 'lootlog' ? 'BELKA LOOTÓW' : which === 'titan' ? 'TITAN TRACKER GOLD' : which === 'lootChance' ? 'PROCENT ŁUPU' : which === 'crewOnline' ? 'THE CREW ONLINE' : which === 'profileFinder' ? 'POSTACIE ONLINE NA PROFILACH' : which === 'rankChat' ? 'KOLORY RANG NA CZACIE' : which === 'freeRewards' ? 'DARMOWE NAGRODY' : which === 'itemChat' ? 'KOLOROWANIE PRZEDMIOTÓW NA CZACIE' : 'WRÓG NA MAPIE';
+    const order = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat', 'freeRewards', 'itemChat'];
     const next = order[(order.indexOf(which) + 1) % order.length];
     root.querySelector('#vxSwitchAddon').textContent = next === 'loot' ? 'LOOT GLOW →' : next === 'dc' ? 'DC WYKRYWACZ →' : next === 'lootlog' ? 'BELKA LOOTÓW →' : next === 'titan' ? 'TITAN TRACKER →' : next === 'lootChance' ? 'PROCENT ŁUPU →' : next === 'crewOnline' ? 'THE CREW ONLINE →' : next === 'profileFinder' ? 'POSTACIE ONLINE →' : next === 'wnm' ? 'WRÓG NA MAPIE →' : next === 'rankChat' ? 'KOLORY RANG →' : 'DARMOWE NAGRODY →';
     applyToggles();
@@ -4689,6 +4699,10 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxFreeRewardsSwitch').addEventListener('change', e => {
       enabled.freeRewards = e.target.checked; saveFlags(); applyToggles();
     });
+    root.querySelector('#vxItemChatSwitch').addEventListener('change', e => {
+      enabled.itemChat = e.target.checked; saveFlags(); applyToggles();
+    });
+    root.querySelector('#vxItemChatOpen').addEventListener('click', () => openSettings('itemChat'));
     root.querySelector('#vxFreeRewardsOpen').addEventListener('click', () => openSettings('freeRewards'));
     root.querySelector('#vxFreeRewardsCheck').addEventListener('click', () => {
       const status = root.querySelector('#vxFreeRewardsStatus');
@@ -4780,6 +4794,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       'Wróg na mapie': 'Pokazuję na mapce oraz sygnalizuje dźwiękiem Gracza bez klanu lub z wrogiego klanu. Wskazuję również liczbę kratek.',
       'Kolory rang Lootloga na czacie': 'Dodatek pobiera dane z Lootloga The Crew i jest połączony z rangami na Discordzie. Kolor rangi na Discord = kolorowi na Czacie.',
       'Darmowe Nagrody': 'Wykrywa dostępne darmowe nagrody z kalendarza i ofert oraz pomaga je odebrać.',
+      'Kolorowanie przedmiotów na czacie': 'Koloruje nazwy przedmiotów połączonych w wiadomościach czatu według ich rzadkości i dodaje delikatną poświatę.',
       'Przyciemnianie mapek': 'Przyciemnia mapki na wybrany procent, przyciemnienie nie ingeruje w warstwy mapy przez co npc/mobki/światełka są podświetlone a pozostałe elementy mapy zostaną przyciemnione (BETA)'
     }
 
@@ -9870,4 +9885,200 @@ if (location.hostname === 'riventia.margonem.pl') {
     window.__vicknessPendingRankChatRefresh = false;
     if (active) void refreshNow(true);
   }
+})();
+
+// =============================================================
+// KOLOROWANIE PRZEDMIOTÓW NA CZACIE — zintegrowany dodatek panelu
+// =============================================================
+(() => {
+    'use strict';
+
+    if (location.hostname !== 'riventia.margonem.pl' || window.top !== window.self) return;
+    if (window.__vicknessItemChatModuleStarted) return;
+    window.__vicknessItemChatModuleStarted = true;
+
+    const $ = window.jQuery;
+    if (!$) {
+        console.warn('[Vickness Item Chat] Brak jQuery — dodatek nie został uruchomiony.');
+        return;
+    }
+
+    const COLORS = {
+        legendary: { color: '#ff3333', glow: 'rgba(255, 30, 30, 0.45)' },
+        heroic:    { color: '#3399ff', glow: 'rgba(40, 130, 255, 0.45)' },
+        unique:    { color: '#ffd700', glow: 'rgba(255, 205, 0, 0.45)' },
+        common:    { color: '#666666', glow: 'rgba(130, 130, 130, 0.20)' },
+        upgraded:  { color: '#40e0d0', glow: 'rgba(40, 230, 210, 0.45)' }
+    };
+
+    const scheduled = new WeakSet();
+    const hiddenTips = new WeakSet();
+    const timers = new Map();
+    let observer = null;
+    let active = false;
+
+    if ($.fn.tipShow && !$.fn.tipShow.__vicknessItemChatWrapped) {
+        const originalTipShow = $.fn.tipShow;
+        const wrappedTipShow = function (...args) {
+            if (this[0] && hiddenTips.has(this[0])) return this;
+            return originalTipShow.apply(this, args);
+        };
+        wrappedTipShow.__vicknessItemChatWrapped = true;
+        wrappedTipShow.__vicknessOriginal = originalTipShow;
+        $.fn.tipShow = wrappedTipShow;
+    }
+
+    function getRarity(item) {
+        if (!item) return null;
+        let rarity = item.getItemStat?.('rarity');
+        if (!rarity && item.stat) {
+            const match = item.stat.match(/(?:^|;)rarity=([^;]*)/);
+            if (match) rarity = match[1];
+        }
+        rarity = String(rarity || '').toLowerCase().trim();
+        return COLORS[rarity] ? rarity : null;
+    }
+
+    function colorNameOnly(el, rarity) {
+        let wrapper = el.querySelector(':scope > .riventia-item-name');
+        if (!wrapper) {
+            const textNodes = Array.from(el.childNodes).filter(
+                node => node.nodeType === Node.TEXT_NODE && node.textContent.trim()
+            );
+            if (!textNodes.length) return false;
+            wrapper = document.createElement('span');
+            wrapper.className = 'riventia-item-name';
+            for (const node of textNodes) wrapper.appendChild(node);
+            el.insertBefore(wrapper, el.firstChild);
+        }
+
+        const style = COLORS[rarity];
+        wrapper.style.setProperty('color', style.color, 'important');
+        wrapper.style.setProperty('-webkit-text-fill-color', style.color, 'important');
+        wrapper.style.setProperty('text-shadow', `0 0 2px ${style.glow}`, 'important');
+        return true;
+    }
+
+    function colorItem(el) {
+        const item = $(el).data('item');
+        if (!item) return false;
+        const rarity = getRarity(item);
+        if (!rarity || !colorNameOnly(el, rarity)) return false;
+        el.dataset.vicknessRarity = rarity;
+        return true;
+    }
+
+    function loadItem(el) {
+        const node = $(el);
+        node.triggerHandler('mouseenter');
+        node.triggerHandler('mouseout');
+    }
+
+    function clearTimer(el) {
+        const timer = timers.get(el);
+        if (timer) clearInterval(timer);
+        timers.delete(el);
+    }
+
+    function processItem(el) {
+        if (!active || !(el instanceof HTMLElement) || !el.matches('.linked-chat-item') || scheduled.has(el)) return;
+        scheduled.add(el);
+        hiddenTips.add(el);
+
+        window.setTimeout(() => {
+            if (!active || !el.isConnected) {
+                hiddenTips.delete(el);
+                scheduled.delete(el);
+                return;
+            }
+            if (colorItem(el)) {
+                hiddenTips.delete(el);
+                return;
+            }
+
+            try { loadItem(el); } catch (error) { console.warn('[Vickness Item Chat]', error); }
+
+            let attempts = 0;
+            let loadAttempts = 0;
+            const timer = window.setInterval(() => {
+                attempts++;
+                if (!active || !el.isConnected) {
+                    clearTimer(el);
+                    hiddenTips.delete(el);
+                    scheduled.delete(el);
+                    return;
+                }
+                if (colorItem(el)) {
+                    clearTimer(el);
+                    hiddenTips.delete(el);
+                    return;
+                }
+                if (attempts % 20 === 0 && loadAttempts < 5) {
+                    loadAttempts++;
+                    try { loadItem(el); } catch (error) { console.warn('[Vickness Item Chat]', error); }
+                }
+                if (attempts >= 200) {
+                    clearTimer(el);
+                    hiddenTips.delete(el);
+                }
+            }, 10);
+            timers.set(el, timer);
+        }, 0);
+    }
+
+    function scan(root) {
+        if (!active || !(root instanceof Element)) return;
+        if (root.matches('.linked-chat-item')) processItem(root);
+        root.querySelectorAll('.linked-chat-item').forEach(processItem);
+    }
+
+    function start() {
+        if (active) return;
+        active = true;
+        scan(document.body);
+        observer = new MutationObserver(records => {
+            for (const record of records) {
+                for (const node of record.addedNodes) {
+                    if (node instanceof Element) scan(node);
+                }
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        console.log('[Vickness Item Chat] Uruchomiono.');
+    }
+
+    function stop() {
+        if (!active) return;
+        active = false;
+        observer?.disconnect();
+        observer = null;
+        for (const timer of timers.values()) clearInterval(timer);
+        timers.clear();
+        document.querySelectorAll('.linked-chat-item').forEach(el => {
+            hiddenTips.delete(el);
+            scheduled.delete(el);
+            if (!el.hasAttribute('data-vickness-rarity')) return;
+            const wrapper = el.querySelector(':scope > .riventia-item-name');
+            if (wrapper) {
+                while (wrapper.firstChild) el.insertBefore(wrapper.firstChild, wrapper);
+                wrapper.remove();
+            }
+            delete el.dataset.vicknessRarity;
+        });
+        console.log('[Vickness Item Chat] Wyłączono.');
+    }
+
+    function setEnabled(value) {
+        if (value) start();
+        else stop();
+    }
+
+    window.__vicknessItemChatSetEnabled = setEnabled;
+    window.addEventListener('pagehide', () => {
+        stop();
+        delete window.__vicknessItemChatSetEnabled;
+        delete window.__vicknessItemChatModuleStarted;
+    }, { once: true });
+
+    setEnabled(window.__vicknessAddonEnabled?.itemChat !== false);
 })();
