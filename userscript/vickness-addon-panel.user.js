@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.08
-// @description  Vickness Addons 1.2.08: kolorowanie czatu bez sztucznego wywoływania tipów
+// @version      1.2.09
+// @description  Vickness Addons 1.2.09: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2581,60 +2581,17 @@ if (location.hostname === 'riventia.margonem.pl') {
       .toLocaleLowerCase('pl-PL');
   }
 
-  function hideInactiveCalendarToast(root = document) {
-    if (!root || !root.querySelectorAll) return;
-
-    const elements = [];
-    if (root instanceof Element) elements.push(root);
-    elements.push(...root.querySelectorAll('body *'));
-
-    for (const el of elements) {
-      if (!(el instanceof HTMLElement) || el.dataset.vxCalendarToastMuted === '1') continue;
-      const text = normalizeNoticeText(el.textContent);
-      if (!text.includes(INACTIVE_CALENDAR_TEXT)) continue;
-
-      // Ukryj kontener komunikatu (a nie sam tekst), aby nie zostawić
-      // pustej ramki/paska pod ikoną kalendarza.
-      let target = el;
-      let parent = el.parentElement;
-      if (parent && normalizeNoticeText(parent.textContent).includes(INACTIVE_CALENDAR_TEXT)) {
-        target = parent;
-      }
-
-      target.dataset.vxCalendarToastMuted = '1';
-      target.style.setProperty('display', 'none', 'important');
-      target.setAttribute('aria-hidden', 'true');
-    }
+  function hideInactiveCalendarToast(_root = document) {
+    // Celowo wylaczone. Nie skanujemy DOM gry i nie ukrywamy komunikatow.
   }
 
   function beginCalendarToastMute() {
-    hideInactiveCalendarToast(document);
-    const observer = new MutationObserver(records => {
-      for (const record of records) {
-        if (record.type === 'characterData') {
-          hideInactiveCalendarToast(record.target.parentElement || document);
-        } else {
-          for (const node of record.addedNodes) {
-            if (node instanceof Element) hideInactiveCalendarToast(node);
-          }
-          if (record.target instanceof Element) hideInactiveCalendarToast(record.target);
-        }
-      }
-    });
-    if (document.body) {
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        characterData: true
-      });
-    }
-    return observer;
+    // Bez MutationObserver na calym dokumencie.
+    return null;
   }
 
-  function endCalendarToastMute(observer) {
-    observer?.disconnect();
-    // Nie przywracamy toastów już wygenerowanych przez sprawdzanie.
-    // Gra usuwa je sama po swoim czasie wyświetlania.
+  function endCalendarToastMute(_observer) {
+    // Brak obserwatora do odlaczenia.
   }
 
   function hidePanels() {
@@ -2722,61 +2679,11 @@ if (location.hostname === 'riventia.margonem.pl') {
     // Bez aktywnego dnia/nagrody kalendarz nie może zgłaszać nagrody.
     return !!calendar?.querySelector('.day.today .reward');
   }
-  const calendarHintStyle = document.createElement('style');
-  calendarHintStyle.id = 'vx-calendar-hover-hint-style';
-  calendarHintStyle.textContent = `
-    [data-vx-calendar-hint] {
-      position: relative;
-    }
-    [data-vx-calendar-hint]:hover::after,
-    [data-vx-calendar-hint]:focus-visible::after {
-      content: attr(data-vx-calendar-hint-text);
-      position: absolute;
-      left: 50%;
-      bottom: calc(100% + 8px);
-      transform: translateX(-50%);
-      z-index: 2147483000;
-      width: max-content;
-      max-width: 250px;
-      white-space: normal;
-      padding: 7px 10px;
-      border: 1px solid #b78b36;
-      border-radius: 4px;
-      background: #100c18 !important;
-      opacity: 1 !important;
-      visibility: visible !important;
-      color: #f1d27a !important;
-      font: 12px/1.35 Arial, sans-serif;
-      text-align: center;
-      box-shadow: 0 3px 12px rgba(0,0,0,.95), 0 0 5px rgba(183,139,54,.35);
-      pointer-events: none;
-    }
-  `;
-  (document.head || document.documentElement).appendChild(calendarHintStyle);
+  // Wylaczono niestandardowe podpowiedzi kalendarza.
+  // Vickness nie zmienia title, hover ani mechanizmu tipow Margonem.
 
-  function setCalendarHoverHint(hasEvent) {
-    const button = findPanelButton('calendar');
-    if (!button) return;
-
-    const hint = hasEvent
-      ? 'Kalendarz eventowy — trwa wydarzenie'
-      : 'Kalendarz eventowy — obecnie nie trwa żadne wydarzenie czasowe';
-
-    // Nie używamy title ani tooltipa gry — w Riventii potrafi to
-    // uruchomić wadliwą warstwę podpowiedzi i zasłonić ekran.
-    button.removeAttribute('title');
-    button.dataset.vxCalendarHint = hasEvent ? 'active' : 'inactive';
-    button.dataset.vxCalendarHintText = hint;
-
-    // Jeśli klikany element jest tylko ikoną wewnątrz kafelka, oznacz też
-    // najbliższy kafelek widgetu, aby podpowiedź działała po najechaniu
-    // na całe pole, a nie wyłącznie na samą ikonę.
-    const tile = button.closest('.widget, .widget-button, .widget-rewards-calendar') || button;
-    if (tile !== button) {
-      tile.removeAttribute('title');
-      tile.dataset.vxCalendarHint = hasEvent ? 'active' : 'inactive';
-      tile.dataset.vxCalendarHintText = hint;
-    }
+  function setCalendarHoverHint(_hasEvent) {
+    // Celowo puste: natywne podpowiedzi i atrybuty gry pozostaja nietkniete.
   }
 
   function findCalendarReward() {
