@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.95
-// @description  Vickness Addons 1.1.95: ukrywa komunikat o braku aktywnego kalendarza
+// @version      1.1.96
+// @description  Vickness Addons 1.1.96: wycisza komunikat kalendarza podczas automatycznego sprawdzania
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2569,11 +2569,9 @@ if (location.hostname === 'riventia.margonem.pl') {
   let hourlyTimer = null;
   let stopped = false;
 
-  // Ukrywa komunikat gry o braku wydarzenia czasowego.
-  // Jest to osobna warstwa od sprawdzania nagród: komunikat nie powinien
-  // pojawiać się na ekranie nawet po F5, gdy kalendarz jest nieaktywny.
+  // Wycisza wyłącznie toast generowany przez grę podczas otwierania
+  // nieaktywnego kalendarza. Observer działa tylko w trakcie sprawdzania.
   const INACTIVE_CALENDAR_TEXT = 'obecnie nie trwa żadne wydarzenie czasowe';
-  let inactiveNoticeObserver = null;
 
   function normalizeNoticeText(value) {
     return String(value || '')
@@ -2583,53 +2581,58 @@ if (location.hostname === 'riventia.margonem.pl') {
       .toLocaleLowerCase('pl-PL');
   }
 
-  function suppressInactiveCalendarNotice(root = document) {
+  function hideInactiveCalendarToast(root = document) {
     if (!root || !root.querySelectorAll) return;
 
-    const candidates = [];
-    if (root instanceof Element && root.matches('*')) candidates.push(root);
-    candidates.push(...root.querySelectorAll('div, span, p, section, article, h1, h2, h3'));
+    const elements = [];
+    if (root instanceof Element) elements.push(root);
+    elements.push(...root.querySelectorAll('body *'));
 
-    for (const el of candidates) {
-      if (!(el instanceof HTMLElement) || el.dataset.vxInactiveCalendarHidden === '1') continue;
-
+    for (const el of elements) {
+      if (!(el instanceof HTMLElement) || el.dataset.vxCalendarToastMuted === '1') continue;
       const text = normalizeNoticeText(el.textContent);
       if (!text.includes(INACTIVE_CALENDAR_TEXT)) continue;
 
-      // Ukryj najmniejszy element zawierający cały komunikat, nie cały panel gry.
-      const parentText = normalizeNoticeText(el.parentElement?.textContent);
-      if (parentText.includes(INACTIVE_CALENDAR_TEXT) && parentText.length < text.length + 80) {
-        continue;
-      }
+      // Ukryj najniższy element zawierający komunikat, aby nie schować całego UI.
+      const childHasSameMessage = [...el.children].some(child =>
+        normalizeNoticeText(child.textContent).includes(INACTIVE_CALENDAR_TEXT)
+      );
+      if (childHasSameMessage) continue;
 
-      el.dataset.vxInactiveCalendarHidden = '1';
+      el.dataset.vxCalendarToastMuted = '1';
       el.style.setProperty('display', 'none', 'important');
       el.setAttribute('aria-hidden', 'true');
     }
   }
 
-  function startInactiveNoticeSuppressor() {
-    suppressInactiveCalendarNotice(document);
-    if (inactiveNoticeObserver || !document.body) return;
-
-    inactiveNoticeObserver = new MutationObserver(records => {
+  function beginCalendarToastMute() {
+    hideInactiveCalendarToast(document);
+    const observer = new MutationObserver(records => {
       for (const record of records) {
         if (record.type === 'characterData') {
-          suppressInactiveCalendarNotice(record.target.parentElement || document);
+          hideInactiveCalendarToast(record.target.parentElement || document);
         } else {
           for (const node of record.addedNodes) {
-            if (node instanceof Element) suppressInactiveCalendarNotice(node);
+            if (node instanceof Element) hideInactiveCalendarToast(node);
           }
-          if (record.target instanceof Element) suppressInactiveCalendarNotice(record.target);
+          if (record.target instanceof Element) hideInactiveCalendarToast(record.target);
         }
       }
     });
+    if (document.body) {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true
+      });
+    }
+    return observer;
+  }
 
-    inactiveNoticeObserver.observe(document.body, {
-      childList: true,
-      subtree: true,
-      characterData: true
-    });
+  function endCalendarToastMute(observer) {
+    observer?.disconnect();
+    // Nie przywracamy toastów już wygenerowanych przez sprawdzanie.
+    // Gra usuwa je sama po swoim czasie wyświetlania.
   }
 
   function hidePanels() {
@@ -2781,8 +2784,10 @@ if (location.hostname === 'riventia.margonem.pl') {
       button.textContent = 'ODBIERANIE...';
       let calPanel = null;
       let newsPanel = null;
+      let calendarToastObserver = null;
       try {
         hidePanels();
+        calendarToastObserver = beginCalendarToastMute();
         calPanel = await openPanel('calendar');
         newsPanel = await openPanel('news');
         await WAIT(200);
@@ -2814,6 +2819,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       } finally {
         closeOpenedPanel(newsPanel);
         closeOpenedPanel(calPanel);
+        endCalendarToastMute(calendarToastObserver);
         showPanels();
         checking = false;
       }
@@ -2857,6 +2863,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     checking = true;
     let calPanel = null;
     let newsPanel = null;
+    let calendarToastObserver = null;
     try {
       for (let i = 0; i < 60; i++) {
         if (stopped || !enabled.freeRewards) return;
@@ -2866,6 +2873,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       if (!enabled.freeRewards || !findPanelButton('calendar') || !findPanelButton('news')) return;
 
       hidePanels();
+      calendarToastObserver = beginCalendarToastMute();
       calPanel = await openPanel('calendar');
       newsPanel = await openPanel('news');
       await WAIT(200);
@@ -2884,6 +2892,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     } finally {
       closeOpenedPanel(newsPanel);
       closeOpenedPanel(calPanel);
+      endCalendarToastMute(calendarToastObserver);
       showPanels();
       checking = false;
     }
@@ -2891,13 +2900,6 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   function stop() {
     stopped = true;
-    inactiveNoticeObserver?.disconnect();
-    inactiveNoticeObserver = null;
-    document.querySelectorAll('[data-vx-inactive-calendar-hidden="1"]').forEach(el => {
-      el.style.removeProperty('display');
-      el.removeAttribute('aria-hidden');
-      delete el.dataset.vxInactiveCalendarHidden;
-    });
     if (hourlyTimer) clearInterval(hourlyTimer);
     hourlyTimer = null;
     removeWidget();
@@ -4234,7 +4236,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     <div id="vxChangelogView" class="vxExtraView">
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.95</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.96</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.77</span><div>Powiększono panel oraz czcionki w nagłówku, menu, kafelkach i opisach dodatków. Zwiększono również ikony i przełączniki.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.76</span><div>Naprawiono przełączanie zakładek, aby zawartość Dodatków, Wyglądu, Aktualizacji i Logu zmian nie wyświetlała się jednocześnie.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.75</span><div>Poprawiono układ zawartości zakładek i przewijanie panelu.</div></div>
