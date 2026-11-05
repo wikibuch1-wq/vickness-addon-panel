@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.18
-// @description  Vickness Addons 1.2.18: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.19
+// @description  Vickness Addons 1.2.19: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -10272,7 +10272,20 @@ if (location.hostname === 'riventia.margonem.pl') {
     let observer = null;
     let retryTimer = null;
     const scheduled = new WeakSet();
+    const hiddenTips = new WeakSet();
     const timers = new Map();
+
+    // Oryginalny mechanizm 3.4.1: blokuj tipShow wyłącznie dla
+    // linku przedmiotu, którego dane są właśnie pobierane.
+    if (PAGE_WINDOW.jQuery?.fn?.tipShow && !PAGE_WINDOW.jQuery.fn.tipShow.__vicknessWrapped) {
+        const originalTipShow = PAGE_WINDOW.jQuery.fn.tipShow;
+        const wrappedTipShow = function (...args) {
+            if (this[0] && hiddenTips.has(this[0])) return this;
+            return originalTipShow.apply(this, args);
+        };
+        wrappedTipShow.__vicknessWrapped = true;
+        PAGE_WINDOW.jQuery.fn.tipShow = wrappedTipShow;
+    }
 
     function install() {
         $ = PAGE_WINDOW.jQuery;
@@ -10330,10 +10343,9 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
 
     function loadItem(el) {
-        // Nie symulujemy mouseenter/mouseout. W Riventii te zdarzenia są
-        // współdzielone z systemem podpowiedzi i potrafią zamykać tipy
-        // również dla innych elementów. Czekamy na naturalne dane itemu.
-        return $(el).data('item') || null;
+        const node = $(el);
+        node.triggerHandler('mouseenter');
+        node.triggerHandler('mouseout');
     }
 
     function clearTimer(el) {
@@ -10345,28 +10357,34 @@ if (location.hostname === 'riventia.margonem.pl') {
     function processItem(el) {
         if (!active || !(el instanceof HTMLElement) || !el.matches('.linked-chat-item') || scheduled.has(el)) return;
         scheduled.add(el);
+        hiddenTips.add(el);
 
         window.setTimeout(() => {
             if (!active || !el.isConnected) {
                 scheduled.delete(el);
+                hiddenTips.delete(el);
                 return;
             }
             if (colorItem(el)) {
+                hiddenTips.delete(el);
                 return;
             }
             try { loadItem(el); }
             catch (error) { console.warn('[Vickness Item Chat] Nie udało się załadować danych przedmiotu:', error); }
 
             let attempts = 0;
+            let loadAttempts = 0;
             const timer = window.setInterval(() => {
                 attempts++;
                 if (!active || !el.isConnected) {
                     clearTimer(el);
                     scheduled.delete(el);
+                    hiddenTips.delete(el);
                     return;
                 }
                 if (colorItem(el)) {
                     clearTimer(el);
+                    hiddenTips.delete(el);
                     return;
                 }
                 if (attempts % 20 === 0 && loadAttempts < 5) {
@@ -10376,7 +10394,8 @@ if (location.hostname === 'riventia.margonem.pl') {
                 }
                 if (attempts >= 200) {
                     clearTimer(el);
-                        }
+                    hiddenTips.delete(el);
+                }
             }, 10);
             timers.set(el, timer);
         }, 0);
