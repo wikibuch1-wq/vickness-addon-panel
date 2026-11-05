@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.06
-// @description  Vickness Addons 1.2.06: nie ingeruje w czas ani widoczność tipów gry
+// @version      1.2.07
+// @description  Vickness Addons 1.2.05: przywrócono standardowe tipy gry, bez globalnych nasłuchów
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4299,7 +4299,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     <div id="vxChangelogView" class="vxExtraView">
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.2.06</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.2.05</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.77</span><div>Powiększono panel oraz czcionki w nagłówku, menu, kafelkach i opisach dodatków. Zwiększono również ikony i przełączniki.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.76</span><div>Naprawiono przełączanie zakładek, aby zawartość Dodatków, Wyglądu, Aktualizacji i Logu zmian nie wyświetlała się jednocześnie.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.75</span><div>Poprawiono układ zawartości zakładek i przewijanie panelu.</div></div>
@@ -10196,11 +10196,22 @@ if (location.hostname === 'riventia.margonem.pl') {
     let observer = null;
     let retryTimer = null;
     const scheduled = new WeakSet();
+    const hiddenTips = new WeakSet();
     const timers = new Map();
 
     function install() {
         $ = PAGE_WINDOW.jQuery;
         if (!$ || !$.fn) return false;
+        if ($.fn.tipShow && !$.fn.tipShow.__vicknessItemChatWrapped) {
+            const originalTipShow = $.fn.tipShow;
+            const wrappedTipShow = function (...args) {
+                if (this[0] && hiddenTips.has(this[0])) return this;
+                return originalTipShow.apply(this, args);
+            };
+            wrappedTipShow.__vicknessItemChatWrapped = true;
+            wrappedTipShow.__vicknessOriginal = originalTipShow;
+            $.fn.tipShow = wrappedTipShow;
+        }
         return true;
     }
 
@@ -10268,13 +10279,16 @@ if (location.hostname === 'riventia.margonem.pl') {
     function processItem(el) {
         if (!active || !(el instanceof HTMLElement) || !el.matches('.linked-chat-item') || scheduled.has(el)) return;
         scheduled.add(el);
+        hiddenTips.add(el);
 
         window.setTimeout(() => {
             if (!active || !el.isConnected) {
+                hiddenTips.delete(el);
                 scheduled.delete(el);
                 return;
             }
             if (colorItem(el)) {
+                hiddenTips.delete(el);
                 return;
             }
             try { loadItem(el); }
@@ -10286,11 +10300,13 @@ if (location.hostname === 'riventia.margonem.pl') {
                 attempts++;
                 if (!active || !el.isConnected) {
                     clearTimer(el);
+                    hiddenTips.delete(el);
                     scheduled.delete(el);
                     return;
                 }
                 if (colorItem(el)) {
                     clearTimer(el);
+                    hiddenTips.delete(el);
                     return;
                 }
                 if (attempts % 20 === 0 && loadAttempts < 5) {
@@ -10300,7 +10316,8 @@ if (location.hostname === 'riventia.margonem.pl') {
                 }
                 if (attempts >= 200) {
                     clearTimer(el);
-                        }
+                    hiddenTips.delete(el);
+                }
             }, 10);
             timers.set(el, timer);
         }, 0);
@@ -10335,6 +10352,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         for (const timer of timers.values()) window.clearInterval(timer);
         timers.clear();
         document.querySelectorAll('.linked-chat-item').forEach(el => {
+            hiddenTips.delete(el);
             scheduled.delete(el);
             if (!el.dataset.vicknessItemChatRarity) return;
             const wrapper = el.querySelector(':scope > .vickness-item-chat-name');
