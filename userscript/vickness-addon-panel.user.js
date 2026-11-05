@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.97
-// @description  Vickness Addons 1.1.97: naprawiono inicjalizację panelu i wyciszanie kalendarza
+// @version      1.1.98
+// @description  Vickness Addons 1.1.98: komunikat o braku wydarzenia dostępny po najechaniu na kalendarz
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2593,15 +2593,17 @@ if (location.hostname === 'riventia.margonem.pl') {
       const text = normalizeNoticeText(el.textContent);
       if (!text.includes(INACTIVE_CALENDAR_TEXT)) continue;
 
-      // Ukryj najniższy element zawierający komunikat, aby nie schować całego UI.
-      const childHasSameMessage = [...el.children].some(child =>
-        normalizeNoticeText(child.textContent).includes(INACTIVE_CALENDAR_TEXT)
-      );
-      if (childHasSameMessage) continue;
+      // Ukryj kontener komunikatu (a nie sam tekst), aby nie zostawić
+      // pustej ramki/paska pod ikoną kalendarza.
+      let target = el;
+      let parent = el.parentElement;
+      if (parent && normalizeNoticeText(parent.textContent).includes(INACTIVE_CALENDAR_TEXT)) {
+        target = parent;
+      }
 
-      el.dataset.vxCalendarToastMuted = '1';
-      el.style.setProperty('display', 'none', 'important');
-      el.setAttribute('aria-hidden', 'true');
+      target.dataset.vxCalendarToastMuted = '1';
+      target.style.setProperty('display', 'none', 'important');
+      target.setAttribute('aria-hidden', 'true');
     }
   }
 
@@ -2720,6 +2722,19 @@ if (location.hostname === 'riventia.margonem.pl') {
     // Bez aktywnego dnia/nagrody kalendarz nie może zgłaszać nagrody.
     return !!calendar?.querySelector('.day.today .reward');
   }
+  function setCalendarHoverHint(hasEvent) {
+    const button = findPanelButton('calendar');
+    if (!button) return;
+
+    const hint = hasEvent
+      ? 'Kalendarz eventowy — trwa wydarzenie'
+      : 'Kalendarz eventowy — obecnie nie trwa żadne wydarzenie czasowe';
+
+    button.setAttribute('title', hint);
+    button.setAttribute('aria-label', hint);
+    button.dataset.vxCalendarHint = hasEvent ? 'active' : 'inactive';
+  }
+
   function findCalendarReward() {
     if (!calendarHasActiveEvent()) return null;
 
@@ -2792,7 +2807,9 @@ if (location.hostname === 'riventia.margonem.pl') {
         newsPanel = await openPanel('news');
         await WAIT(200);
 
-        const calendarReward = calendarHasActiveEvent() ? findCalendarReward() : null;
+        const hasCalendarEvent = calendarHasActiveEvent();
+        setCalendarHoverHint(hasCalendarEvent);
+        const calendarReward = hasCalendarEvent ? findCalendarReward() : null;
         const newsOffers = findFreeNewsOffers();
 
         if (calendarReward) {
@@ -2877,7 +2894,9 @@ if (location.hostname === 'riventia.margonem.pl') {
       calPanel = await openPanel('calendar');
       newsPanel = await openPanel('news');
       await WAIT(200);
-      const calendar = calendarHasActiveEvent() ? findCalendarReward() : null;
+      const hasCalendarEvent = calendarHasActiveEvent();
+      setCalendarHoverHint(hasCalendarEvent);
+      const calendar = hasCalendarEvent ? findCalendarReward() : null;
       const news = findFreeNewsOffers();
 
       closeOpenedPanel(newsPanel);
@@ -4235,7 +4254,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     <div id="vxChangelogView" class="vxExtraView">
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.97</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.98</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.77</span><div>Powiększono panel oraz czcionki w nagłówku, menu, kafelkach i opisach dodatków. Zwiększono również ikony i przełączniki.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.76</span><div>Naprawiono przełączanie zakładek, aby zawartość Dodatków, Wyglądu, Aktualizacji i Logu zmian nie wyświetlała się jednocześnie.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.75</span><div>Poprawiono układ zawartości zakładek i przewijanie panelu.</div></div>
