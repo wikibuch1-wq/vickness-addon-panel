@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.16
-// @description  Vickness Addons 1.2.16: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.17
+// @description  Vickness Addons 1.2.17: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -78,6 +78,7 @@ if (location.hostname === 'riventia.margonem.pl' && window.top === window.self) 
       awaitingCharacter: false,
       sawLogoff: false,
       stableSince: 0,
+      pauseStartedAt: 0,
       heroKey: ''
     });
     const STABLE_DELAY = 7000;
@@ -96,28 +97,27 @@ if (location.hostname === 'riventia.margonem.pl' && window.top === window.self) 
       state.awaitingCharacter = true;
       state.sawLogoff = false;
       state.stableSince = 0;
+      state.pauseStartedAt = Date.now();
     };
 
     // Rozpoznaje wyłącznie akcję przelogowania; nie zatrzymuje ani nie anuluje kliknięcia.
     document.addEventListener('click', event => {
-      const path = typeof event.composedPath === 'function' ? event.composedPath() : [event.target];
-      let depth = 0;
-      for (const node of path) {
-        if (!(node instanceof Element)) continue;
-        if (++depth > 5) break;
-        const rawText = [
-          node.getAttribute('aria-label'),
-          node.getAttribute('title'),
-          node.getAttribute('data-action'),
-          node.textContent
-        ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-        // Nie analizuj dużych kontenerów (np. całego menu lub strony).
-        if (rawText.length <= 120 &&
-            /(przeloguj|zmień postać|zmien postac|wybierz postać|wybierz postac)/i.test(rawText)) {
-          beginPause();
-          break;
-        }
-        if (node.matches('button,a,[role="button"],input,[onclick]')) break;
+      const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+      const control = target?.closest('button,a,[role="button"],input,[onclick]');
+      if (!control) return;
+
+      const label = [
+        control.getAttribute('aria-label'),
+        control.getAttribute('title'),
+        control.getAttribute('data-action'),
+        control.value,
+        control.textContent
+      ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim().toLocaleLowerCase('pl-PL');
+
+      if (label.length <= 80 &&
+          /^(przeloguj(?:\s+postać)?|zmień\s+postać|zmien\s+postac|wybierz\s+postać|wybierz\s+postac)$/i.test(label)) {
+        beginPause();
+        state.pauseStartedAt = Date.now();
       }
     }, true);
 
@@ -147,7 +147,17 @@ if (location.hostname === 'riventia.margonem.pl' && window.top === window.self) 
       }
 
       // Po rozpoczęciu przelogowania czekamy na nową/ponownie załadowaną postać.
-      if (!state.sawLogoff && state.heroKey && key === state.heroKey) return;
+      if (!state.sawLogoff && state.heroKey && key === state.heroKey) {
+        // Failsafe: jeżeli kliknięcie nie rozpoczęło faktycznego wylogowania,
+        // nie pozostawiaj dodatków wstrzymanych bez końca.
+        if (state.pauseStartedAt && Date.now() - state.pauseStartedAt > 20000) {
+          state.paused = false;
+          state.awaitingCharacter = false;
+          state.pauseStartedAt = 0;
+          state.stableSince = 0;
+        }
+        return;
+      }
       if (!state.stableSince || key !== state.heroKey) {
         state.heroKey = key;
         state.stableSince = Date.now();
@@ -159,6 +169,7 @@ if (location.hostname === 'riventia.margonem.pl' && window.top === window.self) 
         state.awaitingCharacter = false;
         state.sawLogoff = false;
         state.stableSince = 0;
+        state.pauseStartedAt = 0;
       }
     };
 
@@ -2204,7 +2215,6 @@ if (location.hostname === 'riventia.margonem.pl') {
         let registered = false;
 
         const timer = setInterval(() => {
-            if (window.__vicknessShouldPauseAddons?.()) return;
             if (registered) {
                 clearInterval(timer);
                 return;
@@ -2216,7 +2226,6 @@ if (location.hostname === 'riventia.margonem.pl') {
             if (API && typeof API.addCallbackToEvent === 'function') {
                 try {
                     API.addCallbackToEvent('loot_update', data => {
-                        if (window.__vicknessShouldPauseAddons?.()) return;
                         if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.loot) return;
 
                         const states = data && data.states && typeof data.states === 'object'
@@ -2228,6 +2237,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
                         ids.forEach(id => {
                             setTimeout(() => {
+                                if (window.__vicknessShouldPauseAddons?.()) return;
                                 const value = String(id);
                                 let item = null;
 
