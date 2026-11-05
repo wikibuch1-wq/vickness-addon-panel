@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.90
-// @description  Vickness Addons 1.1.90: poprawiono uruchamianie Kolorowania przedmiotów na czacie
+// @version      1.1.91
+// @description  Vickness Addons 1.1.91: poprawiono dostęp do jQuery strony w dodatku kolorowania
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4132,7 +4132,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     <div id="vxChangelogView" class="vxExtraView">
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.90</span><div>Poprawiono inicjalizację Kolorowania przedmiotów na czacie — moduł czeka na załadowanie jQuery.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.91</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.77</span><div>Powiększono panel oraz czcionki w nagłówku, menu, kafelkach i opisach dodatków. Zwiększono również ikony i przełączniki.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.76</span><div>Naprawiono przełączanie zakładek, aby zawartość Dodatków, Wyglądu, Aktualizacji i Logu zmian nie wyświetlała się jednocześnie.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.75</span><div>Poprawiono układ zawartości zakładek i przewijanie panelu.</div></div>
@@ -9892,8 +9892,9 @@ if (location.hostname === 'riventia.margonem.pl') {
 // =============================================================
 (() => {
     'use strict';
-    if (location.hostname !== 'riventia.margonem.pl' || window.top !== window.self) return;
-    if (window.__vicknessItemChatModuleStarted) return;
+    if (location.hostname !== 'riventia.margonem.pl') return;
+    const PAGE_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+    if (PAGE_WINDOW.__vicknessItemChatModuleStarted) return;
 
     const COLORS = {
         legendary: { color: '#ff3333', glow: 'rgba(255, 30, 30, 0.45)' },
@@ -9912,7 +9913,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     const timers = new Map();
 
     function install() {
-        $ = window.jQuery;
+        $ = PAGE_WINDOW.jQuery;
         if (!$ || !$.fn) return false;
         if ($.fn.tipShow && !$.fn.tipShow.__vicknessItemChatWrapped) {
             const originalTipShow = $.fn.tipShow;
@@ -10096,29 +10097,37 @@ if (location.hostname === 'riventia.margonem.pl') {
             window.clearInterval(retryTimer);
             retryTimer = null;
             window.__vicknessItemChatModuleStarted = true;
+            PAGE_WINDOW.__vicknessItemChatModuleStarted = true;
             window.__vicknessItemChatSetEnabled = setEnabled;
+            PAGE_WINDOW.__vicknessItemChatSetEnabled = setEnabled;
             setEnabled(window.__vicknessAddonEnabled?.itemChat !== false);
         }, 500);
     }
 
-    window.__vicknessItemChatSetEnabled = value => {
+    const publicSetEnabled = value => {
         if (value && !$ && !install()) {
             waitForJQuery();
             return;
         }
         setEnabled(value);
     };
+    window.__vicknessItemChatSetEnabled = publicSetEnabled;
+    PAGE_WINDOW.__vicknessItemChatSetEnabled = publicSetEnabled;
 
     window.addEventListener('pagehide', () => {
         stop();
         if (retryTimer) window.clearInterval(retryTimer);
         delete window.__vicknessItemChatSetEnabled;
         delete window.__vicknessItemChatModuleStarted;
+        delete PAGE_WINDOW.__vicknessItemChatSetEnabled;
+        delete PAGE_WINDOW.__vicknessItemChatModuleStarted;
     }, { once: true });
 
     if (install()) {
         window.__vicknessItemChatModuleStarted = true;
-        window.__vicknessItemChatSetEnabled = setEnabled;
+        PAGE_WINDOW.__vicknessItemChatModuleStarted = true;
+        window.__vicknessItemChatSetEnabled = publicSetEnabled;
+        PAGE_WINDOW.__vicknessItemChatSetEnabled = publicSetEnabled;
         setEnabled(window.__vicknessAddonEnabled?.itemChat !== false);
     } else {
         waitForJQuery();
