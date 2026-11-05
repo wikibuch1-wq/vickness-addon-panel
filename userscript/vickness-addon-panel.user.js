@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.09
-// @description  Vickness Addons 1.2.09: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.10
+// @description  Vickness Addons 1.2.10: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2557,7 +2557,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   const WAIT = ms => new Promise(resolve => setTimeout(resolve, ms));
   const CLICK_WAIT = 250;
   const LOAD_WAIT = 180;
-  const HOURLY_REFRESH = 60 * 60 * 1000;
+  const CALENDAR_CHECK_INTERVAL = 3 * 60 * 60 * 1000; // sprawdzanie co 3 godziny
   const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = {});
   if (typeof enabled.freeRewards !== 'boolean') enabled.freeRewards = true;
   if (typeof enabled.itemChat !== 'boolean') enabled.itemChat = true;
@@ -2870,7 +2870,6 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   function stop() {
     stopped = true;
-    calendarHintStyle.remove();
     if (hourlyTimer) clearInterval(hourlyTimer);
     hourlyTimer = null;
     removeWidget();
@@ -2887,7 +2886,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       finished = false;
       removeWidget();
       initialCheck();
-    }, HOURLY_REFRESH);
+    }, CALENDAR_CHECK_INTERVAL);
   }
 
   window.__vicknessFreeRewardsCheckNow = () => {
