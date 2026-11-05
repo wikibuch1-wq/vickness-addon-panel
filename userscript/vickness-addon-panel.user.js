@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.92
-// @description  Vickness Addons 1.1.92: zaktualizowano Kolory rang Lootloga o neonową aurę 2.8.0
+// @version      1.1.93
+// @description  Vickness Addons 1.1.93: pomija kalendarz nagród, gdy nie trwa wydarzenie czasowe
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2625,7 +2625,32 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (panelExists(result.type)) result.button.click();
   }
 
+  function calendarHasActiveEvent() {
+    const calendar = document.querySelector('.rewards-calendar');
+    if (!calendar) return false;
+
+    // Gdy kalendarz pokazuje komunikat o braku wydarzenia,
+    // nie szukamy w nim nagrody ani nie próbujemy jej odbierać.
+    const text = (calendar.textContent || '')
+      .replace(/\\u00a0/g, ' ')
+      .replace(/\\s+/g, ' ')
+      .trim()
+      .toLocaleLowerCase('pl-PL');
+
+    const inactiveMessages = [
+      'obecnie nie trwa żadne wydarzenie czasowe',
+      'obecnie nie trwa zadne wydarzenie czasowe'
+    ];
+
+    if (inactiveMessages.some(message => text.includes(message))) return false;
+
+    // Aktywny kalendarz musi zawierać strukturę dnia z nagrodą.
+    return !!calendar.querySelector('.day.today .reward');
+  }
+
   function findCalendarReward() {
+    if (!calendarHasActiveEvent()) return null;
+
     const reward = document.querySelector('.rewards-calendar .day.today .reward');
     return reward &&
       reward.classList.contains('can-open') &&
@@ -2693,7 +2718,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         newsPanel = await openPanel('news');
         await WAIT(200);
 
-        const calendarReward = findCalendarReward();
+        const calendarReward = calendarHasActiveEvent() ? findCalendarReward() : null;
         const newsOffers = findFreeNewsOffers();
 
         if (calendarReward) {
@@ -2775,7 +2800,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       calPanel = await openPanel('calendar');
       newsPanel = await openPanel('news');
       await WAIT(200);
-      const calendar = findCalendarReward();
+      const calendar = calendarHasActiveEvent() ? findCalendarReward() : null;
       const news = findFreeNewsOffers();
 
       closeOpenedPanel(newsPanel);
@@ -4132,7 +4157,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     <div id="vxChangelogView" class="vxExtraView">
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.92</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.93</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.77</span><div>Powiększono panel oraz czcionki w nagłówku, menu, kafelkach i opisach dodatków. Zwiększono również ikony i przełączniki.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.76</span><div>Naprawiono przełączanie zakładek, aby zawartość Dodatków, Wyglądu, Aktualizacji i Logu zmian nie wyświetlała się jednocześnie.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.75</span><div>Poprawiono układ zawartości zakładek i przewijanie panelu.</div></div>
