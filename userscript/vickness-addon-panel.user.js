@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.17
-// @description  Vickness Addons 1.2.17: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.18
+// @description  Vickness Addons 1.2.18: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -78,7 +78,6 @@ if (location.hostname === 'riventia.margonem.pl' && window.top === window.self) 
       awaitingCharacter: false,
       sawLogoff: false,
       stableSince: 0,
-      pauseStartedAt: 0,
       heroKey: ''
     });
     const STABLE_DELAY = 7000;
@@ -97,27 +96,28 @@ if (location.hostname === 'riventia.margonem.pl' && window.top === window.self) 
       state.awaitingCharacter = true;
       state.sawLogoff = false;
       state.stableSince = 0;
-      state.pauseStartedAt = Date.now();
     };
 
     // Rozpoznaje wyłącznie akcję przelogowania; nie zatrzymuje ani nie anuluje kliknięcia.
     document.addEventListener('click', event => {
-      const target = event.target instanceof Element ? event.target : event.target?.parentElement;
-      const control = target?.closest('button,a,[role="button"],input,[onclick]');
-      if (!control) return;
-
-      const label = [
-        control.getAttribute('aria-label'),
-        control.getAttribute('title'),
-        control.getAttribute('data-action'),
-        control.value,
-        control.textContent
-      ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim().toLocaleLowerCase('pl-PL');
-
-      if (label.length <= 80 &&
-          /^(przeloguj(?:\s+postać)?|zmień\s+postać|zmien\s+postac|wybierz\s+postać|wybierz\s+postac)$/i.test(label)) {
-        beginPause();
-        state.pauseStartedAt = Date.now();
+      const path = typeof event.composedPath === 'function' ? event.composedPath() : [event.target];
+      let depth = 0;
+      for (const node of path) {
+        if (!(node instanceof Element)) continue;
+        if (++depth > 5) break;
+        const rawText = [
+          node.getAttribute('aria-label'),
+          node.getAttribute('title'),
+          node.getAttribute('data-action'),
+          node.textContent
+        ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+        // Nie analizuj dużych kontenerów (np. całego menu lub strony).
+        if (rawText.length <= 120 &&
+            /(przeloguj|zmień postać|zmien postac|wybierz postać|wybierz postac)/i.test(rawText)) {
+          beginPause();
+          break;
+        }
+        if (node.matches('button,a,[role="button"],input,[onclick]')) break;
       }
     }, true);
 
@@ -147,17 +147,7 @@ if (location.hostname === 'riventia.margonem.pl' && window.top === window.self) 
       }
 
       // Po rozpoczęciu przelogowania czekamy na nową/ponownie załadowaną postać.
-      if (!state.sawLogoff && state.heroKey && key === state.heroKey) {
-        // Failsafe: jeżeli kliknięcie nie rozpoczęło faktycznego wylogowania,
-        // nie pozostawiaj dodatków wstrzymanych bez końca.
-        if (state.pauseStartedAt && Date.now() - state.pauseStartedAt > 20000) {
-          state.paused = false;
-          state.awaitingCharacter = false;
-          state.pauseStartedAt = 0;
-          state.stableSince = 0;
-        }
-        return;
-      }
+      if (!state.sawLogoff && state.heroKey && key === state.heroKey) return;
       if (!state.stableSince || key !== state.heroKey) {
         state.heroKey = key;
         state.stableSince = Date.now();
@@ -169,7 +159,6 @@ if (location.hostname === 'riventia.margonem.pl' && window.top === window.self) 
         state.awaitingCharacter = false;
         state.sawLogoff = false;
         state.stableSince = 0;
-        state.pauseStartedAt = 0;
       }
     };
 
@@ -2215,6 +2204,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         let registered = false;
 
         const timer = setInterval(() => {
+            if (window.__vicknessShouldPauseAddons?.()) return;
             if (registered) {
                 clearInterval(timer);
                 return;
@@ -2226,6 +2216,7 @@ if (location.hostname === 'riventia.margonem.pl') {
             if (API && typeof API.addCallbackToEvent === 'function') {
                 try {
                     API.addCallbackToEvent('loot_update', data => {
+                        if (window.__vicknessShouldPauseAddons?.()) return;
                         if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.loot) return;
 
                         const states = data && data.states && typeof data.states === 'object'
@@ -2237,7 +2228,6 @@ if (location.hostname === 'riventia.margonem.pl') {
 
                         ids.forEach(id => {
                             setTimeout(() => {
-                                if (window.__vicknessShouldPauseAddons?.()) return;
                                 const value = String(id);
                                 let item = null;
 
@@ -10260,3 +10250,231 @@ if (location.hostname === 'riventia.margonem.pl') {
 // Moduł kolorowania przedmiotów na czacie wyłączony — nie może dotykać
 // mechanizmu podpowiedzi ani danych przedmiotów w interfejsie gry.
 
+// =============================================================
+// KOLOROWANIE PRZEDMIOTÓW NA CZACIE — zintegrowany dodatek panelu
+// =============================================================
+(() => {
+    'use strict';
+    if (location.hostname !== 'riventia.margonem.pl') return;
+    const PAGE_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+    if (PAGE_WINDOW.__vicknessItemChatModuleStarted) return;
+
+    const COLORS = {
+        legendary: { color: '#ff3333', glow: 'rgba(255, 30, 30, 0.45)' },
+        heroic:    { color: '#3399ff', glow: 'rgba(40, 130, 255, 0.45)' },
+        unique:    { color: '#ffd700', glow: 'rgba(255, 205, 0, 0.45)' },
+        common:    { color: '#666666', glow: 'rgba(130, 130, 130, 0.20)' },
+        upgraded:  { color: '#40e0d0', glow: 'rgba(40, 230, 210, 0.45)' }
+    };
+
+    let $ = null;
+    let active = false;
+    let observer = null;
+    let retryTimer = null;
+    const scheduled = new WeakSet();
+    const timers = new Map();
+
+    function install() {
+        $ = PAGE_WINDOW.jQuery;
+        if (!$ || !$.fn) return false;
+        return true;
+    }
+
+    function getRarity(item) {
+        if (!item) return null;
+        let rarity = null;
+        try {
+            rarity = typeof item.getItemStat === 'function' ? item.getItemStat('rarity') : null;
+        } catch (_) {}
+        if (!rarity && typeof item.stat === 'string') {
+            const match = item.stat.match(/(?:^|;)rarity=([^;]*)/i);
+            if (match) rarity = match[1];
+        }
+        rarity = String(rarity || '').toLowerCase().trim();
+        return Object.prototype.hasOwnProperty.call(COLORS, rarity) ? rarity : null;
+    }
+
+    function colorNameOnly(el, rarity) {
+        let wrapper = el.querySelector(':scope > .vickness-item-chat-name');
+        if (!wrapper) {
+            const textNodes = Array.from(el.childNodes).filter(
+                node => node.nodeType === Node.TEXT_NODE && node.textContent.trim()
+            );
+            if (textNodes.length) {
+                wrapper = document.createElement('span');
+                wrapper.className = 'vickness-item-chat-name';
+                for (const node of textNodes) wrapper.appendChild(node);
+                el.insertBefore(wrapper, el.firstChild);
+            } else {
+                const textContainer = el.querySelector('span, b, strong');
+                if (!textContainer || !textContainer.textContent.trim()) return false;
+                wrapper = textContainer;
+                wrapper.dataset.vicknessItemChatName = '1';
+            }
+        }
+        const style = COLORS[rarity];
+        wrapper.style.setProperty('color', style.color, 'important');
+        wrapper.style.setProperty('-webkit-text-fill-color', style.color, 'important');
+        wrapper.style.setProperty('text-shadow', `0 0 2px ${style.glow}`, 'important');
+        return true;
+    }
+
+    function colorItem(el) {
+        if (!$) return false;
+        const item = $(el).data('item');
+        if (!item) return false;
+        const rarity = getRarity(item);
+        if (!rarity || !colorNameOnly(el, rarity)) return false;
+        el.dataset.vicknessItemChatRarity = rarity;
+        return true;
+    }
+
+    function loadItem(el) {
+        // Nie symulujemy mouseenter/mouseout. W Riventii te zdarzenia są
+        // współdzielone z systemem podpowiedzi i potrafią zamykać tipy
+        // również dla innych elementów. Czekamy na naturalne dane itemu.
+        return $(el).data('item') || null;
+    }
+
+    function clearTimer(el) {
+        const timer = timers.get(el);
+        if (timer) window.clearInterval(timer);
+        timers.delete(el);
+    }
+
+    function processItem(el) {
+        if (!active || !(el instanceof HTMLElement) || !el.matches('.linked-chat-item') || scheduled.has(el)) return;
+        scheduled.add(el);
+
+        window.setTimeout(() => {
+            if (!active || !el.isConnected) {
+                scheduled.delete(el);
+                return;
+            }
+            if (colorItem(el)) {
+                return;
+            }
+            try { loadItem(el); }
+            catch (error) { console.warn('[Vickness Item Chat] Nie udało się załadować danych przedmiotu:', error); }
+
+            let attempts = 0;
+            const timer = window.setInterval(() => {
+                attempts++;
+                if (!active || !el.isConnected) {
+                    clearTimer(el);
+                    scheduled.delete(el);
+                    return;
+                }
+                if (colorItem(el)) {
+                    clearTimer(el);
+                    return;
+                }
+                if (attempts % 20 === 0 && loadAttempts < 5) {
+                    loadAttempts++;
+                    try { loadItem(el); }
+                    catch (error) { console.warn('[Vickness Item Chat] Błąd ponownego ładowania przedmiotu:', error); }
+                }
+                if (attempts >= 200) {
+                    clearTimer(el);
+                        }
+            }, 10);
+            timers.set(el, timer);
+        }, 0);
+    }
+
+    function scan(root) {
+        if (!active || !(root instanceof Element)) return;
+        if (root.matches('.linked-chat-item')) processItem(root);
+        root.querySelectorAll('.linked-chat-item').forEach(processItem);
+    }
+
+    function start() {
+        if (active || !$) return;
+        active = true;
+        if (document.body) scan(document.body);
+        observer = new MutationObserver(records => {
+            for (const record of records) {
+                for (const node of record.addedNodes) {
+                    if (node instanceof Element) scan(node);
+                }
+            }
+        });
+        if (document.body) observer.observe(document.body, { childList: true, subtree: true });
+        console.log('[Vickness Item Chat] Aktywny — obserwuję przedmioty na czacie.');
+    }
+
+    function stop() {
+        if (!active) return;
+        active = false;
+        observer?.disconnect();
+        observer = null;
+        for (const timer of timers.values()) window.clearInterval(timer);
+        timers.clear();
+        document.querySelectorAll('.linked-chat-item').forEach(el => {
+            scheduled.delete(el);
+            if (!el.dataset.vicknessItemChatRarity) return;
+            const wrapper = el.querySelector(':scope > .vickness-item-chat-name');
+            if (wrapper) {
+                while (wrapper.firstChild) el.insertBefore(wrapper.firstChild, wrapper);
+                wrapper.remove();
+            }
+            const nested = el.querySelector('[data-vickness-item-chat-name="1"]');
+            if (nested) {
+                nested.style.removeProperty('color');
+                nested.style.removeProperty('-webkit-text-fill-color');
+                nested.style.removeProperty('text-shadow');
+                delete nested.dataset.vicknessItemChatName;
+            }
+            delete el.dataset.vicknessItemChatRarity;
+        });
+        console.log('[Vickness Item Chat] Wyłączony.');
+    }
+
+    function setEnabled(value) {
+        if (value) start();
+        else stop();
+    }
+
+    function waitForJQuery() {
+        if (retryTimer) return;
+        retryTimer = window.setInterval(() => {
+            if (!install()) return;
+            window.clearInterval(retryTimer);
+            retryTimer = null;
+            window.__vicknessItemChatModuleStarted = true;
+            PAGE_WINDOW.__vicknessItemChatModuleStarted = true;
+            window.__vicknessItemChatSetEnabled = setEnabled;
+            PAGE_WINDOW.__vicknessItemChatSetEnabled = setEnabled;
+            setEnabled(window.__vicknessAddonEnabled?.itemChat !== false);
+        }, 500);
+    }
+
+    const publicSetEnabled = value => {
+        if (value && !$ && !install()) {
+            waitForJQuery();
+            return;
+        }
+        setEnabled(value);
+    };
+    window.__vicknessItemChatSetEnabled = publicSetEnabled;
+    PAGE_WINDOW.__vicknessItemChatSetEnabled = publicSetEnabled;
+
+    window.addEventListener('pagehide', () => {
+        stop();
+        if (retryTimer) window.clearInterval(retryTimer);
+        delete window.__vicknessItemChatSetEnabled;
+        delete window.__vicknessItemChatModuleStarted;
+        delete PAGE_WINDOW.__vicknessItemChatSetEnabled;
+        delete PAGE_WINDOW.__vicknessItemChatModuleStarted;
+    }, { once: true });
+
+    if (install()) {
+        window.__vicknessItemChatModuleStarted = true;
+        PAGE_WINDOW.__vicknessItemChatModuleStarted = true;
+        window.__vicknessItemChatSetEnabled = publicSetEnabled;
+        PAGE_WINDOW.__vicknessItemChatSetEnabled = publicSetEnabled;
+        setEnabled(window.__vicknessAddonEnabled?.itemChat !== false);
+    } else {
+        waitForJQuery();
+    }
+})();
