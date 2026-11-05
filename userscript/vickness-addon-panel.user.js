@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.03
-// @description  Vickness Addons 1.2.03: usunięto ryzykowne ukrywanie natywnej podpowiedzi
+// @version      1.2.04
+// @description  Vickness Addons 1.2.04: stabilna podpowiedź kalendarza przez element DOM
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2722,35 +2722,87 @@ if (location.hostname === 'riventia.margonem.pl') {
     // Bez aktywnego dnia/nagrody kalendarz nie może zgłaszać nagrody.
     return !!calendar?.querySelector('.day.today .reward');
   }
-  const calendarHintStyle = document.createElement('style');
-  calendarHintStyle.id = 'vx-calendar-hover-hint-style';
-  calendarHintStyle.textContent = `
-    [data-vx-calendar-hint] {
-      position: relative;
-    }
-    [data-vx-calendar-hint]:hover::after,
-    [data-vx-calendar-hint]:focus-visible::after {
-      content: attr(data-vx-calendar-hint-text);
-      position: absolute;
-      left: 50%;
-      bottom: calc(100% + 8px);
-      transform: translateX(-50%);
-      z-index: 2147483000;
-      width: max-content;
-      max-width: 250px;
-      white-space: normal;
-      padding: 7px 10px;
-      border: 1px solid #b78b36;
-      border-radius: 4px;
-      background: #100c18 !important;
-      color: #f1d27a;
-      font: 12px/1.35 Arial, sans-serif;
-      text-align: center;
-      box-shadow: 0 3px 12px rgba(0,0,0,.95), 0 0 5px rgba(183,139,54,.35);
-      pointer-events: none;
-    }
-  `;
-  (document.head || document.documentElement).appendChild(calendarHintStyle);
+  // Własna podpowiedź jako osobny element DOM. Nie używamy ::after,
+  // dzięki czemu gra nie gasi jej po kilku sekundach przez zmianę stylów.
+  const calendarHint = document.createElement('div');
+  calendarHint.id = 'vx-calendar-hover-tooltip';
+  Object.assign(calendarHint.style, {
+    position: 'fixed',
+    display: 'none',
+    zIndex: '2147483647',
+    maxWidth: '250px',
+    boxSizing: 'border-box',
+    padding: '7px 10px',
+    border: '1px solid #b78b36',
+    borderRadius: '4px',
+    background: '#100c18',
+    color: '#f1d27a',
+    font: '12px/1.35 Arial, sans-serif',
+    textAlign: 'center',
+    whiteSpace: 'normal',
+    boxShadow: '0 3px 12px rgba(0,0,0,.95), 0 0 5px rgba(183,139,54,.35)',
+    pointerEvents: 'none'
+  });
+  (document.body || document.documentElement).appendChild(calendarHint);
+
+  let calendarHintTarget = null;
+
+  function calendarTileFrom(target) {
+    if (!(target instanceof Element)) return null;
+    const button = target.closest(
+      '.widget-rewards-calendar-icon, .widget-button[widget-name="rewards-calendar-icon"], [data-vx-calendar-hint]'
+    );
+    if (!button) return null;
+    return button.closest('.widget, .widget-button, .widget-rewards-calendar') || button;
+  }
+
+  function positionCalendarHint(target) {
+    if (!target || !target.isConnected) return;
+    const rect = target.getBoundingClientRect();
+    calendarHint.style.display = 'block';
+    const tipRect = calendarHint.getBoundingClientRect();
+    let left = rect.left + rect.width / 2 - tipRect.width / 2;
+    let top = rect.top - tipRect.height - 8;
+    left = Math.max(6, Math.min(left, window.innerWidth - tipRect.width - 6));
+    if (top < 6) top = Math.min(window.innerHeight - tipRect.height - 6, rect.bottom + 8);
+    calendarHint.style.left = `${Math.round(left)}px`;
+    calendarHint.style.top = `${Math.round(top)}px`;
+  }
+
+  function showCalendarHint(target) {
+    const source = target?.matches('[data-vx-calendar-hint]')
+      ? target
+      : target?.querySelector?.('[data-vx-calendar-hint]') || target;
+    const text = source?.dataset?.vxCalendarHintText;
+    if (!text) return;
+    calendarHintTarget = target;
+    calendarHint.textContent = text;
+    positionCalendarHint(target);
+  }
+
+  function hideCalendarHint() {
+    calendarHintTarget = null;
+    calendarHint.style.display = 'none';
+  }
+
+  document.addEventListener('pointerover', event => {
+    const tile = calendarTileFrom(event.target);
+    if (tile) showCalendarHint(tile);
+  }, true);
+
+  document.addEventListener('pointerout', event => {
+    if (!calendarHintTarget) return;
+    const nextTile = calendarTileFrom(event.relatedTarget);
+    if (nextTile === calendarHintTarget || calendarHintTarget.contains?.(event.relatedTarget)) return;
+    hideCalendarHint();
+  }, true);
+
+  window.addEventListener('scroll', () => {
+    if (calendarHintTarget) positionCalendarHint(calendarHintTarget);
+  }, true);
+  window.addEventListener('resize', () => {
+    if (calendarHintTarget) positionCalendarHint(calendarHintTarget);
+  });
 
   function setCalendarHoverHint(hasEvent) {
     const button = findPanelButton('calendar');
@@ -2760,15 +2812,10 @@ if (location.hostname === 'riventia.margonem.pl') {
       ? 'Kalendarz eventowy — trwa wydarzenie'
       : 'Kalendarz eventowy — obecnie nie trwa żadne wydarzenie czasowe';
 
-    // Nie używamy title ani tooltipa gry — w Riventii potrafi to
-    // uruchomić wadliwą warstwę podpowiedzi i zasłonić ekran.
     button.removeAttribute('title');
     button.dataset.vxCalendarHint = hasEvent ? 'active' : 'inactive';
     button.dataset.vxCalendarHintText = hint;
 
-    // Jeśli klikany element jest tylko ikoną wewnątrz kafelka, oznacz też
-    // najbliższy kafelek widgetu, aby podpowiedź działała po najechaniu
-    // na całe pole, a nie wyłącznie na samą ikonę.
     const tile = button.closest('.widget, .widget-button, .widget-rewards-calendar') || button;
     if (tile !== button) {
       tile.removeAttribute('title');
@@ -2961,7 +3008,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   function stop() {
     stopped = true;
-    calendarHintStyle.remove();
+    hideCalendarHint();
     if (hourlyTimer) clearInterval(hourlyTimer);
     hourlyTimer = null;
     removeWidget();
@@ -4297,7 +4344,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     <div id="vxChangelogView" class="vxExtraView">
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.2.03</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.2.04</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.77</span><div>Powiększono panel oraz czcionki w nagłówku, menu, kafelkach i opisach dodatków. Zwiększono również ikony i przełączniki.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.76</span><div>Naprawiono przełączanie zakładek, aby zawartość Dodatków, Wyglądu, Aktualizacji i Logu zmian nie wyświetlała się jednocześnie.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.75</span><div>Poprawiono układ zawartości zakładek i przewijanie panelu.</div></div>
