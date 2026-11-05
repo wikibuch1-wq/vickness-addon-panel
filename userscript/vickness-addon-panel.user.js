@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.02
-// @description  Vickness Addons 1.2.02: usuwa natywną podpowiedź gry spod własnego tooltipa
+// @version      1.2.03
+// @description  Vickness Addons 1.2.03: usunięto ryzykowne ukrywanie natywnej podpowiedzi
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2726,8 +2726,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   calendarHintStyle.id = 'vx-calendar-hover-hint-style';
   calendarHintStyle.textContent = `
     [data-vx-calendar-hint] {
-      position: relative !important;
-      overflow: visible !important;
+      position: relative;
     }
     [data-vx-calendar-hint]:hover::after,
     [data-vx-calendar-hint]:focus-visible::after {
@@ -2753,96 +2752,6 @@ if (location.hostname === 'riventia.margonem.pl') {
   `;
   (document.head || document.documentElement).appendChild(calendarHintStyle);
 
-  const nativeCalendarTips = new Map();
-  let calendarTipObserver = null;
-  let calendarTipHideTimer = null;
-
-  function normalizeCalendarTip(value) {
-    return String(value || '')
-      .replace(/\u00a0/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .toLocaleLowerCase('pl-PL');
-  }
-
-  function hideNativeCalendarTip(root = document) {
-    if (!root || !root.querySelectorAll) return;
-    const nodes = [];
-    if (root instanceof HTMLElement) nodes.push(root);
-    nodes.push(...root.querySelectorAll('div, span, p, section, aside'));
-
-    for (const el of nodes) {
-      if (!(el instanceof HTMLElement) || el.dataset.vxCalendarHint === 'inactive' ||
-          el.dataset.vxCalendarHint === 'active' || el.closest('[data-vx-calendar-hint]')) continue;
-
-      const text = normalizeCalendarTip(el.textContent);
-      if (!text.includes('kalendarz eventowy') ||
-          !text.includes('obecnie nie trwa żadne wydarzenie czasowe')) continue;
-
-      // Ukryj tylko element z natywną treścią tooltipa, nie jego nadrzędny interfejs.
-      if ([...el.children].some(child => {
-        const childText = normalizeCalendarTip(child.textContent);
-        return childText.includes('kalendarz eventowy') &&
-          childText.includes('obecnie nie trwa żadne wydarzenie czasowe');
-      })) continue;
-
-      if (!nativeCalendarTips.has(el)) {
-        nativeCalendarTips.set(el, {
-          visibility: el.style.getPropertyValue('visibility'),
-          priority: el.style.getPropertyPriority('visibility')
-        });
-      }
-      el.style.setProperty('visibility', 'hidden', 'important');
-    }
-  }
-
-  function beginNativeCalendarTipMute() {
-    if (calendarTipHideTimer) {
-      clearTimeout(calendarTipHideTimer);
-      calendarTipHideTimer = null;
-    }
-    hideNativeCalendarTip(document);
-    if (!calendarTipObserver && document.body) {
-      calendarTipObserver = new MutationObserver(records => {
-        for (const record of records) {
-          if (record.target instanceof Element) hideNativeCalendarTip(record.target);
-          for (const node of record.addedNodes) {
-            if (node instanceof Element) hideNativeCalendarTip(node);
-          }
-        }
-      });
-      calendarTipObserver.observe(document.body, {
-        childList: true,
-        subtree: true,
-        characterData: true
-      });
-    }
-  }
-
-  function endNativeCalendarTipMute() {
-    if (calendarTipHideTimer) clearTimeout(calendarTipHideTimer);
-    calendarTipHideTimer = setTimeout(() => {
-      calendarTipObserver?.disconnect();
-      calendarTipObserver = null;
-      for (const [el, old] of nativeCalendarTips) {
-        if (!el.isConnected) continue;
-        if (old.visibility) el.style.setProperty('visibility', old.visibility, old.priority);
-        else el.style.removeProperty('visibility');
-      }
-      nativeCalendarTips.clear();
-      calendarTipHideTimer = null;
-    }, 180);
-  }
-
-  function bindCalendarHintHover(target) {
-    if (!target || target.dataset.vxCalendarHoverBound === '1') return;
-    target.dataset.vxCalendarHoverBound = '1';
-    target.addEventListener('pointerenter', beginNativeCalendarTipMute);
-    target.addEventListener('pointerleave', endNativeCalendarTipMute);
-    target.addEventListener('focusin', beginNativeCalendarTipMute);
-    target.addEventListener('focusout', endNativeCalendarTipMute);
-  }
-
   function setCalendarHoverHint(hasEvent) {
     const button = findPanelButton('calendar');
     if (!button) return;
@@ -2856,7 +2765,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     button.removeAttribute('title');
     button.dataset.vxCalendarHint = hasEvent ? 'active' : 'inactive';
     button.dataset.vxCalendarHintText = hint;
-    bindCalendarHintHover(button);
 
     // Jeśli klikany element jest tylko ikoną wewnątrz kafelka, oznacz też
     // najbliższy kafelek widgetu, aby podpowiedź działała po najechaniu
@@ -2866,7 +2774,6 @@ if (location.hostname === 'riventia.margonem.pl') {
       tile.removeAttribute('title');
       tile.dataset.vxCalendarHint = hasEvent ? 'active' : 'inactive';
       tile.dataset.vxCalendarHintText = hint;
-      bindCalendarHintHover(tile);
     }
   }
 
@@ -4390,7 +4297,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     <div id="vxChangelogView" class="vxExtraView">
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.2.02</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.2.03</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.77</span><div>Powiększono panel oraz czcionki w nagłówku, menu, kafelkach i opisach dodatków. Zwiększono również ikony i przełączniki.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.76</span><div>Naprawiono przełączanie zakładek, aby zawartość Dodatków, Wyglądu, Aktualizacji i Logu zmian nie wyświetlała się jednocześnie.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.75</span><div>Poprawiono układ zawartości zakładek i przewijanie panelu.</div></div>
