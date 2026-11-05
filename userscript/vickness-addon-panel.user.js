@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.87
+// @version      1.1.88
 // @description  Vickness Addons 1.1.87: jednolity styl nagłówków i usunięcie numeru wersji z belki
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
