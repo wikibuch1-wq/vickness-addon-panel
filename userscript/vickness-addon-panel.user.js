@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.13
-// @description  Vickness Addons 1.2.13: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.14
+// @description  Vickness Addons 1.2.14: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -89,7 +89,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
     const NPC_ICON_URL = 'https://micc.garmory-cdn.cloud/obrazki/npc/';
     const SPECIAL_NPC_FALLBACK_IMAGE = 'https://micc.garmory-cdn.cloud/obrazki/npc/oev/grzyb_eve_npc1.gif';
-    const SCAN_INTERVAL = 2500;
+    const SCAN_INTERVAL = 3500;
 
     const SPECIAL_NPCS = new Set([
         'ogromna płomiennica tląca',
@@ -3157,7 +3157,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (mapDimmerMapCheckTimer) return;
 
     // Sprawdzaj wyłącznie referencję silnika/mapy i identyfikator mapy.
-    // Wymiary canvasu obsługuje ResizeObserver; lekki test zmiany mapy działa co 50 ms.
+    // Wymiary canvasu obsługuje ResizeObserver; test zmiany mapy działa co 500 ms.
     mapDimmerMapCheckTimer = setInterval(() => {
       if (document.visibilityState === 'hidden') return;
       const engine = getReadyMapDimmerEngine();
@@ -3173,7 +3173,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         if (canvas !== lastMapDimmerCanvas) watchMapDimmerGameSize();
         else scheduleMapDimmerApply();
       }
-    }, 50);
+    }, 500);
   }
 
   function startMapDimmerMonitor() {
@@ -3206,7 +3206,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     };
 
     if (tryInitialApply()) return;
-    mapDimmerReadyTimer = setInterval(tryInitialApply, 50);
+    mapDimmerReadyTimer = setInterval(tryInitialApply, 250);
   }
 
   // Zmiana rozmiaru okna skaluje proporcjonalnie tekst i odstępy wizualne;
@@ -4993,7 +4993,8 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
 
     // Zmiany przełączników i tak stosują się natychmiast; ten timer jest tylko zabezpieczeniem dla paneli ładowanych później.
-    setInterval(() => { if (document.visibilityState !== 'hidden') applyToggles(); }, 5000);
+    // Kontrola awaryjna co 15 s; zwykłe zmiany przełączników nadal działają natychmiast.
+    setInterval(() => { if (document.visibilityState !== 'hidden') applyToggles(); }, 15000);
     window.addEventListener('resize', () => {
       // Nie zapisuj pozycji elementu ukrytego (getBoundingClientRect zwróci wtedy 0,0).
       if (getComputedStyle(panel).display !== 'none') {
@@ -7492,8 +7493,8 @@ if (location.hostname === 'riventia.margonem.pl') {
    if (document.getElementById('tc-online-panel')) return;
 
    const STORAGE_KEY = 'tc_online_panel_v2';
-   // Automatyczne pobieranie bezpośrednio z Margonem co 10 s.
-   const REFRESH_MS = 10000;
+   // Automatyczne pobieranie bezpośrednio z Margonem co 15 s.
+   const REFRESH_MS = 15000;
 
    const defaults = {
      left: Math.max(10, window.innerWidth - 350),
@@ -8987,7 +8988,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     textColor: '#ff3333',
     alertDuration: 5000
   };
-  const SCAN_INTERVAL_MS = 800;
+  const SCAN_INTERVAL_MS = 1200;
   const SOUND_IDS = {
     '1': '01a18d43-edb0-7064-b23c-7f21fe743a9f',
     '2': '01a18d61-318b-70ab-bca5-4870dee36b96',
