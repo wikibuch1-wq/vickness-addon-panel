@@ -97,6 +97,10 @@ if (location.hostname === 'riventia.margonem.pl') {
         'ogromny mroźlarz',
         'ogromna dzwonkówka tarczowata',
         'ogromny szpicak ponury'
+        'Tropiciel Herosów'
+        'Wtajemniczony Tropiciel Herosów'
+        'Doświadczony Tropiciel Herosów'
+      
     ]);
 
     let state = {
