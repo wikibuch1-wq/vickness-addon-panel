@@ -3,7 +3,7 @@
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
 // @version      1.1.88
-// @description  Vickness Addons 1.1.87: jednolity styl nagłówków i usunięcie numeru wersji z belki
+// @description  Vickness Addons 1.1.88: dodano trzy specjalne NPC do DC Wykrywacza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -96,11 +96,10 @@ if (location.hostname === 'riventia.margonem.pl') {
         'ogromny bulwiak pospolity',
         'ogromny mroźlarz',
         'ogromna dzwonkówka tarczowata',
-        'ogromny szpicak ponury'
-        'Tropiciel Herosów'
-        'Wtajemniczony Tropiciel Herosów'
-        'Doświadczony Tropiciel Herosów'
-      
+        'ogromny szpicak ponury',
+        'tropiciel herosów',
+        'wtajemniczony tropiciel herosów',
+        'doświadczony tropiciel herosów'
     ]);
 
     let state = {
