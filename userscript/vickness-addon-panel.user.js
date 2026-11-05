@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.98
-// @description  Vickness Addons 1.1.98: komunikat o braku wydarzenia dostępny po najechaniu na kalendarz
+// @version      1.1.99
+// @description  Vickness Addons 1.1.99: bezpieczna podpowiedź kalendarza bez natywnego tooltipa gry
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2722,6 +2722,39 @@ if (location.hostname === 'riventia.margonem.pl') {
     // Bez aktywnego dnia/nagrody kalendarz nie może zgłaszać nagrody.
     return !!calendar?.querySelector('.day.today .reward');
   }
+  const calendarHintStyle = document.createElement('style');
+  calendarHintStyle.id = 'vx-calendar-hover-hint-style';
+  calendarHintStyle.textContent = `
+    .widget-rewards-calendar-icon[data-vx-calendar-hint],
+    .widget-button[widget-name="rewards-calendar-icon"][data-vx-calendar-hint] {
+      position: relative !important;
+    }
+    .widget-rewards-calendar-icon[data-vx-calendar-hint]:hover::after,
+    .widget-button[widget-name="rewards-calendar-icon"][data-vx-calendar-hint]:hover::after,
+    .widget-rewards-calendar-icon[data-vx-calendar-hint]:focus-visible::after,
+    .widget-button[widget-name="rewards-calendar-icon"][data-vx-calendar-hint]:focus-visible::after {
+      content: attr(data-vx-calendar-hint-text);
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 8px);
+      transform: translateX(-50%);
+      z-index: 2147483000;
+      width: max-content;
+      max-width: 230px;
+      white-space: normal;
+      padding: 7px 10px;
+      border: 1px solid #b78b36;
+      border-radius: 4px;
+      background: rgba(12, 9, 18, .96);
+      color: #f1d27a;
+      font: 12px/1.35 Arial, sans-serif;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,.65);
+      pointer-events: none;
+    }
+  `;
+  (document.head || document.documentElement).appendChild(calendarHintStyle);
+
   function setCalendarHoverHint(hasEvent) {
     const button = findPanelButton('calendar');
     if (!button) return;
@@ -2730,9 +2763,11 @@ if (location.hostname === 'riventia.margonem.pl') {
       ? 'Kalendarz eventowy — trwa wydarzenie'
       : 'Kalendarz eventowy — obecnie nie trwa żadne wydarzenie czasowe';
 
-    button.setAttribute('title', hint);
-    button.setAttribute('aria-label', hint);
+    // Nie używamy title ani tooltipa gry — w Riventii potrafi to
+    // uruchomić wadliwą warstwę podpowiedzi i zasłonić ekran.
+    button.removeAttribute('title');
     button.dataset.vxCalendarHint = hasEvent ? 'active' : 'inactive';
+    button.dataset.vxCalendarHintText = hint;
   }
 
   function findCalendarReward() {
@@ -2919,6 +2954,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   function stop() {
     stopped = true;
+    calendarHintStyle.remove();
     if (hourlyTimer) clearInterval(hourlyTimer);
     hourlyTimer = null;
     removeWidget();
@@ -4254,7 +4290,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     <div id="vxChangelogView" class="vxExtraView">
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.98</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.99</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.77</span><div>Powiększono panel oraz czcionki w nagłówku, menu, kafelkach i opisach dodatków. Zwiększono również ikony i przełączniki.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.76</span><div>Naprawiono przełączanie zakładek, aby zawartość Dodatków, Wyglądu, Aktualizacji i Logu zmian nie wyświetlała się jednocześnie.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.75</span><div>Poprawiono układ zawartości zakładek i przewijanie panelu.</div></div>
