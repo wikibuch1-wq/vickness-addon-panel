@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.93
-// @description  Vickness Addons 1.1.93: pomija kalendarz nagród, gdy nie trwa wydarzenie czasowe
+// @version      1.1.94
+// @description  Vickness Addons 1.1.94: poprawiono wykrywanie komunikatu o braku wydarzenia
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2626,14 +2626,11 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   function calendarHasActiveEvent() {
-    const calendar = document.querySelector('.rewards-calendar');
-    if (!calendar) return false;
-
-    // Gdy kalendarz pokazuje komunikat o braku wydarzenia,
-    // nie szukamy w nim nagrody ani nie próbujemy jej odbierać.
-    const text = (calendar.textContent || '')
-      .replace(/\\u00a0/g, ' ')
-      .replace(/\\s+/g, ' ')
+    // Komunikat gry może być poza .rewards-calendar (np. w osobnym
+    // oknie/podpowiedzi), a jego tekst bywa rozdzielony nowymi liniami.
+    const normalizeCalendarText = value => String(value || '')
+      .replace(/\u00a0/g, ' ')
+      .replace(/\s+/g, ' ')
       .trim()
       .toLocaleLowerCase('pl-PL');
 
@@ -2642,12 +2639,21 @@ if (location.hostname === 'riventia.margonem.pl') {
       'obecnie nie trwa zadne wydarzenie czasowe'
     ];
 
-    if (inactiveMessages.some(message => text.includes(message))) return false;
+    const calendar = document.querySelector('.rewards-calendar');
+    const calendarText = normalizeCalendarText(calendar?.textContent);
+    const pageText = normalizeCalendarText(document.body?.textContent);
 
-    // Aktywny kalendarz musi zawierać strukturę dnia z nagrodą.
-    return !!calendar.querySelector('.day.today .reward');
+    if (
+      inactiveMessages.some(message =>
+        calendarText.includes(message) || pageText.includes(message)
+      )
+    ) {
+      return false;
+    }
+
+    // Bez aktywnego dnia/nagrody kalendarz nie może zgłaszać nagrody.
+    return !!calendar?.querySelector('.day.today .reward');
   }
-
   function findCalendarReward() {
     if (!calendarHasActiveEvent()) return null;
 
@@ -4157,7 +4163,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     <div id="vxChangelogView" class="vxExtraView">
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.93</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.94</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.77</span><div>Powiększono panel oraz czcionki w nagłówku, menu, kafelkach i opisach dodatków. Zwiększono również ikony i przełączniki.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.76</span><div>Naprawiono przełączanie zakładek, aby zawartość Dodatków, Wyglądu, Aktualizacji i Logu zmian nie wyświetlała się jednocześnie.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.75</span><div>Poprawiono układ zawartości zakładek i przewijanie panelu.</div></div>
