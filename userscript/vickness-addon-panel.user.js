@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.89
-// @description  Vickness Addons 1.1.89: dodano Kolorowanie przedmiotów na czacie
+// @version      1.1.90
+// @description  Vickness Addons 1.1.90: poprawiono uruchamianie Kolorowania przedmiotów na czacie
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4132,7 +4132,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     <div id="vxChangelogView" class="vxExtraView">
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.89</span><div>Dodano dodatek Kolorowanie przedmiotów na czacie z przełącznikiem w panelu. Koloruje nazwy przedmiotów według rzadkości.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.90</span><div>Poprawiono inicjalizację Kolorowania przedmiotów na czacie — moduł czeka na załadowanie jQuery.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.77</span><div>Powiększono panel oraz czcionki w nagłówku, menu, kafelkach i opisach dodatków. Zwiększono również ikony i przełączniki.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.76</span><div>Naprawiono przełączanie zakładek, aby zawartość Dodatków, Wyglądu, Aktualizacji i Logu zmian nie wyświetlała się jednocześnie.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.75</span><div>Poprawiono układ zawartości zakładek i przewijanie panelu.</div></div>
@@ -9892,16 +9892,8 @@ if (location.hostname === 'riventia.margonem.pl') {
 // =============================================================
 (() => {
     'use strict';
-
     if (location.hostname !== 'riventia.margonem.pl' || window.top !== window.self) return;
     if (window.__vicknessItemChatModuleStarted) return;
-    window.__vicknessItemChatModuleStarted = true;
-
-    const $ = window.jQuery;
-    if (!$) {
-        console.warn('[Vickness Item Chat] Brak jQuery — dodatek nie został uruchomiony.');
-        return;
-    }
 
     const COLORS = {
         legendary: { color: '#ff3333', glow: 'rgba(255, 30, 30, 0.45)' },
@@ -9911,47 +9903,62 @@ if (location.hostname === 'riventia.margonem.pl') {
         upgraded:  { color: '#40e0d0', glow: 'rgba(40, 230, 210, 0.45)' }
     };
 
+    let $ = null;
+    let active = false;
+    let observer = null;
+    let retryTimer = null;
     const scheduled = new WeakSet();
     const hiddenTips = new WeakSet();
     const timers = new Map();
-    let observer = null;
-    let active = false;
 
-    if ($.fn.tipShow && !$.fn.tipShow.__vicknessItemChatWrapped) {
-        const originalTipShow = $.fn.tipShow;
-        const wrappedTipShow = function (...args) {
-            if (this[0] && hiddenTips.has(this[0])) return this;
-            return originalTipShow.apply(this, args);
-        };
-        wrappedTipShow.__vicknessItemChatWrapped = true;
-        wrappedTipShow.__vicknessOriginal = originalTipShow;
-        $.fn.tipShow = wrappedTipShow;
+    function install() {
+        $ = window.jQuery;
+        if (!$ || !$.fn) return false;
+        if ($.fn.tipShow && !$.fn.tipShow.__vicknessItemChatWrapped) {
+            const originalTipShow = $.fn.tipShow;
+            const wrappedTipShow = function (...args) {
+                if (this[0] && hiddenTips.has(this[0])) return this;
+                return originalTipShow.apply(this, args);
+            };
+            wrappedTipShow.__vicknessItemChatWrapped = true;
+            wrappedTipShow.__vicknessOriginal = originalTipShow;
+            $.fn.tipShow = wrappedTipShow;
+        }
+        return true;
     }
 
     function getRarity(item) {
         if (!item) return null;
-        let rarity = item.getItemStat?.('rarity');
-        if (!rarity && item.stat) {
-            const match = item.stat.match(/(?:^|;)rarity=([^;]*)/);
+        let rarity = null;
+        try {
+            rarity = typeof item.getItemStat === 'function' ? item.getItemStat('rarity') : null;
+        } catch (_) {}
+        if (!rarity && typeof item.stat === 'string') {
+            const match = item.stat.match(/(?:^|;)rarity=([^;]*)/i);
             if (match) rarity = match[1];
         }
         rarity = String(rarity || '').toLowerCase().trim();
-        return COLORS[rarity] ? rarity : null;
+        return Object.prototype.hasOwnProperty.call(COLORS, rarity) ? rarity : null;
     }
 
     function colorNameOnly(el, rarity) {
-        let wrapper = el.querySelector(':scope > .riventia-item-name');
+        let wrapper = el.querySelector(':scope > .vickness-item-chat-name');
         if (!wrapper) {
             const textNodes = Array.from(el.childNodes).filter(
                 node => node.nodeType === Node.TEXT_NODE && node.textContent.trim()
             );
-            if (!textNodes.length) return false;
-            wrapper = document.createElement('span');
-            wrapper.className = 'riventia-item-name';
-            for (const node of textNodes) wrapper.appendChild(node);
-            el.insertBefore(wrapper, el.firstChild);
+            if (textNodes.length) {
+                wrapper = document.createElement('span');
+                wrapper.className = 'vickness-item-chat-name';
+                for (const node of textNodes) wrapper.appendChild(node);
+                el.insertBefore(wrapper, el.firstChild);
+            } else {
+                const textContainer = el.querySelector('span, b, strong');
+                if (!textContainer || !textContainer.textContent.trim()) return false;
+                wrapper = textContainer;
+                wrapper.dataset.vicknessItemChatName = '1';
+            }
         }
-
         const style = COLORS[rarity];
         wrapper.style.setProperty('color', style.color, 'important');
         wrapper.style.setProperty('-webkit-text-fill-color', style.color, 'important');
@@ -9960,11 +9967,12 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
 
     function colorItem(el) {
+        if (!$) return false;
         const item = $(el).data('item');
         if (!item) return false;
         const rarity = getRarity(item);
         if (!rarity || !colorNameOnly(el, rarity)) return false;
-        el.dataset.vicknessRarity = rarity;
+        el.dataset.vicknessItemChatRarity = rarity;
         return true;
     }
 
@@ -9976,7 +9984,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
     function clearTimer(el) {
         const timer = timers.get(el);
-        if (timer) clearInterval(timer);
+        if (timer) window.clearInterval(timer);
         timers.delete(el);
     }
 
@@ -9995,8 +10003,8 @@ if (location.hostname === 'riventia.margonem.pl') {
                 hiddenTips.delete(el);
                 return;
             }
-
-            try { loadItem(el); } catch (error) { console.warn('[Vickness Item Chat]', error); }
+            try { loadItem(el); }
+            catch (error) { console.warn('[Vickness Item Chat] Nie udało się załadować danych przedmiotu:', error); }
 
             let attempts = 0;
             let loadAttempts = 0;
@@ -10015,7 +10023,8 @@ if (location.hostname === 'riventia.margonem.pl') {
                 }
                 if (attempts % 20 === 0 && loadAttempts < 5) {
                     loadAttempts++;
-                    try { loadItem(el); } catch (error) { console.warn('[Vickness Item Chat]', error); }
+                    try { loadItem(el); }
+                    catch (error) { console.warn('[Vickness Item Chat] Błąd ponownego ładowania przedmiotu:', error); }
                 }
                 if (attempts >= 200) {
                     clearTimer(el);
@@ -10033,9 +10042,9 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
 
     function start() {
-        if (active) return;
+        if (active || !$) return;
         active = true;
-        scan(document.body);
+        if (document.body) scan(document.body);
         observer = new MutationObserver(records => {
             for (const record of records) {
                 for (const node of record.addedNodes) {
@@ -10043,8 +10052,8 @@ if (location.hostname === 'riventia.margonem.pl') {
                 }
             }
         });
-        observer.observe(document.body, { childList: true, subtree: true });
-        console.log('[Vickness Item Chat] Uruchomiono.');
+        if (document.body) observer.observe(document.body, { childList: true, subtree: true });
+        console.log('[Vickness Item Chat] Aktywny — obserwuję przedmioty na czacie.');
     }
 
     function stop() {
@@ -10052,20 +10061,27 @@ if (location.hostname === 'riventia.margonem.pl') {
         active = false;
         observer?.disconnect();
         observer = null;
-        for (const timer of timers.values()) clearInterval(timer);
+        for (const timer of timers.values()) window.clearInterval(timer);
         timers.clear();
         document.querySelectorAll('.linked-chat-item').forEach(el => {
             hiddenTips.delete(el);
             scheduled.delete(el);
-            if (!el.hasAttribute('data-vickness-rarity')) return;
-            const wrapper = el.querySelector(':scope > .riventia-item-name');
+            if (!el.dataset.vicknessItemChatRarity) return;
+            const wrapper = el.querySelector(':scope > .vickness-item-chat-name');
             if (wrapper) {
                 while (wrapper.firstChild) el.insertBefore(wrapper.firstChild, wrapper);
                 wrapper.remove();
             }
-            delete el.dataset.vicknessRarity;
+            const nested = el.querySelector('[data-vickness-item-chat-name="1"]');
+            if (nested) {
+                nested.style.removeProperty('color');
+                nested.style.removeProperty('-webkit-text-fill-color');
+                nested.style.removeProperty('text-shadow');
+                delete nested.dataset.vicknessItemChatName;
+            }
+            delete el.dataset.vicknessItemChatRarity;
         });
-        console.log('[Vickness Item Chat] Wyłączono.');
+        console.log('[Vickness Item Chat] Wyłączony.');
     }
 
     function setEnabled(value) {
@@ -10073,12 +10089,38 @@ if (location.hostname === 'riventia.margonem.pl') {
         else stop();
     }
 
-    window.__vicknessItemChatSetEnabled = setEnabled;
+    function waitForJQuery() {
+        if (retryTimer) return;
+        retryTimer = window.setInterval(() => {
+            if (!install()) return;
+            window.clearInterval(retryTimer);
+            retryTimer = null;
+            window.__vicknessItemChatModuleStarted = true;
+            window.__vicknessItemChatSetEnabled = setEnabled;
+            setEnabled(window.__vicknessAddonEnabled?.itemChat !== false);
+        }, 500);
+    }
+
+    window.__vicknessItemChatSetEnabled = value => {
+        if (value && !$ && !install()) {
+            waitForJQuery();
+            return;
+        }
+        setEnabled(value);
+    };
+
     window.addEventListener('pagehide', () => {
         stop();
+        if (retryTimer) window.clearInterval(retryTimer);
         delete window.__vicknessItemChatSetEnabled;
         delete window.__vicknessItemChatModuleStarted;
     }, { once: true });
 
-    setEnabled(window.__vicknessAddonEnabled?.itemChat !== false);
+    if (install()) {
+        window.__vicknessItemChatModuleStarted = true;
+        window.__vicknessItemChatSetEnabled = setEnabled;
+        setEnabled(window.__vicknessAddonEnabled?.itemChat !== false);
+    } else {
+        waitForJQuery();
+    }
 })();
