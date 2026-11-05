@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.11
-// @description  Vickness Addons 1.2.11: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.12
+// @description  Vickness Addons 1.2.12: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2591,17 +2591,53 @@ if (location.hostname === 'riventia.margonem.pl') {
       .toLocaleLowerCase('pl-PL');
   }
 
-  function hideInactiveCalendarToast(_root = document) {
-    // Celowo wylaczone. Nie skanujemy DOM gry i nie ukrywamy komunikatow.
+  function hideInactiveCalendarToast(root = document) {
+    if (!root || !root.querySelectorAll) return;
+    const message = 'obecnie nie trwa żadne wydarzenie czasowe';
+    const normalize = value => String(value || '')
+      .replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ')
+      .trim().toLocaleLowerCase('pl-PL');
+    const nodes = [];
+    if (root instanceof Element) nodes.push(root);
+    nodes.push(...root.querySelectorAll('body *'));
+    for (const el of nodes) {
+      if (!(el instanceof HTMLElement) || el.dataset.vxInactiveCalendarToast === '1') continue;
+      if (!normalize(el.textContent).includes(message)) continue;
+      // Znajdź najmniejszy element zawierający pełny komunikat, bez dotykania tipów.
+      let target = el;
+      while (target.parentElement &&
+             normalize(target.parentElement.textContent).includes(message) &&
+             target.parentElement.children.length <= 2) {
+        target = target.parentElement;
+      }
+      target.dataset.vxInactiveCalendarToast = '1';
+      target.style.setProperty('display', 'none', 'important');
+      target.setAttribute('aria-hidden', 'true');
+    }
   }
 
   function beginCalendarToastMute() {
-    // Bez MutationObserver na calym dokumencie.
-    return null;
+    hideInactiveCalendarToast(document);
+    const observer = new MutationObserver(records => {
+      for (const record of records) {
+        if (record.type === 'characterData') {
+          hideInactiveCalendarToast(record.target.parentElement || document);
+        } else {
+          for (const node of record.addedNodes) {
+            if (node instanceof Element) hideInactiveCalendarToast(node);
+          }
+          if (record.target instanceof Element) hideInactiveCalendarToast(record.target);
+        }
+      }
+    });
+    if (document.body) observer.observe(document.body, {
+      childList: true, subtree: true, characterData: true
+    });
+    return observer;
   }
 
-  function endCalendarToastMute(_observer) {
-    // Brak obserwatora do odlaczenia.
+  function endCalendarToastMute(observer) {
+    observer?.disconnect();
   }
 
   function hidePanels() {
