@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.1.91
-// @description  Vickness Addons 1.1.91: poprawiono dostęp do jQuery strony w dodatku kolorowania
+// @version      1.1.92
+// @description  Vickness Addons 1.1.92: zaktualizowano Kolory rang Lootloga o neonową aurę 2.8.0
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4132,7 +4132,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     <div id="vxChangelogView" class="vxExtraView">
       <div class="vxPageCard">
         <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.91</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
+        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.92</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.77</span><div>Powiększono panel oraz czcionki w nagłówku, menu, kafelkach i opisach dodatków. Zwiększono również ikony i przełączniki.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.76</span><div>Naprawiono przełączanie zakładek, aby zawartość Dodatków, Wyglądu, Aktualizacji i Logu zmian nie wyświetlała się jednocześnie.</div></div>
         <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.75</span><div>Poprawiono układ zawartości zakładek i przewijanie panelu.</div></div>
@@ -9366,7 +9366,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
 // =============================================================
 // KOLORY RANG LOOTLOGA NA CZACIE — zintegrowane z Vickness Addons
-// Rdzeń pobierania na podstawie przesłanego Lootlog Nick Colors 2.7.0.
+// Rdzeń kolorowania zintegrowany z panelem; aura z Lootlog Nick Colors 2.8.0.
 // =============================================================
 (() => {
   'use strict';
@@ -9836,9 +9836,129 @@ if (location.hostname === 'riventia.margonem.pl') {
     document.querySelectorAll(`${AUTHOR_SELECTOR}[data-vxRankChatApplied="1"]`).forEach(restoreAuthor);
   }
 
+
+  // Stała neonowa aura pod postaciami członków gildii (Lootlog Nick Colors 2.8.0).
+  const auraWrapped = new WeakSet();
+  let auraTimer = null;
+
+  function getAuraColor(character) {
+    const data = character?.d || {};
+    const accountId = String(data.account ?? character?.account ?? '');
+    const account = cache.accounts[accountId];
+
+    if (account) {
+      const discordId = account.discordId;
+      const guildColor = discordId ? cache.memberColors[String(discordId)] : null;
+      const color = guildColor || account.color;
+      if (color && /^#[0-9a-f]{6}$/i.test(color)) return color;
+    }
+
+    const nick = data.nick || character?.nick;
+    return nick ? findColor(nick) : null;
+  }
+
+  function drawNeonAura(ctx, character, color) {
+    if (!ctx || typeof ctx.save !== 'function') return;
+    const engine = page.getEngine?.() || page.Engine;
+    const map = engine?.map;
+    const mapShift = engine?.mapShift;
+    if (!map || !mapShift || typeof mapShift.getShift !== 'function') return;
+
+    const shift = mapShift.getShift();
+    const rx = Number(character.rx ?? character.d?.x);
+    const ry = Number(character.ry ?? character.d?.y);
+    const fw = Number(character.fw) || 32;
+    const fh = Number(character.fh) || 48;
+    const halfFw = Number(character.halffw) || fw / 2;
+    if (!Number.isFinite(rx) || !Number.isFinite(ry)) return;
+
+    const screenX = Math.round(
+      rx * 32 + 16 - halfFw + (character.ofsetX ?? 0) -
+      (map.offset?.[0] || 0) - shift[0] +
+      (character.leftPosMod === undefined ? 0 : character.leftPosMod)
+    );
+    const screenY = Math.round(
+      ry * 32 - fh + 32 - (map.offset?.[1] || 0) - shift[1]
+    );
+
+    const match = color.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (!match) return;
+    const rgb = match.slice(1).map(value => parseInt(value, 16));
+    const centerX = screenX + fw / 2;
+    const centerY = screenY + fh - 3;
+    const radiusX = 23;
+    const radiusY = 11;
+
+    ctx.save();
+    try {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.95;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 28;
+      const gradient = ctx.createRadialGradient(centerX, centerY, 1, centerX, centerY, radiusX);
+      gradient.addColorStop(0, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},1)`);
+      gradient.addColorStop(0.25, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.95)`);
+      gradient.addColorStop(0.6, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.65)`);
+      gradient.addColorStop(1, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } catch (_) {
+      // Efekt nie może zatrzymać renderowania postaci.
+    } finally {
+      ctx.restore();
+    }
+  }
+
+  function wrapCharacterForAura(character) {
+    if (!character || auraWrapped.has(character) || typeof character.drawIcon !== 'function') return;
+    const originalDrawIcon = character.drawIcon;
+    character.drawIcon = function(ctx, ...args) {
+      if (active) {
+        const color = getAuraColor(this);
+        if (color) drawNeonAura(ctx, this, color);
+      }
+      return originalDrawIcon.call(this, ctx, ...args);
+    };
+    auraWrapped.add(character);
+  }
+
+  function installAuraOnCharacters() {
+    if (!active) return;
+    const engine = page.getEngine?.() || page.Engine;
+    if (!engine) return;
+    if (engine.hero) wrapCharacterForAura(engine.hero);
+
+    const manager = engine.others;
+    if (!manager || typeof manager.getDrawableList !== 'function') return;
+    let objects;
+    try { objects = manager.getDrawableList(); } catch (_) { return; }
+    if (!Array.isArray(objects)) return;
+
+    for (const character of objects) {
+      if (!character) continue;
+      const data = character.d || {};
+      if (character.isPlayer === true || data.isPlayer === true) {
+        wrapCharacterForAura(character);
+      }
+    }
+  }
+
+  function startAura() {
+    installAuraOnCharacters();
+    if (!auraTimer) auraTimer = window.setInterval(installAuraOnCharacters, 1000);
+  }
+
+  function stopAura() {
+    if (auraTimer) window.clearInterval(auraTimer);
+    auraTimer = null;
+  }
+
   function stop() {
     if (!active) { status('WYŁĄCZONY'); return; }
     active = false;
+    stopAura();
     if (refreshTimer) window.clearInterval(refreshTimer);
     refreshTimer = null;
     if (observer) observer.disconnect();
@@ -9855,7 +9975,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   function start() {
     if (active) return;
     active = true;
-    rebuildNickColors(); applyAllColors(); startObserver();
+    rebuildNickColors(); applyAllColors(); startObserver(); startAura();
     refreshTimer = window.setInterval(tick, TICK_MS);
     status(nickColors.size ? `Aktywny · zapisane kolory: ${nickColors.size} · synchronizacja…` : 'Aktywny · pobieram pierwszą listę rang…');
     void refreshNow(false);
