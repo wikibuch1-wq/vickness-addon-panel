@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.19
-// @description  Vickness Addons 1.2.19: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.20
+// @description  Vickness Addons 1.2.20: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -3311,7 +3311,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     }, { passive: true });
 
     // Najpierw próbuj natychmiast. Jeśli Engine jeszcze się ładuje,
-    // sprawdzaj gotowość co 50 ms i zakończ polling zaraz po starcie.
+    // sprawdzaj gotowość co 25 ms i zakończ polling zaraz po starcie.
     const tryInitialApply = () => {
       const engine = getReadyMapDimmerEngine();
       if (!engine) return false;
@@ -3326,7 +3326,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     };
 
     if (tryInitialApply()) return;
-    mapDimmerReadyTimer = setInterval(tryInitialApply, 250);
+    mapDimmerReadyTimer = setInterval(tryInitialApply, 25);
   }
 
   // Zmiana rozmiaru okna skaluje proporcjonalnie tekst i odstępy wizualne;
