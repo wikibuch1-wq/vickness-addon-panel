@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.42
-// @description  Vickness Addons 1.2.42: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.43
+// @description  Vickness Addons 1.2.43: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -1066,7 +1066,8 @@
       bhpw: 'Tancerz ostrzy, Łowca, Paladyn, Wojownik',
       bt: 'Tancerz ostrzy, Tropiciel',
       bp: 'Tancerz ostrzy, Paladyn',
-      bh: 'Tancerz ostrzy, Łowca'
+      bh: 'Tancerz ostrzy, Łowca',
+      bw: 'Tancerz ostrzy, Wojownik'
     };
     if (professionGroups[compact]) return professionGroups[compact];
 
