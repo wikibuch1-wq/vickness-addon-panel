@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.58
-// @description  Vickness Addon Panel 1.2.58 - przywrócenie klikalności okien gry
+// @version      1.2.59
+// @description  Vickness Addon Panel 1.2.59 - skan aktualności bez mignięcia okna
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4384,31 +4384,70 @@ if (location.hostname === 'riventia.margonem.pl') {
     );
   }
 
+  function restoreTemporarilyHiddenWindow(result) {
+    const el = result?.hiddenWindow;
+    if (!el) return;
+    if (result.hadVisibility) {
+      el.style.setProperty('visibility', result.oldVisibility, result.oldVisibilityPriority);
+    } else {
+      el.style.removeProperty('visibility');
+    }
+    result.hiddenWindow = null;
+  }
+
   async function openPanel(type) {
     if (window.__vicknessShouldPauseAddons?.()) return { type, button: null, opened: false };
     if (panelIsOpen(type)) return { type, button: null, opened: false };
     const button = findPanelButton(type);
     if (!button || window.__vicknessShouldPauseAddons?.()) return { type, button: null, opened: false };
+
+    const result = { type, button, opened: false, hiddenWindow: null };
+    // Okno Aktualności musi być niewidoczne już przed kliknięciem ikony,
+    // inaczej przez moment pojawia się na ekranie. Ukrywamy tylko ten
+    // konkretny kontener przez visibility (bez pointer-events i bez CSS
+    // obejmującego inne okna); geometrię panelu nadal można wykryć.
+    if (type === 'news') {
+      const panel = document.querySelector(panelSelector(type));
+      const win = panel?.closest('.c-window');
+      if (win) {
+        result.hiddenWindow = win;
+        result.hadVisibility = win.style.getPropertyValue('visibility') !== '';
+        result.oldVisibility = win.style.getPropertyValue('visibility');
+        result.oldVisibilityPriority = win.style.getPropertyPriority('visibility');
+        win.style.setProperty('visibility', 'hidden', 'important');
+      }
+    }
+
     button.click();
     for (let i = 0; i < 25; i++) {
       await WAIT(LOAD_WAIT);
-      if (window.__vicknessShouldPauseAddons?.()) return { type, button, opened: panelIsOpen(type) };
+      if (window.__vicknessShouldPauseAddons?.()) {
+        result.opened = panelIsOpen(type);
+        if (!result.opened) restoreTemporarilyHiddenWindow(result);
+        return result;
+      }
       if (panelIsOpen(type)) {
         await WAIT(100);
-        if (window.__vicknessShouldPauseAddons?.()) return { type, button, opened: true };
-        return { type, button, opened: true };
+        result.opened = true;
+        return result;
       }
     }
-    return { type, button: null, opened: false };
+    restoreTemporarilyHiddenWindow(result);
+    result.button = null;
+    return result;
   }
 
   function closeOpenedPanel(result) {
-    if (!result?.opened || !result.button) return;
+    if (!result?.opened || !result.button) {
+      restoreTemporarilyHiddenWindow(result);
+      return;
+    }
     if (window.__vicknessShouldPauseAddons?.()) {
       pendingPanelsClose.push(result);
       return;
     }
     if (panelExists(result.type)) result.button.click();
+    restoreTemporarilyHiddenWindow(result);
   }
 
   window.addEventListener('vickness-relog-resume', () => {
