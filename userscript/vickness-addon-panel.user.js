@@ -3,7 +3,7 @@
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
 // @version      1.2.23
-// @description  Vickness Addons 1.2.23: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @description  Vickness Addons 1.2.24: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2040,6 +2040,8 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
 
     function setLootColor(container, rarity) {
+        // Nie zmieniaj DOM ani stylów podczas przelogowywania.
+        if (window.__vicknessShouldPauseAddons?.()) return;
         if (!container) {
             return;
         }
@@ -2094,6 +2096,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
 
     function refreshActiveEffects() {
+        if (window.__vicknessShouldPauseAddons?.()) return;
         const classes = {
             heroic: 'tmHeroicLoot',
             unique: 'tmUniqueLoot',
@@ -2115,6 +2118,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     // ==========================================
 
     function highlightLootWindow(item) {
+        if (window.__vicknessShouldPauseAddons?.()) return;
         if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.loot) return;
         if (!item) {
             return;
@@ -2176,6 +2180,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         container.classList.add(glowClass);
 
         setTimeout(() => {
+            if (window.__vicknessShouldPauseAddons?.()) return;
             container.classList.remove(glowClass);
         }, settings.highlightTime);
     }
@@ -2228,6 +2233,9 @@ if (location.hostname === 'riventia.margonem.pl') {
 
                         ids.forEach(id => {
                             setTimeout(() => {
+                                // Zadanie mogło zostać zaplanowane tuż przed rozpoczęciem przelogowania.
+                                if (window.__vicknessShouldPauseAddons?.()) return;
+                                if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.loot) return;
                                 const value = String(id);
                                 let item = null;
 
