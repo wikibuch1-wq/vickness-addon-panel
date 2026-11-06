@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.32
-// @description  Vickness Addons 1.2.32: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.33
+// @description  Vickness Addons 1.2.33: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -6560,6 +6560,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
     try {
       const data = await fetchJson(API);
+      if (!lootbarEnabled || window.__vicknessShouldPauseAddons?.()) return;
       const recentLoots = getLoots(data);
       let legendaryLoots = [];
 
@@ -6568,6 +6569,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       // działanie podstawowego źródła zamiast wyłączać cały pasek.
       try {
         const legendaryData = await fetchJson(LEGENDARY_API);
+        if (!lootbarEnabled || window.__vicknessShouldPauseAddons?.()) return;
         legendaryLoots = getLoots(legendaryData);
       } catch (legendaryError) {
         console.warn('[Loot Bar] Osobne pobieranie legend nie powiodło się:', legendaryError);
@@ -6587,6 +6589,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         '| wpisy zapytania LEGENDARY:', legendaryLoots.length,
         '| unikalne wpisy razem:', loots.length
       );
+      if (!lootbarEnabled || window.__vicknessShouldPauseAddons?.()) return;
       await render(loots);
 
       if (!loots.length) {
@@ -8029,8 +8032,8 @@ if (location.hostname === 'riventia.margonem.pl') {
    if (document.getElementById('tc-online-panel')) return;
 
    const STORAGE_KEY = 'tc_online_panel_v2';
-   // Automatyczne pobieranie bezpośrednio z Margonem co 15 s.
-   const REFRESH_MS = 5000;
+   // Pierwsze pobranie startuje natychmiast po gotowości gry; kolejne co 7 s.
+    const REFRESH_MS = 7000;
 
    const defaults = {
      left: Math.max(10, window.innerWidth - 350),
