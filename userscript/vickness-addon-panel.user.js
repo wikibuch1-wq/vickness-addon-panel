@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.43
-// @description  Vickness Addons 1.2.43: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.45
+// @description  Vickness Addons 1.2.45: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -1577,10 +1577,14 @@ if (location.hostname === 'riventia.margonem.pl' && window.top === window.self) 
     };
 
     const beginPause = () => {
+      const wasPaused = !!state.paused;
       state.paused = true;
       state.awaitingCharacter = true;
       state.sawLogoff = false;
       state.stableSince = 0;
+      if (!wasPaused) {
+        try { window.dispatchEvent(new Event('vickness-relog-pause')); } catch (_) {}
+      }
     };
 
     // Rozpoznaje wyłącznie akcję przelogowania; nie zatrzymuje ani nie anuluje kliknięcia.
@@ -1644,6 +1648,7 @@ if (location.hostname === 'riventia.margonem.pl' && window.top === window.self) 
         state.awaitingCharacter = false;
         state.sawLogoff = false;
         state.stableSince = 0;
+        try { window.dispatchEvent(new Event('vickness-relog-resume')); } catch (_) {}
       }
     };
 
@@ -4242,6 +4247,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   let panelStyle = null;
   let hourlyTimer = null;
   let stopped = false;
+  let pendingPanelsClose = [];
 
   // Wycisza wyłącznie element komunikatu kalendarza podczas automatycznego sprawdzania.
   // Nie ukrywa rodziców, kontenerów gry ani elementów tooltipów.
@@ -4349,14 +4355,17 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   async function openPanel(type) {
+    if (window.__vicknessShouldPauseAddons?.()) return { type, button: null, opened: false };
     if (panelIsOpen(type)) return { type, button: null, opened: false };
     const button = findPanelButton(type);
-    if (!button) return { type, button: null, opened: false };
+    if (!button || window.__vicknessShouldPauseAddons?.()) return { type, button: null, opened: false };
     button.click();
     for (let i = 0; i < 25; i++) {
       await WAIT(LOAD_WAIT);
+      if (window.__vicknessShouldPauseAddons?.()) return { type, button, opened: panelIsOpen(type) };
       if (panelIsOpen(type)) {
         await WAIT(100);
+        if (window.__vicknessShouldPauseAddons?.()) return { type, button, opened: true };
         return { type, button, opened: true };
       }
     }
@@ -4365,8 +4374,19 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   function closeOpenedPanel(result) {
     if (!result?.opened || !result.button) return;
+    if (window.__vicknessShouldPauseAddons?.()) {
+      pendingPanelsClose.push(result);
+      return;
+    }
     if (panelExists(result.type)) result.button.click();
   }
+
+  window.addEventListener('vickness-relog-resume', () => {
+    for (const result of pendingPanelsClose.splice(0)) {
+      try { closeOpenedPanel(result); } catch (_) {}
+    }
+    showPanels();
+  });
 
   function calendarHasActiveEvent() {
     // Komunikat gry może być poza .rewards-calendar (np. w osobnym
@@ -4472,20 +4492,24 @@ if (location.hostname === 'riventia.margonem.pl') {
         if (window.__vicknessShouldPauseAddons?.()) return;
         hidePanels();
         calPanel = await openPanel('calendar');
+        if (window.__vicknessShouldPauseAddons?.()) return;
         newsPanel = await openPanel('news');
+        if (window.__vicknessShouldPauseAddons?.()) return;
         await WAIT(200);
+        if (window.__vicknessShouldPauseAddons?.()) return;
 
         const hasCalendarEvent = calendarHasActiveEvent();
         setCalendarHoverHint(hasCalendarEvent);
         const calendarReward = hasCalendarEvent ? findCalendarReward() : null;
         const newsOffers = findFreeNewsOffers();
 
-        if (calendarReward) {
+        if (calendarReward && !window.__vicknessShouldPauseAddons?.()) {
           calendarReward.click();
           await WAIT(CLICK_WAIT);
         }
 
         for (const tile of newsOffers) {
+          if (window.__vicknessShouldPauseAddons?.()) return;
           if (!tile.isConnected || tile.classList.contains('is-used')) continue;
           const price = tile.querySelector('.buy-info');
           const buyButton = tile.querySelector('.buy-button-wrapper .button');
@@ -4495,6 +4519,7 @@ if (location.hostname === 'riventia.margonem.pl') {
           }
         }
         await WAIT(250);
+        if (window.__vicknessShouldPauseAddons?.()) return;
         finished = true;
         removeWidget();
       } catch (error) {
@@ -4504,7 +4529,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       } finally {
         closeOpenedPanel(newsPanel);
         closeOpenedPanel(calPanel);
-        showPanels();
+        if (!window.__vicknessShouldPauseAddons?.()) showPanels();
         checking = false;
       }
     });
@@ -4567,8 +4592,11 @@ if (location.hostname === 'riventia.margonem.pl') {
       // Ukryj okna PRZED ich otwieraniem, aby nie mignęły na ekranie.
       hidePanels();
       calPanel = await openPanel('calendar');
+      if (window.__vicknessShouldPauseAddons?.()) return false;
       newsPanel = await openPanel('news');
+      if (window.__vicknessShouldPauseAddons?.()) return false;
       await WAIT(200);
+      if (window.__vicknessShouldPauseAddons?.()) return false;
       const hasCalendarEvent = calendarHasActiveEvent();
       setCalendarHoverHint(hasCalendarEvent);
       const calendar = hasCalendarEvent ? findCalendarReward() : null;
@@ -4595,7 +4623,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       closeOpenedPanel(newsPanel);
       closeOpenedPanel(calPanel);
       endCalendarToastMute(calendarToastObserver);
-      showPanels();
+      if (!window.__vicknessShouldPauseAddons?.()) showPanels();
       checking = false;
     }
   }
@@ -6700,7 +6728,9 @@ if (location.hostname === 'riventia.margonem.pl') {
 
     // Zmiany przełączników i tak stosują się natychmiast; ten timer jest tylko zabezpieczeniem dla paneli ładowanych później.
     // Kontrola awaryjna co 15 s; zwykłe zmiany przełączników nadal działają natychmiast.
-    setInterval(() => { if (document.visibilityState !== 'hidden') applyToggles(); }, 15000);
+    setInterval(() => {
+      if (document.visibilityState !== 'hidden' && !window.__vicknessShouldPauseAddons?.()) applyToggles();
+    }, 15000);
     window.addEventListener('resize', () => {
       // Nie zapisuj pozycji elementu ukrytego (getBoundingClientRect zwróci wtedy 0,0).
       if (getComputedStyle(panel).display !== 'none') {
@@ -7430,6 +7460,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     // -------------------- GŁÓWNA PĘTLA --------------------
 
     function tick() {
+        if (window.__vicknessShouldPauseAddons?.()) return;
         // Integracja z głównym przełącznikiem Vickness Addons.
         const addonFlags = window.__vicknessAddonEnabled;
         const trackerPanel = $('#rtt-panel');
@@ -7814,6 +7845,10 @@ if (location.hostname === 'riventia.margonem.pl') {
      let attempts = 0;
 
      function retry() {
+       if (window.__vicknessShouldPauseAddons?.()) {
+         pendingReads.delete(item);
+         return;
+       }
        if (!settings.enabled || (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.lootChance) || !isLootWindowOpen() || !item.isConnected) {
          pendingReads.delete(item);
          return;
@@ -7841,6 +7876,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
    function scan() {
      scanTimer = null;
+     if (window.__vicknessShouldPauseAddons?.()) return;
 
      const open = isLootWindowOpen();
 
@@ -7876,6 +7912,7 @@ if (location.hostname === 'riventia.margonem.pl') {
    }
 
    function scheduleScan(delay = 250) {
+     if (window.__vicknessShouldPauseAddons?.()) return;
      // Skany opóźnione są scalane: seria zmian DOM wywoła jeden skan, nie dziesiątki.
      if (scanTimer) {
        if (delay !== 0) return;
@@ -8076,6 +8113,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
      // Zabezpieczenie przed oknem, które gra ukrywa zamiast usuwać z DOM.
      setInterval(() => {
+       if (window.__vicknessShouldPauseAddons?.()) return;
        if (lastWindowOpen && !isLootWindowOpen()) {
          clearLootLabels();
          lastWindowOpen = false;
@@ -9471,7 +9509,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
    // ---------- WYSZUKIWANIE ----------
    async function search(force = false) {
-     if (busy || disposed) return;
+     if (busy || disposed || window.__vicknessShouldPauseAddons?.()) return;
 
      if (!force && Date.now() - lastSearch < REFRESH_MS) return;
 
@@ -9502,11 +9540,12 @@ if (location.hostname === 'riventia.margonem.pl') {
 
        async function worker() {
          while (next < worlds.length) {
+           if (window.__vicknessShouldPauseAddons?.()) return;
            const world = worlds[next++];
 
            try {
              const data = await fetchWorld(world);
-             if (disposed) return;
+             if (disposed || window.__vicknessShouldPauseAddons?.()) return;
 
              if (data === null) {
                failed++;
@@ -9565,7 +9604,9 @@ if (location.hostname === 'riventia.margonem.pl') {
    button.addEventListener('click', () => search(true));
 
     search();
-    const refreshTimer = window.setInterval(() => search(), REFRESH_MS);
+    const refreshTimer = window.setInterval(() => {
+      if (!window.__vicknessShouldPauseAddons?.()) void search();
+    }, REFRESH_MS);
     return () => {
       disposed = true;
       window.clearInterval(refreshTimer);
@@ -9961,7 +10002,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     showAlert(alertQueue.shift());
   }
   function scanPlayers() {
-    if (!running || document.visibilityState === 'hidden') return;
+    if (!running || document.visibilityState === 'hidden' || window.__vicknessShouldPauseAddons?.()) return;
     const engine = getEngine();
     if (!engine) {
       emitDiagnostics({ engineReady: false, playerCount: 0, resolvedCount: 0, eligibleCount: 0, lastScanAt: Date.now(), message: 'Oczekiwanie na silnik Margonem…' });
@@ -10015,7 +10056,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     processAlertQueue();
   }
   function syncScanTimer() {
-    const shouldScan = running && document.visibilityState !== 'hidden';
+    const shouldScan = running && document.visibilityState !== 'hidden' && !window.__vicknessShouldPauseAddons?.();
     if (!shouldScan) {
       if (scanTimer) window.clearInterval(scanTimer);
       scanTimer = null;
@@ -10188,6 +10229,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   function request(url) {
     return new Promise((resolve, reject) => {
+      if (window.__vicknessShouldPauseAddons?.()) { reject(new Error('Pominięto żądanie podczas przelogowania.')); return; }
       if (!active) { reject(new Error('Dodatek jest wyłączony.')); return; }
       if (typeof GM_xmlhttpRequest !== 'function') { reject(new Error('GM_xmlhttpRequest nie jest dostępny.')); return; }
       let finished = false;
@@ -10207,6 +10249,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         handle = GM_xmlhttpRequest({
           method: 'GET', url, withCredentials: true, timeout: REQUEST_TIMEOUT_MS,
           onload: response => {
+            if (window.__vicknessShouldPauseAddons?.()) { finish(reject, new Error('Odpowiedź pominięta podczas przelogowania.')); return; }
             if (response.status < 200 || response.status >= 300) { finish(reject, new Error(`HTTP ${response.status}`)); return; }
             finish(resolve, response.responseText);
           },
@@ -10221,7 +10264,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   async function requestWithRetry(url, retries, delay) {
     let lastError;
-    for (let attempt = 1; attempt <= retries && active; attempt++) {
+    for (let attempt = 1; attempt <= retries && active && !window.__vicknessShouldPauseAddons?.(); attempt++) {
       try { return await request(url); }
       catch (error) {
         lastError = error;
@@ -10258,6 +10301,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (!active) throw new Error('Dodatek został wyłączony.');
     log('Odświeżam kolory rang gildii…');
     const members = JSON.parse(await requestWithRetry(MEMBERS_URL, 3, 2000));
+    if (window.__vicknessShouldPauseAddons?.()) return false;
     if (!Array.isArray(members)) throw new Error('Nieprawidłowa lista członków gildii.');
     const newColors = {};
     for (const member of members) {
@@ -10378,7 +10422,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   function applyAuthor(author) {
-    if (!author?.matches?.(AUTHOR_SELECTOR)) return;
+    if (window.__vicknessShouldPauseAddons?.() || !author?.matches?.(AUTHOR_SELECTOR)) return;
     const color = findColor(author.textContent);
     if (!color) { restoreAuthor(author); return; }
     if (!author.dataset.vxRankChatApplied) {
@@ -10418,8 +10462,11 @@ if (location.hostname === 'riventia.margonem.pl') {
       observerTimer = null;
       const batch = [...pendingAuthors];
       pendingAuthors.clear();
-      if (!active) return;
-      for (const author of batch) if (author.isConnected) applyAuthor(author);
+      if (!active || window.__vicknessShouldPauseAddons?.()) return;
+      for (const author of batch) {
+        if (window.__vicknessShouldPauseAddons?.()) return;
+        if (author.isConnected) applyAuthor(author);
+      }
     }, 100);
   }
 
@@ -10555,7 +10602,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   async function tick() {
-    if (!active || document.visibilityState === 'hidden' || loading || Date.now() < nextRetryAt) return;
+    if (!active || document.visibilityState === 'hidden' || window.__vicknessShouldPauseAddons?.() || loading || Date.now() < nextRetryAt) return;
     const now = Date.now();
     const lastMembersRefresh = Number(cache.lastMembersRefresh) || 0;
     if (!lastMembersRefresh || now - lastMembersRefresh >= MEMBERS_REFRESH_INTERVAL) await refreshNow(false);
@@ -10845,12 +10892,12 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
 
     function processItem(el) {
-        if (!active || !(el instanceof HTMLElement) || !el.matches('.linked-chat-item') || scheduled.has(el)) return;
+        if (window.__vicknessShouldPauseAddons?.() || !active || !(el instanceof HTMLElement) || !el.matches('.linked-chat-item') || scheduled.has(el)) return;
         scheduled.add(el);
         hiddenTips.add(el);
 
         window.setTimeout(() => {
-            if (!active || !el.isConnected) {
+            if (window.__vicknessShouldPauseAddons?.() || !active || !el.isConnected) {
                 scheduled.delete(el);
                 hiddenTips.delete(el);
                 return;
@@ -10865,6 +10912,12 @@ if (location.hostname === 'riventia.margonem.pl') {
             let attempts = 0;
             let loadAttempts = 0;
             const timer = window.setInterval(() => {
+                if (window.__vicknessShouldPauseAddons?.()) {
+                    clearTimer(el);
+                    scheduled.delete(el);
+                    hiddenTips.delete(el);
+                    return;
+                }
                 attempts++;
                 if (!active || !el.isConnected) {
                     clearTimer(el);
@@ -10892,7 +10945,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
 
     function scan(root) {
-        if (!active || !(root instanceof Element)) return;
+        if (window.__vicknessShouldPauseAddons?.() || !active || !(root instanceof Element)) return;
         if (root.matches('.linked-chat-item')) processItem(root);
         root.querySelectorAll('.linked-chat-item').forEach(processItem);
     }
@@ -10943,6 +10996,15 @@ if (location.hostname === 'riventia.margonem.pl') {
         if (value) start();
         else stop();
     }
+
+    window.addEventListener('vickness-relog-pause', () => {
+        for (const el of [...timers.keys()]) clearTimer(el);
+        scheduled.clear();
+        hiddenTips.clear();
+    });
+    window.addEventListener('vickness-relog-resume', () => {
+        if (active && document.body) scan(document.body);
+    });
 
     function waitForJQuery() {
         if (retryTimer) return;
