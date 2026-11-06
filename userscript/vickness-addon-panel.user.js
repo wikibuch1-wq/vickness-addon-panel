@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.56
-// @description  Vickness Addon Panel 1.2.56 - poprawka klikalności okien gry
+// @version      1.2.57
+// @description  Vickness Addon Panel 1.2.57 - skan aktualności poza ekranem
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4345,20 +4345,37 @@ if (location.hostname === 'riventia.margonem.pl') {
     observer?.disconnect();
   }
 
-  function hidePanels() {
-    if (panelStyle) return;
+  function hidePanels(options = {}) {
+    if (panelStyle) {
+      // Skan może zażądać przeniesienia okna aktualności poza ekran,
+      // nawet jeśli styl został już założony.
+      if (options.newsOffscreen) {
+        panelStyle.textContent += `
+          .c-window:has(.news-panel) {
+            transform: translateX(-200vw) !important;
+          }
+        `;
+      }
+      return;
+    }
     panelStyle = document.createElement('style');
     panelStyle.id = 'vx-free-rewards-hide-style';
     panelStyle.textContent = `
-      /* Ukrywamy wyłącznie same panele nagród/newsów.
-         Nie ustawiamy pointer-events ani visibility na nadrzędnym
-         .c-window, ponieważ może ono zawierać inne klikalne elementy gry. */
+      /* Ukrywamy wyłącznie zawartość paneli. Nie blokujemy kliknięć
+         w nadrzędnych oknach gry ani w innych oknach .c-window. */
       .rewards-calendar,
       .news-panel {
         visibility: hidden !important;
         opacity: 0 !important;
         pointer-events: none !important;
       }
+      ${options.newsOffscreen ? `
+      /* Podczas automatycznego skanowania odsuwamy tylko okno
+         zawierające Aktualności poza obszar gry. Bez pointer-events:none
+         na kontenerze i bez wpływu na pozostałe okna. */
+      .c-window:has(.news-panel) {
+        transform: translateX(-200vw) !important;
+      }` : ''}
     `;
     (document.head || document.documentElement).appendChild(panelStyle);
   }
@@ -4634,8 +4651,9 @@ if (location.hostname === 'riventia.margonem.pl') {
       if (!enabled.freeRewards || !findPanelButton('calendar') || !findPanelButton('news')) return false;
 
       calendarToastObserver = beginCalendarToastMute();
-      // Ukryj okna PRZED ich otwieraniem, aby nie mignęły na ekranie.
-      hidePanels();
+      // Podczas samego skanowania odsuwamy okno Aktualności poza ekran,
+      // zanim klikniemy jego ikonę. Pozostałe okna gry pozostają klikalne.
+      hidePanels({ newsOffscreen: true });
       calPanel = await openPanel('calendar');
       if (window.__vicknessShouldPauseAddons?.()) return false;
       newsPanel = await openPanel('news');
