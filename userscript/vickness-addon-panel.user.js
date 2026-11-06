@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.49
-// @description  Vickness Addon Panel 1.2.49 - poprawione warstwy okien dodatku, aby nie zasłaniały potwierdzeń gry
+// @version      1.2.50
+// @description  Vickness Addon Panel 1.2.50 - kliknięcia przez puste obszary paska dodatku
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -98,6 +98,7 @@
     #vickness-lootbar {
       position: fixed;
       z-index: 9000;
+       pointer-events: none;
       left: ${x}px;
       top: ${y}px;
       display: flex;
@@ -129,6 +130,7 @@
     }
 
     #vickness-lootbar .vl-item {
+       pointer-events: auto;
       position: relative;
       display: grid;
       place-items: center;
@@ -178,6 +180,7 @@
     }
 
     #vickness-lootbar .vl-controls {
+       pointer-events: auto;
       position: relative;
       display: flex;
       flex-direction: row;
@@ -226,6 +229,7 @@
     }
 
     #vickness-lootbar .vl-settings-panel {
+       pointer-events: auto;
       display: none;
       flex-direction: row;
       align-items: stretch;
