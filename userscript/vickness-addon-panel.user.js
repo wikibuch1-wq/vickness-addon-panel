@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.40
-// @description  Vickness Addons 1.2.40: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.41
+// @description  Vickness Addons 1.2.41: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -3711,31 +3711,84 @@ if (location.hostname === 'riventia.margonem.pl') {
 
                         if (!ids.length) return;
 
-                        ids.forEach(id => {
-                            setTimeout(() => {
-                                // Zadanie mogło zostać zaplanowane tuż przed rozpoczęciem przelogowania.
-                                if (window.__vicknessShouldPauseAddons?.()) return;
-                                if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.loot) return;
-                                const value = String(id);
+                        // Kolejka zamiast uruchamiania wszystkich timerów jednocześnie.
+                        // Dzięki krótkim przerwom przelogowanie może natychmiast przejąć
+                        // główny wątek, a zaległe zadania nie kolorują nowej postaci.
+                        if (!window.__vicknessLootColorQueue) {
+                            window.__vicknessLootColorQueue = [];
+                            window.__vicknessLootColorQueueTimer = null;
+                        }
+
+                        const queue = window.__vicknessLootColorQueue;
+                        ids.forEach(id => queue.push(String(id)));
+
+                        const processLootColorQueue = () => {
+                            if (window.__vicknessShouldPauseAddons?.()) {
+                                // Czyścimy stare wpisy — nie przenosimy kolorowania
+                                // z poprzedniej postaci na nową.
+                                queue.length = 0;
+                                window.__vicknessLootColorQueueTimer = null;
+                                return;
+                            }
+
+                            if (window.__vicknessAddonEnabled && !window.__vicknessAddonEnabled.loot) {
+                                queue.length = 0;
+                                window.__vicknessLootColorQueueTimer = null;
+                                return;
+                            }
+
+                            let processed = 0;
+                            while (queue.length && processed < 2) {
+                                // Sprawdzenie także pomiędzy elementami jednej paczki.
+                                if (window.__vicknessShouldPauseAddons?.()) {
+                                    queue.length = 0;
+                                    window.__vicknessLootColorQueueTimer = null;
+                                    return;
+                                }
+
+                                const value = queue.shift();
                                 let item = null;
 
                                 try {
-                                    item = document.querySelector(
-                                        `.item.item-id-${CSS.escape(value)}`
-                                    );
+                                    if (typeof CSS !== 'undefined' && CSS.escape) {
+                                        item = document.querySelector(`.item.item-id-${CSS.escape(value)}`);
+                                    }
                                 } catch (e) {}
 
-                                // Fallback dla wariantów DOM, w których ID jest atrybutem.
+                                // Fallback dla wariantów DOM z ID w atrybucie.
                                 if (!item) {
                                     try {
-                                        item = Array.from(document.querySelectorAll('[data-item-id]'))
-                                            .find(el => el.getAttribute('data-item-id') === value) || null;
+                                        const candidates = document.querySelectorAll('[data-item-id]');
+                                        for (const candidate of candidates) {
+                                            if (window.__vicknessShouldPauseAddons?.()) {
+                                                queue.length = 0;
+                                                window.__vicknessLootColorQueueTimer = null;
+                                                return;
+                                            }
+                                            if (candidate.getAttribute('data-item-id') === value) {
+                                                item = candidate;
+                                                break;
+                                            }
+                                        }
                                     } catch (e) {}
                                 }
 
-                                if (item) highlightLootWindow(item);
-                            }, 100);
-                        });
+                                if (item && !window.__vicknessShouldPauseAddons?.()) {
+                                    highlightLootWindow(item);
+                                }
+                                processed++;
+                            }
+
+                            if (queue.length) {
+                                window.__vicknessLootColorQueueTimer = setTimeout(processLootColorQueue, 30);
+                            } else {
+                                window.__vicknessLootColorQueueTimer = null;
+                            }
+                        };
+
+                        if (!window.__vicknessLootColorQueueTimer) {
+                            processLootColorQueue();
+                        }
                     });
 
                     registered = true;
