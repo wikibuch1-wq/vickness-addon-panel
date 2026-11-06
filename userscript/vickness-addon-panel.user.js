@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.29
-// @description  Vickness Addons 1.2.29: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.30
+// @description  Vickness Addons 1.2.30: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2795,8 +2795,9 @@ if (location.hostname === 'riventia.margonem.pl') {
 
     for (let node = panel; node && node !== document.documentElement; node = node.parentElement) {
       const style = window.getComputedStyle(node);
-      if (style.display === 'none' || style.visibility === 'hidden' ||
-          Number.parseFloat(style.opacity || '1') === 0) return false;
+      // visibility/opacity mogą być ustawione przez nasz własny styl tła.
+      // O faktycznym otwarciu decyduje istnienie geometrii i display != none.
+      if (style.display === 'none') return false;
     }
     return true;
   }
@@ -2931,9 +2932,9 @@ if (location.hostname === 'riventia.margonem.pl') {
       let newsPanel = null;
       try {
         if (window.__vicknessShouldPauseAddons?.()) return;
+        hidePanels();
         calPanel = await openPanel('calendar');
         newsPanel = await openPanel('news');
-        hidePanels();
         await WAIT(200);
 
         const hasCalendarEvent = calendarHasActiveEvent();
@@ -3018,9 +3019,10 @@ if (location.hostname === 'riventia.margonem.pl') {
       if (!enabled.freeRewards || !findPanelButton('calendar') || !findPanelButton('news')) return false;
 
       calendarToastObserver = beginCalendarToastMute();
+      // Ukryj okna PRZED ich otwieraniem, aby nie mignęły na ekranie.
+      hidePanels();
       calPanel = await openPanel('calendar');
       newsPanel = await openPanel('news');
-      hidePanels();
       await WAIT(200);
       const hasCalendarEvent = calendarHasActiveEvent();
       setCalendarHoverHint(hasCalendarEvent);
