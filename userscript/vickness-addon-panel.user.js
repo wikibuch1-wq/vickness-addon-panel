@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.34
-// @description  Vickness Addons 1.2.34: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.35
+// @description  Vickness Addons 1.2.35: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -5520,6 +5520,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   document.body.appendChild(bar);
 
   const itemsBox = bar.querySelector('.vl-items');
+  itemsBox.textContent = 'Ładowanie łupów…';
 
   const tooltip = document.createElement('div');
   tooltip.className = 'vl-tip';
@@ -6516,14 +6517,17 @@ if (location.hostname === 'riventia.margonem.pl') {
       return;
     }
 
-    // Wzbogacamy kafelki danymi katalogowymi. Błąd katalogu nie blokuje belki:
-    // w takim przypadku zostają dane zapisane bezpośrednio w łupie.
-    try {
-      await enrichEntriesFromCatalog(chosen);
-    } catch (catalogError) {
-      console.warn('[Loot Bar] Katalog przedmiotów Lootloga niedostępny:', catalogError);
-    }
+    // Najpierw pokaż kafelki z danych łupu — katalog nie może opóźniać belki.
     chosen.forEach(entry => itemsBox.appendChild(makeTile(entry)));
+
+    // Dodatkowe metadane dociągaj w tle; nie blokuj pierwszego renderowania.
+    enrichEntriesFromCatalog(chosen).then(() => {
+      if (!lootbarEnabled || window.__vicknessShouldPauseAddons?.()) return;
+      itemsBox.replaceChildren();
+      chosen.forEach(entry => itemsBox.appendChild(makeTile(entry)));
+    }).catch(catalogError => {
+      console.warn('[Loot Bar] Katalog przedmiotów Lootloga niedostępny:', catalogError);
+    });
   }
 
   function getCatalogItems(data) {
@@ -6559,20 +6563,20 @@ if (location.hostname === 'riventia.margonem.pl') {
     busy = true;
 
     try {
-      const data = await fetchJson(API);
+      // Oba źródła pobieraj równolegle, aby czas oczekiwania nie sumował się.
+      const [recentResult, legendaryResult] = await Promise.allSettled([
+        fetchJson(API),
+        fetchJson(LEGENDARY_API)
+      ]);
       if (!lootbarEnabled || window.__vicknessShouldPauseAddons?.()) return;
+      if (recentResult.status !== 'fulfilled') throw recentResult.reason;
+      const data = recentResult.value;
       const recentLoots = getLoots(data);
-      let legendaryLoots = [];
-
-      // Pobieramy też osobno legendy, aby dotrzeć do nich poza pierwszymi
-      // 100 najnowszymi łupami. Jeśli filtr nie jest obsługiwany, zachowujemy
-      // działanie podstawowego źródła zamiast wyłączać cały pasek.
-      try {
-        const legendaryData = await fetchJson(LEGENDARY_API);
-        if (!lootbarEnabled || window.__vicknessShouldPauseAddons?.()) return;
-        legendaryLoots = getLoots(legendaryData);
-      } catch (legendaryError) {
-        console.warn('[Loot Bar] Osobne pobieranie legend nie powiodło się:', legendaryError);
+      const legendaryLoots = legendaryResult.status === 'fulfilled'
+        ? getLoots(legendaryResult.value)
+        : [];
+      if (legendaryResult.status !== 'fulfilled') {
+        console.warn('[Loot Bar] Osobne pobieranie legend nie powiodło się:', legendaryResult.reason);
       }
 
       const byId = new Map();
