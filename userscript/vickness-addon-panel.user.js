@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.46
+// @version      1.2.47
 // @description  Vickness Addons 1.2.46: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
@@ -1008,7 +1008,17 @@
         }
       } else {
         const str = String(value).trim();
-        if (str) candidates.push({ code: fallbackCode || str, title: '', text: '', amount: undefined });
+        if (str) {
+          // Przy strukturze { critred: 25 } kod jest kluczem,
+          // a wartość liczbowa musi zostać zachowana jako procent.
+          const isAmount = !!fallbackCode && /^-?\\d+(?:[.,]\\d+)?$/.test(str);
+          candidates.push({
+            code: fallbackCode || str,
+            title: '',
+            text: '',
+            amount: isAmount ? str.replace(',', '.') : undefined
+          });
+        }
       }
     };
     function scan(value, depth = 0) {
@@ -1044,12 +1054,12 @@
       if (known[code] || known[titleKey]) {
         const matched = known[code] || known[titleKey];
         let text = matched.text || candidate.text || '';
-        if (code === 'critred' || titleKey === 'critred') {
+        if (code === 'critred' || code === 'critshield' || titleKey === 'critred' || titleKey === 'critshield') {
           let amount = candidate.amount;
           if (amount == null) {
             const raw = [item.stat, item.stats, item.statistics]
               .filter(value => typeof value === 'string').join(';');
-            const amountMatch = raw.match(/(?:^|[;|])critred\s*[=:]\s*(-?\d+(?:[.,]\d+)?)/i);
+            const amountMatch = raw.match(/(?:^|[;|,\s])(?:critred|critshield)\s*[=:]\s*(-?\d+(?:[.,]\d+)?)/i);
             if (amountMatch) amount = amountMatch[1].replace(',', '.');
           }
           text = amount == null || amount === ''
