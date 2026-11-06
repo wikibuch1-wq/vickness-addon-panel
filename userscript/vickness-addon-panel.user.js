@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.59
-// @description  Vickness Addon Panel 1.2.59 - skan aktualności bez mignięcia okna
+// @version      1.2.60
+// @description  Vickness Addon Panel 1.2.60 - skan nagród bez automatycznego otwierania Aktualności
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4658,12 +4658,11 @@ if (location.hostname === 'riventia.margonem.pl') {
       if (!enabled.freeRewards || !findPanelButton('calendar') || !findPanelButton('news')) return false;
 
       calendarToastObserver = beginCalendarToastMute();
-      // Podczas samego skanowania odsuwamy okno Aktualności poza ekran,
-      // zanim klikniemy jego ikonę. Pozostałe okna gry pozostają klikalne.
+      // Skanowanie nie może otwierać okna Aktualności ani klikać jego ikony.
+      // Odczytujemy wyłącznie kafelki, które gra już udostępniła w DOM.
+      // Kalendarz pozostaje obsługiwany dotychczasowym mechanizmem.
       hidePanels();
       calPanel = await openPanel('calendar');
-      if (window.__vicknessShouldPauseAddons?.()) return false;
-      newsPanel = await openPanel('news');
       if (window.__vicknessShouldPauseAddons?.()) return false;
       await WAIT(200);
       if (window.__vicknessShouldPauseAddons?.()) return false;
@@ -4679,12 +4678,10 @@ if (location.hostname === 'riventia.margonem.pl') {
       closeOpenedPanel(calPanel);
       calPanel = null;
 
-      if (calendar || news.length > 0) {
-        createWidget(calendar, news);
-      } else {
-        finished = true;
-        removeWidget();
-      }
+      // Widget ma być widoczny także wtedy, gdy wszystkie nagrody są odebrane
+      // albo kafelki Aktualności nie są aktualnie obecne w DOM.
+      createWidget(calendar, news);
+      if (!calendar && news.length === 0) finished = true;
       return true;
     } catch (error) {
       console.error('[Nagrody] Błąd sprawdzania:', error);
