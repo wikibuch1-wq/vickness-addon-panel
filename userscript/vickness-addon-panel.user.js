@@ -3,7 +3,7 @@
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
 // @version      1.2.24
-// @description  Vickness Addons 1.2.24: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @description  Vickness Addons 1.2.25: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2987,18 +2987,18 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   async function initialCheck() {
-    if (checking || finished || stopped || !enabled.freeRewards) return;
+    if (checking || finished || stopped || !enabled.freeRewards) return false;
     checking = true;
     let calPanel = null;
     let newsPanel = null;
     let calendarToastObserver = null;
     try {
       for (let i = 0; i < 60; i++) {
-        if (stopped || !enabled.freeRewards) return;
+        if (stopped || !enabled.freeRewards) return false;
         if (findPanelButton('calendar') && findPanelButton('news')) break;
         await WAIT(1000);
       }
-      if (!enabled.freeRewards || !findPanelButton('calendar') || !findPanelButton('news')) return;
+      if (!enabled.freeRewards || !findPanelButton('calendar') || !findPanelButton('news')) return false;
 
       hidePanels();
       calendarToastObserver = beginCalendarToastMute();
@@ -3017,8 +3017,10 @@ if (location.hostname === 'riventia.margonem.pl') {
 
       if (calendar || news.length > 0) createWidget(calendar, news);
       else finished = true;
+      return true;
     } catch (error) {
       console.error('[Nagrody] Błąd sprawdzania:', error);
+      return false;
     } finally {
       closeOpenedPanel(newsPanel);
       closeOpenedPanel(calPanel);
@@ -3040,28 +3042,34 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (!enabled.freeRewards || hourlyTimer || stopped === false && window.__vicknessFreeRewardsActive) return;
     stopped = false;
     window.__vicknessFreeRewardsActive = true;
-    const scheduleNextCheck = (initial = false) => {
+    const scheduleNextCheck = (initial = false, retry = false) => {
       if (stopped || !enabled.freeRewards) return;
       const elapsed = Date.now() - getLastCheck();
       const remaining = Math.max(0, CALENDAR_CHECK_INTERVAL - elapsed);
-      const delay = initial ? Math.max(5000, remaining) : Math.max(60000, remaining);
+      // Pierwsze sprawdzenie po uruchomieniu ma być szybkie. Nie może
+      // czekać 3 godzin tylko dlatego, że brak zapisanego znacznika czasu.
+      const delay = initial ? 5000 : (retry ? 60000 : Math.max(60000, remaining));
       hourlyTimer = setTimeout(async () => {
         hourlyTimer = null;
         if (stopped || !enabled.freeRewards) return;
-        if (window.__vicknessShouldPauseAddons?.()) { scheduleNextCheck(false); return; }
+        if (window.__vicknessShouldPauseAddons?.()) {
+          scheduleNextCheck(false, true);
+          return;
+        }
         finished = false;
         removeWidget();
-        await initialCheck();
-        // Jeśli interfejs gry nie był jeszcze gotowy, ponów próbę za minutę.
-        // Po udanym sprawdzeniu kolejny termin wynika z trwałego znacznika czasu.
-        scheduleNextCheck(false);
+        const checked = await initialCheck();
+        if (checked) saveLastCheck();
+        // Jeśli interfejs gry nie był gotowy albo skan przerwano,
+        // ponów próbę za minutę; po udanym skanie wróć do cyklu 3 h.
+        scheduleNextCheck(false, !checked);
       }, delay);
     };
     scheduleNextCheck(true);
   }
 
   window.__vicknessFreeRewardsCheckNow = () => {
-    if (!enabled.freeRewards || checking) return false;
+    if (!enabled.freeRewards || checking || window.__vicknessShouldPauseAddons?.()) return false;
     finished = false;
     removeWidget();
     void initialCheck(true);
