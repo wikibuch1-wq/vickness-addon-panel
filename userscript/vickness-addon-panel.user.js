@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.54
-// @description  Vickness Addon Panel 1.2.54 - przywrócone standardowe działanie konsoli gry
+// @version      1.2.55
+// @description  Vickness Addon Panel 1.2.55 - ukrywanie okien nagród podczas skanowania
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4350,10 +4350,14 @@ if (location.hostname === 'riventia.margonem.pl') {
     panelStyle = document.createElement('style');
     panelStyle.id = 'vx-free-rewards-hide-style';
     panelStyle.textContent = `
-      /* Ukrywamy wyłącznie niechciane treści, nigdy całe okno gry.
-         Margonem może ponownie używać tego samego .c-window dla potwierdzeń. */
+      /* Ukrywamy zawartość oraz wyłącznie okno, w którym znajduje się
+         aktualnie skanowany panel nagród. Reguła istnieje tylko na czas
+         skanowania/odbierania i jest natychmiast usuwana przez showPanels().
+         Nie ukrywamy globalnie okien .c-window ani okien potwierdzeń. */
       .rewards-calendar,
-      .news-panel {
+      .news-panel,
+      .c-window:has(.rewards-calendar),
+      .c-window:has(.news-panel) {
         visibility: hidden !important;
         opacity: 0 !important;
         pointer-events: none !important;
