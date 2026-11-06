@@ -2930,6 +2930,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       let calPanel = null;
       let newsPanel = null;
       try {
+        if (window.__vicknessShouldPauseAddons?.()) return;
         calPanel = await openPanel('calendar');
         newsPanel = await openPanel('news');
         hidePanels();
@@ -3026,13 +3027,45 @@ if (location.hostname === 'riventia.margonem.pl') {
       const calendar = hasCalendarEvent ? findCalendarReward() : null;
       const news = findFreeNewsOffers();
 
+      // Odbieraj wykryte nagrody automatycznie podczas pierwszego skanowania.
+      // Wcześniej skan jedynie tworzył okienko, a kliknięcie wymagało ręcznej akcji.
+      let claimedAny = false;
+      if (!window.__vicknessShouldPauseAddons?.() && enabled.freeRewards) {
+        if (calendar && calendar.isConnected &&
+            calendar.classList.contains('can-open') &&
+            !calendar.classList.contains('is-open')) {
+          calendar.click();
+          claimedAny = true;
+          await WAIT(CLICK_WAIT);
+        }
+
+        for (const tile of news) {
+          if (window.__vicknessShouldPauseAddons?.() || !enabled.freeRewards) break;
+          if (!tile.isConnected || tile.classList.contains('is-used')) continue;
+          const price = tile.querySelector('.buy-info');
+          const buyButton = tile.querySelector('.buy-button-wrapper .button');
+          if (price && price.textContent.replace(/\\s/g, '').toUpperCase() === '0SŁ' && buyButton) {
+            buyButton.click();
+            claimedAny = true;
+            await WAIT(CLICK_WAIT);
+          }
+        }
+      }
+
       closeOpenedPanel(newsPanel);
       newsPanel = null;
       closeOpenedPanel(calPanel);
       calPanel = null;
 
-      if (calendar || news.length > 0) createWidget(calendar, news);
-      else finished = true;
+      // Okienko zostaje tylko wtedy, gdy gra nadal pokazuje coś do odebrania.
+      const remainingCalendar = hasCalendarEvent ? findCalendarReward() : null;
+      const remainingNews = findFreeNewsOffers();
+      if (remainingCalendar || remainingNews.length > 0) {
+        createWidget(remainingCalendar, remainingNews);
+      } else {
+        finished = true;
+        removeWidget();
+      }
       return true;
     } catch (error) {
       console.error('[Nagrody] Błąd sprawdzania:', error);
