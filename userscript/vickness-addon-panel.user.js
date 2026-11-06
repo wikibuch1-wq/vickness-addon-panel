@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.31
-// @description  Vickness Addons 1.2.31: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.32
+// @description  Vickness Addons 1.2.32: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2682,7 +2682,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   const WAIT = ms => new Promise(resolve => setTimeout(resolve, ms));
   const CLICK_WAIT = 250;
-  const LOAD_WAIT = 180;
+  const LOAD_WAIT = 100;
   const CALENDAR_CHECK_INTERVAL = 3 * 60 * 60 * 1000; // sprawdzanie co 3 godziny
   const CALENDAR_LAST_CHECK_KEY = 'vickness_free_rewards_last_check_v1';
   const getLastCheck = () => {
@@ -2815,10 +2815,10 @@ if (location.hostname === 'riventia.margonem.pl') {
     const button = findPanelButton(type);
     if (!button) return { type, button: null, opened: false };
     button.click();
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 25; i++) {
       await WAIT(LOAD_WAIT);
       if (panelIsOpen(type)) {
-        await WAIT(250);
+        await WAIT(100);
         return { type, button, opened: true };
       }
     }
@@ -3011,11 +3011,18 @@ if (location.hostname === 'riventia.margonem.pl') {
     let newsPanel = null;
     let calendarToastObserver = null;
     try {
-      for (let i = 0; i < 60; i++) {
-        if (stopped || !enabled.freeRewards) return false;
-        if (findPanelButton('calendar') && findPanelButton('news')) break;
-        await WAIT(1000);
+      // Krótkie oczekiwanie na interfejs: zamiast blokować skan nawet minutę,
+      // sprawdzaj gotowość co 250 ms i zakończ oczekiwanie po 20 sekundach.
+      let uiReady = false;
+      for (let i = 0; i < 80; i++) {
+        if (stopped || !enabled.freeRewards || window.__vicknessShouldPauseAddons?.()) return false;
+        if (findPanelButton('calendar') && findPanelButton('news')) {
+          uiReady = true;
+          break;
+        }
+        await WAIT(250);
       }
+      if (!uiReady) return false;
       if (!enabled.freeRewards || !findPanelButton('calendar') || !findPanelButton('news')) return false;
 
       calendarToastObserver = beginCalendarToastMute();
@@ -3073,7 +3080,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       const remaining = Math.max(0, CALENDAR_CHECK_INTERVAL - elapsed);
       // Pierwsze sprawdzenie po uruchomieniu ma być szybkie. Nie może
       // czekać 3 godzin tylko dlatego, że brak zapisanego znacznika czasu.
-      const delay = initial ? 1000 : (retry ? 60000 : Math.max(60000, remaining));
+      const delay = initial ? 500 : (retry ? 15000 : Math.max(60000, remaining));
       hourlyTimer = setTimeout(async () => {
         hourlyTimer = null;
         if (stopped || !enabled.freeRewards) return;
