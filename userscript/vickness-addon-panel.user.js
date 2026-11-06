@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.60
-// @description  Vickness Addon Panel 1.2.60 - skan nagród bez automatycznego otwierania Aktualności
+// @version      1.2.61
+// @description  Vickness Addon Panel 1.2.61 - widget tylko przy dostępnych nagrodach
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4678,10 +4678,14 @@ if (location.hostname === 'riventia.margonem.pl') {
       closeOpenedPanel(calPanel);
       calPanel = null;
 
-      // Widget ma być widoczny także wtedy, gdy wszystkie nagrody są odebrane
-      // albo kafelki Aktualności nie są aktualnie obecne w DOM.
-      createWidget(calendar, news);
-      if (!calendar && news.length === 0) finished = true;
+      // Pokazuj widget wyłącznie wtedy, gdy wykryto co najmniej jedną
+      // możliwą do odebrania nagrodę. Przy zerowym wyniku nie zasłaniaj gry.
+      if (calendar || news.length > 0) {
+        createWidget(calendar, news);
+      } else {
+        removeWidget();
+      }
+      finished = true;
       return true;
     } catch (error) {
       console.error('[Nagrody] Błąd sprawdzania:', error);
