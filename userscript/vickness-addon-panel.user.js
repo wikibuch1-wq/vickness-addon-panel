@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.52
-// @description  Vickness Addon Panel 1.2.52 - ukrywanie treści kalendarza bez blokowania okien gry
+// @version      1.2.54
+// @description  Vickness Addon Panel 1.2.54 - przywrócone standardowe działanie konsoli gry
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
