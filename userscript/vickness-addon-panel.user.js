@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.28
-// @description  Vickness Addons 1.2.27: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.29
+// @description  Vickness Addons 1.2.29: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -3044,7 +3044,7 @@ if (location.hostname === 'riventia.margonem.pl') {
           if (!tile.isConnected || tile.classList.contains('is-used')) continue;
           const price = tile.querySelector('.buy-info');
           const buyButton = tile.querySelector('.buy-button-wrapper .button');
-          if (price && price.textContent.replace(/\\s/g, '').toUpperCase() === '0SŁ' && buyButton) {
+          if (price && price.textContent.replace(/\s/g, '').toUpperCase() === '0SŁ' && buyButton) {
             buyButton.click();
             claimedAny = true;
             await WAIT(CLICK_WAIT);
