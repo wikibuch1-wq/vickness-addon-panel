@@ -3,7 +3,7 @@
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
 // @version      1.2.20
-// @description  Vickness Addons 1.2.20: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @description  Vickness Addons 1.2.21: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -3276,7 +3276,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (mapDimmerMapCheckTimer) return;
 
     // Sprawdzaj wyłącznie referencję silnika/mapy i identyfikator mapy.
-    // Wymiary canvasu obsługuje ResizeObserver; test zmiany mapy działa co 500 ms.
+    // Wymiary canvasu obsługuje ResizeObserver; test zmiany mapy działa co 50 ms.
     mapDimmerMapCheckTimer = setInterval(() => {
       if (window.__vicknessShouldPauseAddons?.()) return;
       if (document.visibilityState === 'hidden') return;
@@ -3293,7 +3293,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         if (canvas !== lastMapDimmerCanvas) watchMapDimmerGameSize();
         else scheduleMapDimmerApply();
       }
-    }, 500);
+    }, 50);
   }
 
   function startMapDimmerMonitor() {
@@ -4326,7 +4326,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         </div>
       </div>
       <div id="vxSettingsCrewOnline" class="vxSettingsSlot" hidden>
-        <div class="vxLootlogInfo">The Crew Online pobiera listę członków bezpośrednio z odpowiedzi klanu Margonem (clan&amp;a=members) co 10 sekund. Nicki i status online pochodzą z danych klanu, a nie z Lootloga. Odpowiedź jest odczytywana przez dispatcher.on_members; dodatek nie podaje callbacku do _g i nie otwiera ręcznie zakładki klanu. Lootlog nie jest używany do pobierania ani uzupełniania listy. Panel pozostaje osobnym oknem na ekranie gry.</div>
+        <div class="vxLootlogInfo">The Crew Online pobiera listę członków bezpośrednio z odpowiedzi klanu Margonem (clan&amp;a=members) co 5 sekund. Nicki i status online pochodzą z danych klanu, a nie z Lootloga. Odpowiedź jest odczytywana przez dispatcher.on_members; dodatek nie podaje callbacku do _g i nie otwiera ręcznie zakładki klanu. Lootlog nie jest używany do pobierania ani uzupełniania listy. Panel pozostaje osobnym oknem na ekranie gry.</div>
         <div class="vxLootlogActions">
           <button type="button" id="vxCrewOnlineShow">POKAŻ PANEL</button>
           <button type="button" id="vxCrewOnlineRefresh">ODŚWIEŻ LISTĘ</button>
@@ -7614,7 +7614,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
    const STORAGE_KEY = 'tc_online_panel_v2';
    // Automatyczne pobieranie bezpośrednio z Margonem co 15 s.
-   const REFRESH_MS = 15000;
+   const REFRESH_MS = 5000;
 
    const defaults = {
      left: Math.max(10, window.innerWidth - 350),
@@ -8105,7 +8105,7 @@ if (location.hostname === 'riventia.margonem.pl') {
    // PAGE._g('clan&a=members') + Engine.communication.dispatcher.on_members.
    // Lootlog nie jest źródłem listy ani danych graczy w tym module.
    const CLAN_REQUEST_TIMEOUT_MS = 8000;
-   const MEMBERS_CACHE_MS = 8000; // odświeżanie timera co 10 s nadal wywołuje nowe żądanie
+   const MEMBERS_CACHE_MS = 0; // lista online ma być pobierana na świeżo przy każdym cyklu
    const MEMBER_RECORD_LENGTH = 11;
    let cachedRawMembers = null;
    let cachedMembersAt = 0;
@@ -8151,7 +8151,8 @@ if (location.hostname === 'riventia.margonem.pl') {
    const isSamePendingCharacter = pending => {
      const currentEngine = PAGE.Engine;
      const currentHero = currentEngine?.hero?.d;
-     if (!currentEngine || currentEngine !== pending.engine || currentEngine.logOff || !currentHero) {
+     if (!currentEngine || currentEngine !== pending.engine || currentEngine.logOff || !currentHero ||
+         window.__vicknessShouldPauseAddons?.()) {
        return false;
      }
      const currentId = String(currentHero.id ?? currentHero.nick ?? '');
@@ -8483,10 +8484,11 @@ if (location.hostname === 'riventia.margonem.pl') {
    const CREW_CHAT_RETRY_MS = 2500;
 
    function isCrewRunnable() {
-     // Ukrycie samego okna nie może zatrzymywać automatycznego odświeżania listy.
-     // Zatrzymujemy pracę wyłącznie po wyłączeniu dodatku lub przejściu karty w tło.
+     // Ukrycie okna nie zatrzymuje odświeżania. Podczas przelogowania
+     // wstrzymujemy jednak wszystkie żądania i aktualizacje listy.
      return window.__vicknessAddonEnabled?.crewOnline !== false &&
-       document.visibilityState !== 'hidden';
+       document.visibilityState !== 'hidden' &&
+       !window.__vicknessShouldPauseAddons?.();
    }
 
    function isCrewTransientError(error) {
