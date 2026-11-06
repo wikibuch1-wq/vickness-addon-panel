@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.45
-// @description  Vickness Addons 1.2.45: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.46
+// @description  Vickness Addons 1.2.46: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -963,6 +963,7 @@
       ciosbardzokrytyczny: { title: 'Cios bardzo krytyczny', text: '17% szansy na zwiększenie mocy ciosu krytycznego o 75%.' },
       bloodtorment: { title: 'Krwawa udręka', text: 'Trafiony atak ma 8% szansy na wywołanie u przeciwnika krwawienia na pięć tur.' },
       critshield: { title: 'Krytyczna osłona', text: '' },
+      critred: { title: 'Krytyczna osłona', text: '' },
       frenzy: { title: 'Eskalacja szału', text: '' },
       retaliation: { title: 'Aura odwetu', text: '' },
       krwawaudreka: { title: 'Krwawa udręka', text: 'Trafiony atak ma 8% szansy na wywołanie u przeciwnika krwawienia na pięć tur.' }
@@ -983,17 +984,31 @@
     };
     const candidates = [];
     const seen = new Set();
-    const add = value => {
+    const add = (value, fallbackCode = '') => {
       if (value == null) return;
       if (typeof value === 'object') {
-        const code = value.code ?? value.key ?? value.id ?? value.name ?? value.value ?? value.bonus;
+        const code = value.code ?? value.key ?? value.id ?? value.name ?? value.bonus ?? fallbackCode ?? '';
         const title = value.title ?? value.label ?? value.displayName ?? value.name;
         const text = value.description ?? value.desc ?? value.text ?? value.effect ?? value.tooltip;
-        if (code != null) candidates.push({ code: String(code), title, text });
-        else if (text || title) candidates.push({ code: '', title, text });
+        const amount = value.amount ?? value.percent ?? value.val ?? value.power ??
+          (typeof value.value === 'number' ? value.value : undefined);
+        if (code != null && String(code).trim()) candidates.push({ code: String(code), title, text, amount });
+        else if (text || title) candidates.push({ code: '', title, text, amount });
+        else if (fallbackCode) candidates.push({ code: String(fallbackCode), title: '', text: '', amount: value.value ?? value.amount ?? value.percent ?? value.val });
+        // API może opakować sam bonus w obiekt { critred: 12 }.
+        else {
+          for (const [key, child] of Object.entries(value)) {
+            if (/^critred$/i.test(key)) {
+              const amount = typeof child === 'object' && child !== null
+                ? (child.value ?? child.amount ?? child.percent ?? child.val)
+                : child;
+              candidates.push({ code: 'critred', title: '', text: '', amount });
+            }
+          }
+        }
       } else {
         const str = String(value).trim();
-        if (str) candidates.push({ code: str, title: '', text: '' });
+        if (str) candidates.push({ code: fallbackCode || str, title: '', text: '', amount: undefined });
       }
     };
     function scan(value, depth = 0) {
@@ -1008,7 +1023,11 @@
       if (Array.isArray(value)) { value.forEach(v => scan(v, depth + 1)); return; }
       for (const [key, child] of Object.entries(value)) {
         if (/^(legbon|legendaryBonus|legendaryBonuses|legendary_bonus|legendary_bonuses|specialBonus|specialBonuses|special_bonus|bonusCode|bonus_code|legendaryEffect|legendary_effect)$/i.test(key)) {
-          if (Array.isArray(child)) child.forEach(add); else add(child);
+          if (Array.isArray(child)) child.forEach(value => add(value));
+          else if (child && typeof child === 'object' && !Array.isArray(child)) {
+            for (const [bonusCode, bonusValue] of Object.entries(child)) add(bonusValue, bonusCode);
+            add(child);
+          } else add(child);
         }
         scan(child, depth + 1);
       }
@@ -1024,8 +1043,20 @@
       used.add(id);
       if (known[code] || known[titleKey]) {
         const matched = known[code] || known[titleKey];
-        // Nie dopisujemy opisu, którego nie ma w danych ani w słowniku.
-        out.push({ title: matched.title, text: matched.text || candidate.text || '' });
+        let text = matched.text || candidate.text || '';
+        if (code === 'critred' || titleKey === 'critred') {
+          let amount = candidate.amount;
+          if (amount == null) {
+            const raw = [item.stat, item.stats, item.statistics]
+              .filter(value => typeof value === 'string').join(';');
+            const amountMatch = raw.match(/(?:^|[;|])critred\s*[=:]\s*(-?\d+(?:[.,]\d+)?)/i);
+            if (amountMatch) amount = amountMatch[1].replace(',', '.');
+          }
+          text = amount == null || amount === ''
+            ? 'Przyjmowane ciosy krytyczne są słabsze.'
+            : `Przyjmowane ciosy krytyczne są o ${numberPL(amount)}% słabsze.`;
+        }
+        out.push({ title: matched.title, text });
       }
       else if (candidate.text) out.push({ title: translateLootLabel(candidate.title || 'Bonus legendarny'), text: String(candidate.text) });
       else {
