@@ -5520,7 +5520,6 @@ if (location.hostname === 'riventia.margonem.pl') {
   document.body.appendChild(bar);
 
   const itemsBox = bar.querySelector('.vl-items');
-  itemsBox.textContent = 'Ładowanie łupów…';
 
   const tooltip = document.createElement('div');
   tooltip.className = 'vl-tip';
@@ -6517,17 +6516,13 @@ if (location.hostname === 'riventia.margonem.pl') {
       return;
     }
 
-    // Najpierw pokaż kafelki z danych łupu — katalog nie może opóźniać belki.
-    chosen.forEach(entry => itemsBox.appendChild(makeTile(entry)));
-
-    // Dodatkowe metadane dociągaj w tle; nie blokuj pierwszego renderowania.
-    enrichEntriesFromCatalog(chosen).then(() => {
-      if (!lootbarEnabled || window.__vicknessShouldPauseAddons?.()) return;
-      itemsBox.replaceChildren();
-      chosen.forEach(entry => itemsBox.appendChild(makeTile(entry)));
-    }).catch(catalogError => {
+    try {
+      await enrichEntriesFromCatalog(chosen);
+    } catch (catalogError) {
       console.warn('[Loot Bar] Katalog przedmiotów Lootloga niedostępny:', catalogError);
-    });
+    }
+    if (!lootbarEnabled || window.__vicknessShouldPauseAddons?.()) return;
+    chosen.forEach(entry => itemsBox.appendChild(makeTile(entry)));
   }
 
   function getCatalogItems(data) {
@@ -6563,20 +6558,16 @@ if (location.hostname === 'riventia.margonem.pl') {
     busy = true;
 
     try {
-      // Oba źródła pobieraj równolegle, aby czas oczekiwania nie sumował się.
-      const [recentResult, legendaryResult] = await Promise.allSettled([
-        fetchJson(API),
-        fetchJson(LEGENDARY_API)
-      ]);
+      const data = await fetchJson(API);
       if (!lootbarEnabled || window.__vicknessShouldPauseAddons?.()) return;
-      if (recentResult.status !== 'fulfilled') throw recentResult.reason;
-      const data = recentResult.value;
       const recentLoots = getLoots(data);
-      const legendaryLoots = legendaryResult.status === 'fulfilled'
-        ? getLoots(legendaryResult.value)
-        : [];
-      if (legendaryResult.status !== 'fulfilled') {
-        console.warn('[Loot Bar] Osobne pobieranie legend nie powiodło się:', legendaryResult.reason);
+      let legendaryLoots = [];
+      try {
+        const legendaryData = await fetchJson(LEGENDARY_API);
+        if (!lootbarEnabled || window.__vicknessShouldPauseAddons?.()) return;
+        legendaryLoots = getLoots(legendaryData);
+      } catch (legendaryError) {
+        console.warn('[Loot Bar] Osobne pobieranie legend nie powiodło się:', legendaryError);
       }
 
       const byId = new Map();
