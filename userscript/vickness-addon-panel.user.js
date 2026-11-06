@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.20
-// @description  Vickness Addons 1.2.21: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.23
+// @description  Vickness Addons 1.2.23: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -5132,16 +5132,18 @@ if (location.hostname === 'riventia.margonem.pl') {
 })();
 
 // =============================================================
-// BELKA LOOTÓW ZINTEGROWANA Z LOOTLOGIEM — Loot Bar 4.4.7, odświeżanie co 10 minut
+// LOOT BAR — podmieniony na przesłany skrypt 4.5.21
+// =============================================================
 // ==UserScript==
 // @name         Loot Bar by Vickness - Riventia
 // @namespace    vickness.riventia.lootbar
-// @version      4.4.7
-// @description  Loot Bar Riventia - 10 najnowszych heroików Elity II i 5 najnowszych legend ze wszystkich źródeł
+// @version      4.5.21
+// @description  Loot Bar Riventia - pełniejsze opisy i metadane tooltipów
 // @match        https://riventia.margonem.pl/*
 // @run-at       document-idle
 // @grant        GM_xmlhttpRequest
 // @connect      api.lootlog.pl
+// @connect      search.lootlog.pl
 // @connect      lootlog.pl
 // @connect      micc.garmory-cdn.cloud
 // @connect      www.margonem.pl
@@ -5156,14 +5158,13 @@ if (location.hostname === 'riventia.margonem.pl') {
   // poza pierwszymi 100 najnowszymi wpisami.
   const LEGENDARY_API =
     'https://api.lootlog.pl/guilds/thecrew/loots?limit=100&world=riventia&rarities=LEGENDARY';
+  // Publiczny katalog Lootloga: pełne dane gry, bez klucza API.
+  const ITEM_CATALOG_API = 'https://search.lootlog.pl/public/catalog/items';
   const GUILD_URL = 'https://lootlog.pl/thecrew';
   const LEGENDARY_URL =
     'https://lootlog.pl/thecrew?lootbarFilter=legendary&rarities=LEGENDARY';
   const REFRESH_MS = 10 * 60 * 1000;
-  const REQUEST_TIMEOUT_MS = 12000;
   const STORAGE_KEY = 'vicknessRiventiaLootBar';
-  const CACHE_KEY = `${STORAGE_KEY}:fast-cache`;
-  const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
   document.querySelector('#vickness-lootbar')?.remove();
   document.querySelector('#vickness-lootbar-style')?.remove();
@@ -5182,57 +5183,10 @@ if (location.hostname === 'riventia.margonem.pl') {
   let scale = Number(saved.scale) || 1;
   let vertical = Boolean(saved.vertical);
   let busy = false;
-  let moduleEnabled = window.__vicknessAddonEnabled?.lootlog !== false;
-  let lifecycleActive = moduleEnabled && document.visibilityState !== 'hidden';
-  let autoRefreshTimer = null;
-  let refreshEpoch = 0;
-  let refreshAgainWhenIdle = false;
-  let pageDisposed = false;
-
-  function canRefreshLootBar() {
-    return !pageDisposed && lifecycleActive && bar.isConnected;
-  }
-
-  function clearLootBarTimer() {
-    if (autoRefreshTimer !== null) {
-      clearTimeout(autoRefreshTimer);
-      autoRefreshTimer = null;
-    }
-  }
-
-  function scheduleLootBarRefresh() {
-    clearLootBarTimer();
-    if (!canRefreshLootBar()) return;
-    autoRefreshTimer = window.setTimeout(() => {
-      autoRefreshTimer = null;
-      void loadLoots();
-    }, REFRESH_MS);
-  }
-
-  function syncLootBarLifecycle() {
-    const shouldRun = !pageDisposed && moduleEnabled && document.visibilityState !== 'hidden';
-    if (shouldRun === lifecycleActive) return;
-    lifecycleActive = shouldRun;
-    refreshEpoch++;
-    clearLootBarTimer();
-    if (lifecycleActive) {
-      if (busy) refreshAgainWhenIdle = true;
-      else void loadLoots();
-    }
-  }
-
-  window.__vicknessSetLootBarEnabled = value => {
-    moduleEnabled = Boolean(value);
-    syncLootBarLifecycle();
-  };
-
-  document.addEventListener('visibilitychange', syncLootBarLifecycle);
-  window.addEventListener('pagehide', () => {
-    pageDisposed = true;
-    lifecycleActive = false;
-    refreshEpoch++;
-    clearLootBarTimer();
-  }, { once: true });
+  let lootbarEnabled = window.__vicknessSetLootBarEnabled
+    ? (document.querySelector('#vickness-lootbar')?.style.display !== 'none')
+    : true;
+  let refreshTimer = null;
 
   const css = document.createElement('style');
   css.id = 'vickness-lootbar-style';
@@ -5421,33 +5375,37 @@ if (location.hostname === 'riventia.margonem.pl') {
       display: none;
       position: fixed;
       z-index: 2147483647;
-      width: max-content;
-      min-width: 175px;
-      max-width: min(280px,calc(100vw - 20px));
-      padding: 8px 10px;
-      color: #f4e6b5;
-      background: #101010;
-      border: 1px solid #bd9226;
-      border-radius: 5px;
-      box-shadow: 0 4px 14px #000c;
+      width: 276px;
+      max-width: min(300px,calc(100vw - 16px));
+      padding: 10px;
+      color: #c8cbd0;
+      background: #191b1d;
+      border: 1px solid var(--vl-rarity,#53677d);
+      border-radius: 8px;
+      box-shadow: 0 5px 18px #000d;
       white-space: normal;
       overflow-wrap: anywhere;
-      line-height: 1.5;
+      line-height: 1.45;
       font: 12px Arial,sans-serif;
       pointer-events: none;
       user-select: none;
     }
-
-    .vl-tip strong {
-      display: block;
-      margin-bottom: 3px;
-      color: #f0c647;
-    }
-
-    .vl-tip .vl-tip-item {
-      margin-top: 3px;
-      color: #b8dcff;
-    }
+    .vl-tip .vl-head { display:flex; align-items:center; gap:9px; padding-bottom:8px; }
+    .vl-tip .vl-icon { width:36px; height:36px; flex:0 0 36px; object-fit:contain; image-rendering:pixelated; border:1px solid var(--vl-rarity,#64788d); border-radius:4px; background:#101214; }
+    .vl-tip .vl-head-text { min-width:0; }
+    .vl-tip .vl-name { color:#e0e3e7; font-weight:bold; font-size:13px; }
+    .vl-tip .vl-subtitle { color:#9ba9b8; font-size:11px; margin-top:2px; }
+    .vl-tip .vl-rarity-line { height:1px; margin:0 0 7px; background:linear-gradient(90deg,#53677d,#263746); position:relative; }
+    .vl-tip .vl-rarity-line:after { content:'◆ ◆'; position:absolute; left:50%; top:-7px; transform:translateX(-50%); padding:0 5px; background:#191b1d; color:var(--vl-rarity,#2799ed); font-size:9px; letter-spacing:2px; }
+    .vl-tip .vl-tip-stats { padding-top:4px; color:#c5c8cc; line-height:1.48; }
+    .vl-tip .vl-tip-stat { margin:2px 0; }
+    .vl-tip .vl-tip-stat .vl-value { color:#9bc99b; font-weight:bold; }
+    .vl-tip .vl-special-bonus { white-space:pre-line; margin-top:8px; padding:8px; color:#b7d6cb; background:#202927; border:1px solid #35453f; border-radius:4px; }
+    .vl-tip .vl-special-bonus strong { display:block; color:#c8e5d8; margin-bottom:3px; font-weight:normal; }
+    .vl-tip .vl-description { white-space:pre-line; margin-top:8px; padding:8px; color:#aeb3b8; background:#191b1d; border:1px solid #34383c; border-radius:4px; font-style:italic; text-align:center; }
+    .vl-tip .vl-meta-note { white-space:pre-line; margin-top:7px; padding-top:6px; border-top:1px solid #34383c; color:#aeb3b8; }
+    .vl-tip .vl-requirements { margin-top:8px; padding-top:7px; border-top:1px solid #34383c; color:#aeb3b8; white-space:pre-line; }
+    .vl-tip .vl-context { margin-top:7px; padding-top:6px; border-top:1px solid #34383c; color:#8f969d; font-size:11px; }
 
     #vickness-lootbar .vl-empty {
       color: #d5cba9;
@@ -5611,7 +5569,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         method: 'GET',
         url,
         headers: { Accept: 'application/json' },
-        timeout: REQUEST_TIMEOUT_MS,
+        timeout: 20000,
         onload: response => {
           if (response.status < 200 || response.status >= 300) {
             reject(new Error(`HTTP ${response.status}: ${(response.responseText || '').slice(0, 500)}`));
@@ -5777,42 +5735,41 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   function iconCandidates(item) {
     const fields = [
-      item?.icon,
-      item?.image,
-      item?.iconUrl,
-      item?.icon_url,
-      item?.iconURL,
-      item?.imageUrl,
-      item?.image_url
+      item?.icon, item?.image, item?.iconUrl, item?.icon_url,
+      item?.iconURL, item?.imageUrl, item?.image_url,
+      item?.img, item?.imgUrl, item?.img_url
     ];
-
     const candidates = [];
-
     for (const field of fields) {
       if (typeof field !== 'string' || !field.trim()) continue;
-
       const raw = field.trim();
-      candidates.push(raw);
-
-      if (!/^https?:\/\//i.test(raw) && !raw.startsWith('//')) {
-        const path = raw.replace(/^\/+/, '');
+      if (/^https?:\/\//i.test(raw) || raw.startsWith('//')) {
+        candidates.push(raw);
+        continue;
+      }
+      const path = raw.replace(/^\/+/, '').replace(/^obrazki\/itemy\//i, '');
+      // Lootlog/Margonem images are stored in three-letter folders (hel/helm1602.gif).
+      const file = path.split('/').pop();
+      const folder = /^[a-z]{3}/i.test(file) ? file.slice(0, 3).toLowerCase() : '';
+      if (path.includes('/')) {
+        candidates.push(`https://micc.garmory-cdn.cloud/obrazki/itemy/${path}`);
+      } else if (folder) {
         candidates.push(
-          `https://micc.garmory-cdn.cloud/obrazki/itemy/${path}`,
-          `https://micc.garmory-cdn.cloud/obrazki/${path}`,
-          `https://www.margonem.pl/obrazki/itemy/${path}`,
-          `https://www.margonem.pl/obrazki/${path}`,
-          `https://lootlog.pl/${path}`
+          `https://micc.garmory-cdn.cloud/obrazki/itemy/${folder}/${file}`,
+          `https://www.margonem.pl/obrazki/itemy/${folder}/${file}`,
+          `https://micc.garmory-cdn.cloud/obrazki/itemy/${file}`,
+          `https://www.margonem.pl/obrazki/itemy/${file}`
         );
       }
+      candidates.push(
+        `https://micc.garmory-cdn.cloud/obrazki/itemy/${path}`,
+        `https://micc.garmory-cdn.cloud/obrazki/${path}`,
+        `https://www.margonem.pl/obrazki/itemy/${path}`,
+        `https://www.margonem.pl/obrazki/${path}`,
+        `https://lootlog.pl/${path}`
+      );
     }
-
-    return [
-      ...new Set(
-        candidates.map(value =>
-          value.startsWith('//') ? `https:${value}` : value
-        )
-      )
-    ];
+    return [...new Set(candidates.map(value => value.startsWith('//') ? `https:${value}` : value))];
   }
 
   function hideTooltip() {
@@ -5822,50 +5779,449 @@ if (location.hostname === 'riventia.margonem.pl') {
   function showTooltip(tile) {
     const source = tile.querySelector('.vl-tip-source');
     if (!source) return;
-
     tooltip.replaceChildren();
+    tooltip.style.setProperty('--vl-rarity', source.dataset.rarity === 'legendary' ? '#d88b32' : '#278fe0');
 
-    const title = document.createElement('strong');
-    title.textContent = source.dataset.npc || 'Nieznany NPC';
-    tooltip.appendChild(title);
+    const head = document.createElement('div'); head.className = 'vl-head';
+    if (source.dataset.icon) { const icon = document.createElement('img'); icon.className = 'vl-icon'; icon.src = source.dataset.icon; icon.alt = ''; head.appendChild(icon); }
+    const headText = document.createElement('div'); headText.className = 'vl-head-text';
+    const name = document.createElement('div'); name.className = 'vl-name'; name.textContent = source.dataset.item || 'Nieznany przedmiot'; headText.appendChild(name);
+    const subtitle = document.createElement('div'); subtitle.className = 'vl-subtitle';
+    subtitle.textContent = `${source.dataset.rarityLabel || 'Przedmiot'}${source.dataset.type ? ' · ' + source.dataset.type : ''}`;
+    headText.appendChild(subtitle); head.appendChild(headText); tooltip.appendChild(head);
+    const divider = document.createElement('div'); divider.className = 'vl-rarity-line'; tooltip.appendChild(divider);
 
-    const playerLine = document.createElement('div');
-    playerLine.textContent =
-      `Zdobył: ${source.dataset.player || 'Nieznany gracz'}`;
-    tooltip.appendChild(playerLine);
+    const stats = safeParseStats(source.dataset.stats || '[]');
+    const statsBox = document.createElement('div'); statsBox.className = 'vl-tip-stats';
+    if (stats.length) {
+      for (const stat of stats) {
+        const line = document.createElement('div'); line.className = 'vl-tip-stat';
+        const split = String(stat).match(/^([^:]+):\s*(.*)$/);
+        if (split) { line.append(document.createTextNode(split[1] + ' ')); const value = document.createElement('span'); value.className = 'vl-value'; value.textContent = split[2]; line.appendChild(value); }
+        else line.textContent = stat;
+        statsBox.appendChild(line);
+      }
+    } else { statsBox.textContent = 'Brak statystyk w danych Lootlog dla tego przedmiotu.'; }
+    tooltip.appendChild(statsBox);
 
-    const itemLine = document.createElement('div');
-    itemLine.className = 'vl-tip-item';
-    itemLine.textContent = source.dataset.item || 'Nieznany przedmiot';
-    tooltip.appendChild(itemLine);
+    const specialBonuses = safeParseStats(source.dataset.specialBonuses || '[]');
+    for (const bonus of specialBonuses) {
+      const special = document.createElement('div'); special.className = 'vl-special-bonus';
+      const specialTitle = document.createElement('strong'); specialTitle.textContent = bonus.title || 'Bonus legendarny';
+      special.appendChild(specialTitle);
+      if (bonus.text) special.appendChild(document.createTextNode(bonus.text));
+      tooltip.appendChild(special);
+    }
+    if (source.dataset.description) {
+      const desc = document.createElement('div');
+      desc.className = 'vl-description';
+      desc.textContent = source.dataset.description;
+      tooltip.appendChild(desc);
+    }
+    if (source.dataset.availability) {
+      const availability = document.createElement('div');
+      availability.className = 'vl-meta-note';
+      availability.textContent = `Ostatnio dostępny podczas:\n${source.dataset.availability}`;
+      tooltip.appendChild(availability);
+    }
+    if (source.dataset.binding) {
+      const binding = document.createElement('div');
+      binding.className = 'vl-meta-note';
+      binding.textContent = source.dataset.binding;
+      tooltip.appendChild(binding);
+    }
+    const req = [];
+    if (source.dataset.profession) req.push(`Wymagana profesja: ${source.dataset.profession}`);
+    if (source.dataset.level) req.push(`Wymagany poziom: ${source.dataset.level}`);
+    if (req.length) { const box = document.createElement('div'); box.className = 'vl-requirements'; box.textContent = req.join('\n'); tooltip.appendChild(box); }
+    const context = document.createElement('div'); context.className = 'vl-context';
+    context.textContent = `${source.dataset.npc || 'Nieznany NPC'} · Zdobył: ${source.dataset.player || 'Nieznany gracz'}`;
+    tooltip.appendChild(context);
 
-    tooltip.style.display = 'block';
-    tooltip.style.visibility = 'hidden';
-    tooltip.style.left = '0px';
-    tooltip.style.top = '0px';
-
-    const itemRect = tile.getBoundingClientRect();
-    const tipRect = tooltip.getBoundingClientRect();
-
+    tooltip.style.display = 'block'; tooltip.style.visibility = 'hidden'; tooltip.style.left = '0px'; tooltip.style.top = '0px';
+    const itemRect = tile.getBoundingClientRect(); const tipRect = tooltip.getBoundingClientRect();
     let left = itemRect.right + 8;
+    if (left + tipRect.width > window.innerWidth - 8) left = itemRect.left - tipRect.width - 8;
+    left = Math.max(8, Math.min(left, window.innerWidth - tipRect.width - 8));
+    let top = itemRect.top; top = Math.max(8, Math.min(top, window.innerHeight - tipRect.height - 8));
+    tooltip.style.left = `${left}px`; tooltip.style.top = `${top}px`; tooltip.style.visibility = 'visible';
+  }
 
-    if (left + tipRect.width > window.innerWidth - 8) {
-      left = itemRect.left - tipRect.width - 8;
+  function safeParseStats(value) {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // Tłumaczenia nazw pól i typów spotykanych w odpowiedziach Lootloga.
+  function translateLootLabel(value) {
+    const raw = String(value ?? '').trim();
+    const key = raw.toLowerCase().replace(/[ _-]+/g, '');
+    const translations = {
+      helmet:'Hełm', helmety:'Hełm', helm:'Hełm', weapon:'Broń', onehanded:'Broń jednoręczna',
+      onehandweapon:'Broń jednoręczna', one_hand_weapon:'Broń jednoręczna', oneandhalfhandweapon:'Broń półtoraręczna', onehandhandweapon:'Broń półtoraręczna', onehalfhandweapon:'Broń półtoraręczna', twohandweapon:'Broń dwuręczna', two_hand_weapon:'Broń dwuręczna', distanceweapon:'Broń dystansowa', distance_weapon:'Broń dystansowa', rangedweapon:'Broń dystansowa',
+      meleeweapon:'Broń do walki wręcz', offhand:'Broń pomocnicza',
+      boots:'Buty', belt:'Pas', necklace:'Naszyjnik', earrings:'Kolczyki', bracelet:'Bransoleta', quiver:'Strzały', arrows:'Strzały', arrow:'Strzała', talisman:'Talizman',
+      twohanded:'Broń dwuręczna', bow:'Łuk', wand:'Różdżka', armor:'Zbroja', chest:'Zbroja',
+      onehand:'Broń jednoręczna', distance:'Broń dystansowa', distanceweapon:'Broń dystansowa',
+      gloves:'Rękawice', boots:'Buty', ring:'Pierścień', amulet:'Naszyjnik', shield:'Tarcza',
+      legendary:'Legendarny', heroic:'Heroiczny', mage:'Mag', warrior:'Wojownik', paladin:'Paladyn',
+      tracker:'Tropiciel', hunter:'Łowca', 'blade dancer':'Tancerz ostrzy', bladedancer:'Tancerz ostrzy',
+      m:'Mag', w:'Wojownik', p:'Paladyn', t:'Tropiciel', h:'Łowca', b:'Tancerz ostrzy',
+      cleanse:'Oczyszczenie', fire:'Ogień', frost:'Zimno', lightning:'Błyskawice', dark:'Mrok',
+      poison:'Trucizna', cold:'Zimno', physical:'Fizyczne', magical:'Magiczne',
+      boots:'Buty', belt:'Pas', necklace:'Naszyjnik', earrings:'Kolczyki',
+      warrior:'Wojownik', mage:'Mag', paladin:'Paladyn', tracker:'Tropiciel', hunter:'Łowca',
+      'blade dancer':'Tancerz ostrzy', bladedancer:'Tancerz ostrzy',
+      strength:'Siła', agility:'Zręczność', intelligence:'Intelekt', energy:'Energia', mana:'Mana',
+      life:'Życie', speed:'Szybkość', critical:'Krytyczny', resistance:'Odporność', armorpenetration:'Przebicie pancerza',
+      allstats:'Wszystkie cechy', da:'Wszystkie cechy', slow:'Spowolnienie ataku przeciwnika', physicaldamage:'Obrażenia fizyczne', magicdamage:'Obrażenia magiczne', damage:'Obrażenia fizyczne', attackdamage:'Obrażenia fizyczne',
+      da:'Wszystkie cechy', dmg:'Obrażenia fizyczne', mindmg:'Minimalne obrażenia fizyczne', maxdmg:'Maksymalne obrażenia fizyczne',
+      onehandweapon:'Broń jednoręczna', distanceweapon:'Broń dystansowa',
+      firedamage:'Obrażenia od ognia', colddamage:'Obrażenia od zimna', lightningdamage:'Obrażenia od błyskawic',
+      requiredlevel:'Wymagany poziom', requiredprofession:'Wymagana profesja', profession:'Profesja',
+      criticalchance:'Szansa na cios krytyczny', criticaldamage:'Moc ciosu krytycznego',
+      armorclass:'Pancerz', absorbphysical:'Absorpcja obrażeń fizycznych', absorbmagic:'Absorpcja obrażeń magicznych'
+    };
+    return translations[key] || raw;
+  }
+
+  // Lootlog API versions may expose item parameters under different keys.
+  // Only display fields present on the item object; never invent values.
+  function formatAttackSpeed(value) {
+    const n = Number(String(value).replace(',', '.'));
+    if (!Number.isFinite(n)) return value;
+    return (n / 100).toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+  }
+
+  function formatDamageRange(value) {
+    const parts = String(value).split(',').map(part => part.trim());
+    if (parts.length === 2 && parts.every(part => /^\d+(?:\.\d+)?$/.test(part))) {
+      return `${Number(parts[0]).toLocaleString('pl-PL')} - ${Number(parts[1]).toLocaleString('pl-PL')}`;
+    }
+    return value;
+  }
+
+  function extractItemStats(item) {
+    if (!item || typeof item !== 'object') return [];
+    const result = [];
+    const seenLines = new Set();
+    const raw = [item.stat, item.stats, item.statistics, item.attributes]
+      .filter(value => typeof value === 'string')
+      .join(';');
+
+    const numberPL = value => {
+      const n = Number(String(value).trim().replace(',', '.'));
+      return Number.isFinite(n) ? n.toLocaleString('pl-PL') : String(value).trim();
+    };
+    const speedPL = value => {
+      const n = Number(String(value).trim().replace(',', '.'));
+      return Number.isFinite(n) ? (n / 100).toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : String(value).trim();
+    };
+    const add = line => {
+      if (line && !seenLines.has(line) && result.length < 40) {
+        seenLines.add(line);
+        result.push(line);
+      }
+    };
+    const profNames = { p:'Paladyn', w:'Wojownik', h:'Łowca', m:'Mag', b:'Tancerz ostrzy', t:'Tropiciel' };
+    const labels = {
+      ac: v => `Pancerz: ${numberPL(v)}`,
+      dmg: v => `Obrażenia fizyczne: ${String(v).split(',').map(numberPL).join(' - ')}`,
+      act: v => `Odporność na truciznę: ${numberPL(v)}%`,
+      resfire: v => `Odporność na ogień: ${numberPL(v)}%`,
+      resfrost: v => `Odporność na zimno: ${numberPL(v)}%`,
+      reslight: v => `Odporność na błyskawice: ${numberPL(v)}%`,
+      fire: v => `Obrażenia od ognia: +${numberPL(v)}`,
+      light: v => `Obrażenia od błyskawic: +${numberPL(v)}`,
+      poison: v => `Obrażenia od trucizny: +${numberPL(v)}`,
+      absorb: v => `Absorbuje do ${numberPL(v)} obrażeń fizycznych`,
+      absorbm: v => `Absorbuje do ${numberPL(v)} obrażeń magicznych`,
+      acdmg: v => `Niszczy ${numberPL(v)} punktów pancerza podczas ciosu`,
+      abdest: v => `Niszczy ${numberPL(v)} absorpcji przed atakiem`,
+      adest: v => `Obniża właścicielowi ${numberPL(v)} punktów przywracania życia podczas walki`,
+      afterheal: v => `Szansa na wyleczenie po walce: ${numberPL(v)}%`,
+      blok: v => `Blok: +${numberPL(v)}`,
+      contra: v => `+${numberPL(v)}% szans na kontratak po ciosie krytycznym`,
+      crit: v => `Cios krytyczny: +${numberPL(v)}%`,
+      critmval: v => `Moc ciosu krytycznego magicznego: +${numberPL(v)}%`,
+      critval: v => `Moc ciosu krytycznego fizycznego: +${numberPL(v)}%`,
+      da: v => `Wszystkie cechy: +${numberPL(v)}`,
+      di: v => `Intelekt: +${numberPL(v)}`,
+      ds: v => `Siła: +${numberPL(v)}`,
+      dz: v => `Zręczność: +${numberPL(v)}`,
+      dmgmul: v => `Wszystkie obrażenia: ${numberPL(v)}%`,
+      dmgmulabsolute: v => `Obrażenia nieuchronne: ${numberPL(v)}%`,
+      dmgmulfire: v => `Obrażenia od ognia: ${numberPL(v)}%`,
+      dmgmulfrost: v => `Obrażenia od zimna: ${numberPL(v)}%`,
+      dmgmullight: v => `Obrażenia od błyskawic: ${numberPL(v)}%`,
+      dmgmulphysical: v => `Obrażenia fizyczne: ${numberPL(v)}%`,
+      dmgmulpoison: v => `Obrażenia od trucizny: ${numberPL(v)}%`,
+      dmgmulwound: v => `Obrażenia od głębokiej rany: ${numberPL(v)}%`,
+      energybon: v => `Energia: +${numberPL(v)}`,
+      endest: v => `Podczas obrony niszczy ${numberPL(v)} energii`,
+      evade: v => `Unik: +${numberPL(v)}`,
+      heal: v => `Przywraca ${numberPL(v)} punktów życia podczas walki`,
+      hp: v => `Życie: +${numberPL(v)}`,
+      hpbon: v => `Życie: +${numberPL(v)} za 1 pkt siły`,
+      lowcrit: v => `Podczas obrony szansa na cios krytyczny przeciwnika jest mniejsza o ${numberPL(v)} punktów procentowych`,
+      lowevade: v => `Podczas ataku unik przeciwnika jest mniejszy o ${numberPL(v)}`,
+      manabon: v => `Mana: +${numberPL(v)}`,
+      manadest: v => `Podczas obrony niszczy ${numberPL(v)} many`,
+      pierce: v => `Przebicie pancerza: +${numberPL(v)}%`,
+      pierceb: v => `Szansa na zablokowanie przebicia: ${numberPL(v)}%`,
+      resdmg: v => `Niszczenie odporności magicznych o ${numberPL(v)}% podczas ciosu`,
+      respred: v => `Przyśpiesza wracanie do siebie o ${numberPL(v)}%`,
+      sa: v => `Szybkość ataku: +${speedPL(v)}`,
+      slow: v => `Zmniejsza o ${speedPL(v)} szybkość ataku celu`,
+      wound: v => `Głęboka rana: ${numberPL(v)}% szans na dodatkowe obrażenia`,
+      reqp: v => `Wymagana profesja: ${String(v).split(',').map(p => profNames[p.trim().toLowerCase()] || normalizeProfession(p)).join(', ')}`,
+      prof: v => `Wymagana profesja: ${String(v).split(',').map(p => profNames[p.trim().toLowerCase()] || normalizeProfession(p)).join(', ')}`
+    };
+
+    // Lootlog używa kluczy statystyk z gry. Zachowujemy ich semantykę i kolejność.
+    if (raw) {
+      for (const part of raw.split(/[;|]/)) {
+        const match = part.trim().match(/^([a-zA-Z_]+)\s*=\s*(.*?)\s*$/);
+        if (!match) continue;
+        const key = match[1].toLowerCase();
+        const value = match[2];
+        if (!value || /^(binds?|etiquette|legbon|lvl|rarity|reqp|prof|type|id|hid|cleanse)$/i.test(key)) continue;
+        if (key === 'frost' || key === 'poison') {
+          const pair = value.split(',').map(v => v.trim());
+          if (pair.length === 2 && pair.every(v => /^-?\d+(?:\.\d+)?$/.test(v))) {
+            add(key === 'frost'
+              ? `Zmniejsza o ${speedPL(pair[0])} szybkość ataku celu`
+              : `Spowalnia cel o ${speedPL(pair[0])}`);
+            add(key === 'frost'
+              ? `Obrażenia od zimna: +${numberPL(pair[1])}`
+              : `Obrażenia od trucizny: +${numberPL(pair[1])}`);
+            continue;
+          }
+        }
+        if (key === 'dmg') {
+          add(labels.dmg(value));
+          continue;
+        }
+        if (labels[key]) add(labels[key](value));
+      }
     }
 
-    left = Math.max(8, Math.min(left, window.innerWidth - tipRect.width - 8));
+    // Dane z API bywają także przekazywane jako obiekt/lista statystyk.
+    const containers = [item.stats, item.statistics, item.attributes, item.parameters];
+    for (const container of containers) {
+      if (!container || typeof container !== 'object') continue;
+      const entries = Array.isArray(container) ? container : Object.entries(container).map(([key, value]) => ({ key, value }));
+      for (const entry of entries) {
+        if (!entry || typeof entry !== 'object') continue;
+        const key = String(entry.key ?? entry.code ?? entry.stat ?? entry.name ?? '').toLowerCase();
+        const value = entry.value ?? entry.amount ?? entry.total;
+        if (labels[key] && value != null) add(labels[key](String(value)));
+      }
+    }
+    // Lootlog pokazuje zakres obrażeń fizycznych na początku sekcji statystyk,
+    // niezależnie od kolejności pól w surowym ciągu stat.
+    const physicalDamageIndex = result.findIndex(line => /^Obrażenia fizyczne:\s*\d/.test(line));
+    if (physicalDamageIndex > 0) {
+      const [physicalDamage] = result.splice(physicalDamageIndex, 1);
+      result.unshift(physicalDamage);
+    }
+    return result;
+  }
 
-    let top = itemRect.top;
-    top = Math.max(8, Math.min(top, window.innerHeight - tipRect.height - 8));
+  // Zbieramy bonusy legendarne z różnych wariantów struktury API.
+  // Znane kody mają pełny polski opis; nieznane pokazujemy jako polską nazwę kodu,
+  // zamiast pomijać bonus lub wyświetlać surowy angielski identyfikator.
+  function extractSpecialBonuses(item) {
+    if (!item || typeof item !== 'object') return [];
+    const known = {
+      cleanse: { title: 'Płomienne oczyszczenie', text: 'Podczas otrzymywania celnego ataku 12% szans na usunięcie z postaci efektów obezwładnienia, spowolnienia i obrażeń warunkowych.' },
+      holytouch: { title: 'Dotyk anioła', text: 'Podczas ataku 7% szansy na regenerację 6% życia przez trzy najbliższe tury.' },
+      lastheal: { title: 'Ostatni ratunek', text: 'Jednorazowe zregenerowanie znacznej ilości punktów życia, gdy po otrzymaniu obrażeń życie spadnie poniżej 18%.' },
+      verycrit: { title: 'Cios bardzo krytyczny', text: '17% szansy na zwiększenie mocy ciosu krytycznego o 75%.' },
+      anguish: { title: 'Krwawa udręka', text: 'Trafiony atak ma 8% szansy na wywołanie u przeciwnika krwawienia na pięć tur.' },
+      glare: { title: 'Oślepienie', text: 'Podczas przyjmowania ataku 9% szansy na oślepienie przeciwnika i zablokowanie jego najbliższej akcji.' },
+      puncture: { title: 'Przeszywająca skuteczność', text: 'Cel ataku ma obniżone o 12% zdolności defensywne.' },
+      facade: { title: 'Fasada opieki', text: 'Przyjmowane ciosy są o 13% słabsze.' },
+      carefacade: { title: 'Fasada opieki', text: 'Przyjmowane ciosy są o 13% słabsze.' },
+      fasadaopieki: { title: 'Fasada opieki', text: 'Przyjmowane ciosy są o 13% słabsze.' },
+      facadeofcare: { title: 'Fasada opieki', text: 'Przyjmowane ciosy są o 13% słabsze.' },
+      piercingeffectiveness: { title: 'Przeszywająca skuteczność', text: 'Cel ataku ma obniżone o 12% zdolności defensywne.' },
+      przeszywajacaskutecznosc: { title: 'Przeszywająca skuteczność', text: 'Cel ataku ma obniżone o 12% zdolności defensywne.' },
+      blinding: { title: 'Oślepienie', text: 'Podczas przyjmowania ataku 9% szansy na oślepienie przeciwnika i zablokowanie jego najbliższej akcji.' },
+      blind: { title: 'Oślepienie', text: 'Podczas przyjmowania ataku 9% szansy na oślepienie przeciwnika i zablokowanie jego najbliższej akcji.' },
+      oslepienie: { title: 'Oślepienie', text: 'Podczas przyjmowania ataku 9% szansy na oślepienie przeciwnika i zablokowanie jego najbliższej akcji.' },
+      angelstouch: { title: 'Dotyk anioła', text: 'Podczas ataku 7% szansy na regenerację 6% życia przez trzy najbliższe tury.' },
+      dotykaniola: { title: 'Dotyk anioła', text: 'Podczas ataku 7% szansy na regenerację 6% życia przez trzy najbliższe tury.' },
+      curse: { title: 'Klątwa', text: 'Podczas udanego ataku 9% szans na aktywację klątwy, która zablokuje najbliższą wykonywaną przez przeciwnika akcję.' },
+      klatwa: { title: 'Klątwa', text: 'Podczas udanego ataku 9% szans na aktywację klątwy, która zablokuje najbliższą wykonywaną przez przeciwnika akcję.' },
+      lastresort: { title: 'Ostatni ratunek', text: 'Jednorazowe zregenerowanie znacznej ilości punktów życia, gdy po otrzymaniu obrażeń życie spadnie poniżej 18%.' },
+      ostatniratunek: { title: 'Ostatni ratunek', text: 'Jednorazowe zregenerowanie znacznej ilości punktów życia, gdy po otrzymaniu obrażeń życie spadnie poniżej 18%.' },
+      verycriticalhit: { title: 'Cios bardzo krytyczny', text: '17% szansy na zwiększenie mocy ciosu krytycznego o 75%.' },
+      ciosbardzokrytyczny: { title: 'Cios bardzo krytyczny', text: '17% szansy na zwiększenie mocy ciosu krytycznego o 75%.' },
+      bloodtorment: { title: 'Krwawa udręka', text: 'Trafiony atak ma 8% szansy na wywołanie u przeciwnika krwawienia na pięć tur.' },
+      critshield: { title: 'Krytyczna osłona', text: '' },
+      frenzy: { title: 'Eskalacja szału', text: '' },
+      retaliation: { title: 'Aura odwetu', text: '' },
+      krwawaudreka: { title: 'Krwawa udręka', text: 'Trafiony atak ma 8% szansy na wywołanie u przeciwnika krwawienia na pięć tur.' }
+    };
+    const codeNames = {
+      cleanse:'Oczyszczenie', vampirism:'Wampiryzm', lifesteal:'Kradzież życia', manasteal:'Kradzież many',
+      poison:'Zatrucie', burn:'Podpalenie', burning:'Podpalenie', freeze:'Zamrożenie', stun:'Ogłuszenie',
+      slow:'Spowolnienie', silence:'Wyciszenie', bleed:'Krwawienie', reflect:'Odbicie obrażeń',
+      execute:'Dobijanie', weaken:'Osłabienie', armorbreak:'Przebicie pancerza', penetration:'Przebicie odporności',
+      critical:'Cios krytyczny', crit:'Cios krytyczny', dodge:'Unik', block:'Blok', shield:'Tarcza',
+      fire:'Ogień', frost:'Zimno', lightning:'Błyskawice', dark:'Mrok',
+      care:'Opieka', facade:'Fasada', piercing:'Przeszywający', effectiveness:'Skuteczność',
+      angel:'Anioł', touch:'Dotyk', last:'Ostatni', resort:'Ratunek', very:'Bardzo',
+      blood:'Krwawy', torment:'Udręka', blinding:'Oślepienie',
+      holytouch:'Dotyk anioła', lastheal:'Ostatni ratunek', verycrit:'Cios bardzo krytyczny',
+      anguish:'Krwawa udręka', critshield:'Krytyczna osłona', frenzy:'Eskalacja szału',
+      glare:'Oślepienie', puncture:'Przeszywająca skuteczność', retaliation:'Aura odwetu', facade:'Fasada opieki'
+    };
+    const candidates = [];
+    const seen = new Set();
+    const add = value => {
+      if (value == null) return;
+      if (typeof value === 'object') {
+        const code = value.code ?? value.key ?? value.id ?? value.name ?? value.value ?? value.bonus;
+        const title = value.title ?? value.label ?? value.displayName ?? value.name;
+        const text = value.description ?? value.desc ?? value.text ?? value.effect ?? value.tooltip;
+        if (code != null) candidates.push({ code: String(code), title, text });
+        else if (text || title) candidates.push({ code: '', title, text });
+      } else {
+        const str = String(value).trim();
+        if (str) candidates.push({ code: str, title: '', text: '' });
+      }
+    };
+    function scan(value, depth = 0) {
+      if (value == null || depth > 6) return;
+      if (typeof value === 'string') {
+        const re = /(?:^|[;|,\s])(?:legbon|legendaryBonus|legendaryBonuses|legendary_bonus|legendary_bonuses|specialBonus|specialBonuses|special_bonus|bonusCode|bonus_code|legendaryEffect|legendary_effect)\s*(?:[=:]\s*|\s+)([a-z0-9_-]+)/ig;
+        let m; while ((m = re.exec(value))) add(m[1]);
+        return;
+      }
+      if (typeof value !== 'object' || seen.has(value)) return;
+      seen.add(value);
+      if (Array.isArray(value)) { value.forEach(v => scan(v, depth + 1)); return; }
+      for (const [key, child] of Object.entries(value)) {
+        if (/^(legbon|legendaryBonus|legendaryBonuses|legendary_bonus|legendary_bonuses|specialBonus|specialBonuses|special_bonus|bonusCode|bonus_code|legendaryEffect|legendary_effect)$/i.test(key)) {
+          if (Array.isArray(child)) child.forEach(add); else add(child);
+        }
+        scan(child, depth + 1);
+      }
+    }
+    scan(item);
+    const out = [];
+    const used = new Set();
+    for (const candidate of candidates) {
+      const code = String(candidate.code || '').trim().toLowerCase().replace(/^legbon[=: ]*/,'').replace(/[\s_-]+/g, '');
+      const titleKey = String(candidate.title || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+      const id = code || titleKey || String(candidate.text || '');
+      if (!id || used.has(id)) continue;
+      used.add(id);
+      if (known[code] || known[titleKey]) {
+        const matched = known[code] || known[titleKey];
+        // Nie dopisujemy opisu, którego nie ma w danych ani w słowniku.
+        out.push({ title: matched.title, text: matched.text || candidate.text || '' });
+      }
+      else if (candidate.text) out.push({ title: translateLootLabel(candidate.title || 'Bonus legendarny'), text: String(candidate.text) });
+      else {
+        const pretty = code.split(/[_-]+/).filter(Boolean).map(part => codeNames[part] || translateLootLabel(part)).join(' ');
+        out.push({ title: 'Bonus legendarny', text: pretty || translateLootLabel(candidate.title || code) });
+      }
+    }
+    return out;
+  }
 
-    tooltip.style.left = `${left}px`;
-    tooltip.style.top = `${top}px`;
-    tooltip.style.visibility = 'visible';
+  function getItemProfession(item) {
+    const direct = item?.professionName ?? item?.profession ?? item?.requiredProfession ?? item?.required_profession ?? item?.reqp ?? item?.prof;
+    if (direct != null && String(direct).trim()) return normalizeProfession(direct);
+    const rawStats = [item?.stat, item?.stats, item?.statistics].filter(value => typeof value === 'string').join(';');
+    const match = rawStats.match(/(?:^|[;|\s])(?:prof|reqp)\s*[=:]?\s*([a-z ]+?)(?=\s*(?:[;|]|$))/i);
+    return match ? normalizeProfession(match[1]) : '';
+  }
+
+  function normalizeProfession(value) {
+    const names = {
+      mage: 'Mag', m: 'Mag',
+      paladin: 'Paladyn', p: 'Paladyn',
+      tracker: 'Tropiciel', t: 'Tropiciel',
+      hunter: 'Łowca', h: 'Łowca',
+      warrior: 'Wojownik', w: 'Wojownik',
+      'blade dancer': 'Tancerz ostrzy', bladedancer: 'Tancerz ostrzy', b: 'Tancerz ostrzy'
+    };
+    const rawValue = String(value ?? '').trim();
+    const compact = rawValue.toLowerCase().replace(/[\s,_;|/+-]+/g, '');
+    // Skróty wymagań profesji używane przez Lootlog/Margonem.
+    const professionGroups = {
+      mt: 'Mag, Tropiciel',
+      pt: 'Paladyn, Tropiciel',
+      mpt: 'Mag, Paladyn, Tropiciel',
+      ht: 'Łowca, Tropiciel',
+      mp: 'Mag, Paladyn',
+      bhw: 'Tancerz ostrzy, Łowca, Wojownik'
+    };
+    if (professionGroups[compact]) return professionGroups[compact];
+
+    return rawValue.split(/[,;|/]+/).map(part => {
+      const raw = part.trim();
+      const key = raw.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
+      return names[key] || translateLootLabel(raw);
+    }).filter(Boolean).join(', ');
+  }
+
+  // Wczytuje pełne teksty opisowe także z zagnieżdżonych struktur katalogu Lootloga.
+  // Nie tworzymy treści na podstawie zgadywanych wartości — pokazujemy tylko dane z API.
+  function findItemText(item, keys, depth = 0, seen = new Set()) {
+    if (!item || typeof item !== 'object' || depth > 4 || seen.has(item)) return '';
+    seen.add(item);
+    const wanted = new Set(keys.map(key => key.toLowerCase()));
+    for (const [key, value] of Object.entries(item)) {
+      if (wanted.has(key.toLowerCase()) && (typeof value === 'string' || typeof value === 'number')) {
+        const text = String(value).trim();
+        if (text) return text;
+      }
+    }
+    for (const value of Object.values(item)) {
+      if (value && typeof value === 'object') {
+        const found = findItemText(value, keys, depth + 1, seen);
+        if (found) return found;
+      }
+    }
+    return '';
+  }
+
+  function cleanItemDescription(value) {
+    return String(value || '')
+      .replace(/<br\s*\/?\s*>/gi, '\n')
+      .replace(/\[br\]/gi, '\n')
+      .replace(/<\/p\s*>/gi, '\n\n')
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .replace(/\r/g, '')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   }
 
   function makeTile(entry) {
     const loot = entry.loot;
-    const item = entry.item || getItem(loot);
+    const rawItem = entry.item || getItem(loot);
+    const catalogItem = entry.catalogItem || {};
+    const item = { ...catalogItem, ...rawItem };
+    // Catalog provides canonical item stats/bonus metadata; the loot's own stat
+    // takes precedence when it contains instance-specific values.
+    if (rawItem.stat == null && catalogItem.stat != null) item.stat = catalogItem.stat;
+    if (rawItem.stats == null && catalogItem.stats != null) item.stats = catalogItem.stats;
+    if (rawItem.legendaryBonuses == null && catalogItem.legendaryBonuses != null) item.legendaryBonuses = catalogItem.legendaryBonuses;
+    if (rawItem.description == null && catalogItem.description != null) item.description = catalogItem.description;
     const npc = getNpc(loot);
     const player = getPlayer(loot, item);
 
@@ -5878,6 +6234,34 @@ if (location.hostname === 'riventia.margonem.pl') {
     tipSource.dataset.npc = `${npc.name} - lvl ${npc.level}`;
     tipSource.dataset.player = player;
     tipSource.dataset.item = item?.name || 'Nieznany przedmiot';
+    tipSource.dataset.stats = JSON.stringify(extractItemStats(item));
+    tipSource.dataset.rarity = entry.rarity;
+    tipSource.dataset.rarityLabel = entry.rarity === 'legendary' ? 'Legendarny' : 'Heroiczny';
+    tipSource.dataset.type = translateLootLabel(item?.typeName || item?.itemType || item?.category || item?.type || '');
+    tipSource.dataset.icon = iconCandidates(item)[0] || '';
+    tipSource.dataset.description = cleanItemDescription(findItemText(item, [
+      'description', 'desc', 'opis', 'flavorText', 'flavor_text', 'lore',
+      'loreText', 'lore_text', 'story', 'itemDescription', 'item_description',
+      'longDescription', 'long_description', 'textDescription', 'text_description'
+    ]));
+    tipSource.dataset.availability = cleanItemDescription(findItemText(item, [
+      'lastAvailable', 'last_available', 'lastSeen', 'last_seen',
+      'availableDuring', 'available_during', 'availability', 'eventName',
+      'event_name', 'lastEvent', 'last_event'
+    ]));
+    const statText = typeof item?.stat === 'string' ? item.stat : '';
+    const bindingText = cleanItemDescription(findItemText(item, [
+      'bindingText', 'binding_text', 'bindText', 'bind_text', 'bindingDescription',
+      'binding_description', 'bindDescription', 'bind_description'
+    ]));
+    const hasBindFlag = /(?:^|[;|])\s*binds?\s*(?:=\s*(?:1|true|yes))?\s*(?=[;|]|$)/i.test(statText);
+    tipSource.dataset.binding = bindingText || (hasBindFlag ? 'Wiąże po założeniu' : '');
+    tipSource.dataset.specialBonuses = JSON.stringify(entry.rarity === 'legendary' ? extractSpecialBonuses(item) : []);
+    const statReqp = statText.match(/(?:^|[;|])(?:reqp|prof)=([^;|]+)/i)?.[1] || '';
+    const statLevel = statText.match(/(?:^|[;|])(?:lvl|level)=([^;|]+)/i)?.[1] || '';
+    const rawProfession = item?.professionName || item?.profession || item?.reqp || item?.requiredProfession || statReqp;
+    tipSource.dataset.profession = normalizeProfession(rawProfession);
+    tipSource.dataset.level = item?.requiredLevel ?? item?.required_level ?? item?.req ?? item?.levelRequirement ?? statLevel;
     tile.appendChild(tipSource);
 
     tile.addEventListener('mouseenter', () => showTooltip(tile));
@@ -6023,7 +6407,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
-  function render(loots, saveCache = true) {
+  async function render(loots) {
     // Sortujemy po czasie utworzenia wpisu Lootlog, a nie po kolejności odpowiedzi API.
     const sorted = [...loots].sort((a, b) => lootTimestamp(b) - lootTimestamp(a));
 
@@ -6076,30 +6460,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     // Heroiki po lewej, a 5 najnowszych legend po prawej.
     const chosen = [...newestHeroic, ...newestLegendary];
 
-    if (saveCache && chosen.length) {
-      const cacheRows = chosen.map(({ loot, item }) => ({
-        id: loot?.id,
-        uniqueId: loot?.uniqueId,
-        createdAt: loot?.createdAt,
-        created_at: loot?.created_at,
-        date: loot?.date,
-        timestamp: loot?.timestamp,
-        npcs: loot?.npcs,
-        npc: loot?.npc,
-        players: loot?.players,
-        player: loot?.player,
-        lootShare: loot?.lootShare,
-        loot_share: loot?.loot_share,
-        item,
-        items: [item]
-      }));
-      try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ savedAt: Date.now(), loots: cacheRows }));
-      } catch (error) {
-        console.debug('[Loot Bar] Nie udało się zapisać cache:', error);
-      }
-    }
-
     if (!chosen.length) {
       const empty = document.createElement('div');
       empty.className = 'vl-empty';
@@ -6108,86 +6468,86 @@ if (location.hostname === 'riventia.margonem.pl') {
       return;
     }
 
+    // Wzbogacamy kafelki danymi katalogowymi. Błąd katalogu nie blokuje belki:
+    // w takim przypadku zostają dane zapisane bezpośrednio w łupie.
+    try {
+      await enrichEntriesFromCatalog(chosen);
+    } catch (catalogError) {
+      console.warn('[Loot Bar] Katalog przedmiotów Lootloga niedostępny:', catalogError);
+    }
     chosen.forEach(entry => itemsBox.appendChild(makeTile(entry)));
   }
 
+  function getCatalogItems(data) {
+    if (Array.isArray(data)) return data;
+    for (const key of ['items', 'data', 'results']) {
+      if (Array.isArray(data?.[key])) return data[key];
+      if (Array.isArray(data?.[key]?.items)) return data[key].items;
+    }
+    return [];
+  }
+
+  async function enrichEntriesFromCatalog(entries) {
+    const ids = [...new Set(entries.map(entry => Number(entry.item?.id ?? entry.item?.itemId ?? entry.item?.templateId)).filter(id => Number.isInteger(id) && id > 0))];
+    if (!ids.length) return;
+    const params = new URLSearchParams();
+    for (const id of ids) params.append('ids', String(id));
+    params.set('gameVersion', 'pl');
+    params.set('limit', '96');
+    const catalogData = await fetchJson(`${ITEM_CATALOG_API}?${params.toString()}`);
+    const catalogItems = getCatalogItems(catalogData);
+    const byId = new Map(catalogItems.map(item => [String(item.id), item]));
+    const byName = new Map(catalogItems.filter(item => item.name).map(item => [String(item.name).trim().toLowerCase(), item]));
+    for (const entry of entries) {
+      const item = entry.item || {};
+      const match = byId.get(String(item.id ?? item.itemId ?? item.templateId)) || byName.get(String(item.name || '').trim().toLowerCase());
+      if (match) entry.catalogItem = match;
+    }
+    console.debug('[Loot Bar] Katalog Lootloga:', catalogItems.length, 'pozycji dla', ids.length, 'ID');
+  }
+
   async function loadLoots() {
-    if (busy || !canRefreshLootBar()) return;
+    if (busy || !lootbarEnabled || window.__vicknessShouldPauseAddons?.()) return;
     busy = true;
-    const runEpoch = refreshEpoch;
 
     try {
-      // Oba zapytania do Lootloga są zewnętrzne; nie korzystają z komunikacji gry.
-      const recentPromise = fetchJson(API);
-      const legendaryPromise = fetchJson(LEGENDARY_API)
-        .then(getLoots)
-        .catch(error => {
-          if (runEpoch === refreshEpoch && canRefreshLootBar()) {
-            console.warn('[Loot Bar] Osobne pobieranie legend nie powiodło się:', error);
-          }
-          return [];
-        });
-
-      const data = await recentPromise;
+      const data = await fetchJson(API);
       const recentLoots = getLoots(data);
-      if (runEpoch !== refreshEpoch || !canRefreshLootBar()) return;
-      render(recentLoots);
+      let legendaryLoots = [];
 
-      const legendaryLoots = await legendaryPromise;
-      if (runEpoch !== refreshEpoch || !canRefreshLootBar()) return;
+      // Pobieramy też osobno legendy, aby dotrzeć do nich poza pierwszymi
+      // 100 najnowszymi łupami. Jeśli filtr nie jest obsługiwany, zachowujemy
+      // działanie podstawowego źródła zamiast wyłączać cały pasek.
+      try {
+        const legendaryData = await fetchJson(LEGENDARY_API);
+        legendaryLoots = getLoots(legendaryData);
+      } catch (legendaryError) {
+        console.warn('[Loot Bar] Osobne pobieranie legend nie powiodło się:', legendaryError);
+      }
 
       const byId = new Map();
       for (const loot of [...recentLoots, ...legendaryLoots]) {
         const key = loot?.id ?? loot?.uniqueId;
         if (key != null) byId.set(String(key), loot);
       }
-      const loots = byId.size ? [...byId.values()] : [...recentLoots, ...legendaryLoots];
+      const loots = byId.size
+        ? [...byId.values()]
+        : [...recentLoots, ...legendaryLoots];
 
       console.debug(
         '[Loot Bar] Wpisy zwykłego zapytania:', recentLoots.length,
         '| wpisy zapytania LEGENDARY:', legendaryLoots.length,
         '| unikalne wpisy razem:', loots.length
       );
-      render(loots);
+      await render(loots);
 
-      if (!loots.length) console.warn('[Loot Bar] Nieznany format API:', data);
+      if (!loots.length) {
+        console.warn('[Loot Bar] Nieznany format API:', data);
+      }
     } catch (error) {
-      if (runEpoch !== refreshEpoch || !canRefreshLootBar()) return;
       console.error('[Loot Bar]', error);
-      const errorBox = document.createElement('div');
-      errorBox.className = 'vl-empty';
-      Object.assign(errorBox.style, {
-        display: 'flex', alignItems: 'center', gap: '8px',
-        maxWidth: 'min(420px, calc(100vw - 24px))', whiteSpace: 'normal',
-        overflowWrap: 'anywhere', lineHeight: '1.35', padding: '7px 9px'
-      });
-      const message = document.createElement('span');
-      message.textContent = `Nie udało się odświeżyć łupów (${String(error?.message || 'błąd połączenia').slice(0, 100)}).`;
-      const retry = document.createElement('button');
-      retry.type = 'button';
-      retry.textContent = '↻';
-      retry.title = 'Spróbuj ponownie';
-      Object.assign(retry.style, {
-        flex: '0 0 auto', padding: '4px 8px', color: '#e9c65d',
-        background: '#111', border: '1px solid #b58a20', borderRadius: '4px',
-        cursor: 'pointer', font: '16px Arial,sans-serif'
-      });
-      retry.addEventListener('click', event => {
-        event.stopPropagation();
-        void loadLoots();
-      });
-      errorBox.append(message, retry);
-      if (itemsBox.querySelector('.vl-item')) itemsBox.appendChild(errorBox);
-      else itemsBox.replaceChildren(errorBox);
     } finally {
       busy = false;
-      if (refreshAgainWhenIdle && canRefreshLootBar()) {
-        refreshAgainWhenIdle = false;
-        window.setTimeout(() => { if (canRefreshLootBar()) void loadLoots(); }, 250);
-      } else {
-        refreshAgainWhenIdle = false;
-        scheduleLootBarRefresh();
-      }
     }
   }
 
@@ -6196,22 +6556,29 @@ if (location.hostname === 'riventia.margonem.pl') {
   bar.style.left = `${x}px`;
   bar.style.top = `${y}px`;
 
-  try {
-    const cache = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
-    if (cache && Array.isArray(cache.loots) &&
-        Date.now() - Number(cache.savedAt || 0) < CACHE_TTL_MS && cache.loots.length) {
-      render(cache.loots, false);
-    } else {
-      const loading = document.createElement('div');
-      loading.className = 'vl-empty';
-      loading.textContent = 'Ładowanie łupów…';
-      itemsBox.replaceChildren(loading);
+  // Integracja z głównym przełącznikiem Lootloga w panelu Vickness.
+  window.__vicknessSetLootBarEnabled = function(enabled) {
+    lootbarEnabled = !!enabled;
+    bar.style.display = lootbarEnabled ? 'flex' : 'none';
+    if (refreshTimer) {
+      clearInterval(refreshTimer);
+      refreshTimer = null;
     }
-  } catch (error) {
-    console.debug('[Loot Bar] Pominięto nieprawidłowy cache:', error);
-  }
+    if (lootbarEnabled) {
+      loadLoots();
+      refreshTimer = setInterval(() => {
+        if (!window.__vicknessShouldPauseAddons?.()) loadLoots();
+      }, REFRESH_MS);
+    }
+  };
 
-  if (canRefreshLootBar()) void loadLoots();
+  bar.style.display = lootbarEnabled ? 'flex' : 'none';
+  if (lootbarEnabled) {
+    loadLoots();
+    refreshTimer = setInterval(() => {
+      if (!window.__vicknessShouldPauseAddons?.()) loadLoots();
+    }, REFRESH_MS);
+  }
 
   window.addEventListener('resize', () => {
     const maxX = Math.max(0, window.innerWidth - bar.offsetWidth * scale);
@@ -6228,6 +6595,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   window.addEventListener('scroll', hideTooltip, true);
 })();
+
 
 // =============================================================
 // TITAN TRACKER GOLD 5.0.2 — zintegrowany z panelem Vickness
