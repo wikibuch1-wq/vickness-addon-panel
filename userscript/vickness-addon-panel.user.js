@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.33
-// @description  Vickness Addons 1.2.33: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.34
+// @description  Vickness Addons 1.2.34: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -6610,7 +6610,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   // Integracja z głównym przełącznikiem Lootloga w panelu Vickness.
   window.__vicknessSetLootBarEnabled = function(enabled) {
     lootbarEnabled = !!enabled;
-    bar.style.display = lootbarEnabled ? 'flex' : 'none';
+    bar.style.setProperty('display', lootbarEnabled ? 'flex' : 'none', 'important');
     if (refreshTimer) {
       clearInterval(refreshTimer);
       refreshTimer = null;
@@ -6623,7 +6623,14 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
   };
 
-  bar.style.display = lootbarEnabled ? 'flex' : 'none';
+  bar.style.setProperty('display', lootbarEnabled ? 'flex' : 'none', 'important');
+  // Po utworzeniu belki zsynchronizuj ją z przełącznikiem panelu,
+  // który mógł zostać uruchomiony wcześniej niż sam moduł Loot Bar.
+  const panelLootlogSwitch = document.querySelector('#vxLootlogSwitch');
+  if (panelLootlogSwitch) {
+    lootbarEnabled = !!panelLootlogSwitch.checked;
+    bar.style.setProperty('display', lootbarEnabled ? 'flex' : 'none', 'important');
+  }
   if (lootbarEnabled) {
     loadLoots();
     refreshTimer = setInterval(() => {
