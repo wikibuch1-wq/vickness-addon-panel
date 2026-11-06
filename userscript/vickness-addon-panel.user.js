@@ -1011,7 +1011,7 @@
         if (str) {
           // Przy strukturze { critred: 25 } kod jest kluczem,
           // a wartość liczbowa musi zostać zachowana jako procent.
-          const isAmount = !!fallbackCode && /^-?\\d+(?:[.,]\\d+)?$/.test(str);
+          const isAmount = !!fallbackCode && /^-?\d+(?:[.,]\d+)?$/.test(str);
           candidates.push({
             code: fallbackCode || str,
             title: '',
