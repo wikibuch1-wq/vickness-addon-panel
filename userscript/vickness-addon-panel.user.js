@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.30
-// @description  Vickness Addons 1.2.30: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.31
+// @description  Vickness Addons 1.2.31: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -3029,41 +3029,15 @@ if (location.hostname === 'riventia.margonem.pl') {
       const calendar = hasCalendarEvent ? findCalendarReward() : null;
       const news = findFreeNewsOffers();
 
-      // Odbieraj wykryte nagrody automatycznie podczas pierwszego skanowania.
-      // Wcześniej skan jedynie tworzył okienko, a kliknięcie wymagało ręcznej akcji.
-      let claimedAny = false;
-      if (!window.__vicknessShouldPauseAddons?.() && enabled.freeRewards) {
-        if (calendar && calendar.isConnected &&
-            calendar.classList.contains('can-open') &&
-            !calendar.classList.contains('is-open')) {
-          calendar.click();
-          claimedAny = true;
-          await WAIT(CLICK_WAIT);
-        }
-
-        for (const tile of news) {
-          if (window.__vicknessShouldPauseAddons?.() || !enabled.freeRewards) break;
-          if (!tile.isConnected || tile.classList.contains('is-used')) continue;
-          const price = tile.querySelector('.buy-info');
-          const buyButton = tile.querySelector('.buy-button-wrapper .button');
-          if (price && price.textContent.replace(/\s/g, '').toUpperCase() === '0SŁ' && buyButton) {
-            buyButton.click();
-            claimedAny = true;
-            await WAIT(CLICK_WAIT);
-          }
-        }
-      }
-
+      // Skanowanie ma wyłącznie wykrywać nagrody i pokazać okienko.
+      // Odbiór następuje dopiero po ręcznym kliknięciu „ODBIERZ WSZYSTKO”.
       closeOpenedPanel(newsPanel);
       newsPanel = null;
       closeOpenedPanel(calPanel);
       calPanel = null;
 
-      // Okienko zostaje tylko wtedy, gdy gra nadal pokazuje coś do odebrania.
-      const remainingCalendar = hasCalendarEvent ? findCalendarReward() : null;
-      const remainingNews = findFreeNewsOffers();
-      if (remainingCalendar || remainingNews.length > 0) {
-        createWidget(remainingCalendar, remainingNews);
+      if (calendar || news.length > 0) {
+        createWidget(calendar, news);
       } else {
         finished = true;
         removeWidget();
