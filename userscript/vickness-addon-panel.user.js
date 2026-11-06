@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.50
-// @description  Vickness Addon Panel 1.2.50 - kliknięcia przez puste obszary paska dodatku
+// @version      1.2.51
+// @description  Vickness Addon Panel 1.2.51 - przywrócone przeciąganie belki
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -98,7 +98,6 @@
     #vickness-lootbar {
       position: fixed;
       z-index: 9000;
-       pointer-events: none;
       left: ${x}px;
       top: ${y}px;
       display: flex;
