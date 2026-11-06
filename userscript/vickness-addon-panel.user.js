@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.51
-// @description  Vickness Addon Panel 1.2.51 - przywrócone przeciąganie belki
+// @version      1.2.52
+// @description  Vickness Addon Panel 1.2.52 - ukrywanie treści kalendarza bez blokowania okien gry
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4350,8 +4350,8 @@ if (location.hostname === 'riventia.margonem.pl') {
     panelStyle = document.createElement('style');
     panelStyle.id = 'vx-free-rewards-hide-style';
     panelStyle.textContent = `
-      .c-window:has(.rewards-calendar),
-      .c-window:has(.news-panel),
+      /* Ukrywamy wyłącznie niechciane treści, nigdy całe okno gry.
+         Margonem może ponownie używać tego samego .c-window dla potwierdzeń. */
       .rewards-calendar,
       .news-panel {
         visibility: hidden !important;
