@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.25
-// @description  Vickness Addons 1.2.25: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
+// @version      1.2.24
+// @description  Vickness Addons 1.2.26: przywrócenie natywnych tipów Margonem; bez modyfikacji podpowiedzi kalendarza
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2779,10 +2779,26 @@ if (location.hostname === 'riventia.margonem.pl') {
     panelStyle = null;
   }
 
+  function panelSelector(type) {
+    return type === 'calendar' ? '.rewards-calendar' : '.news-panel';
+  }
+
   function panelExists(type) {
-    return type === 'calendar'
-      ? !!document.querySelector('.rewards-calendar')
-      : !!document.querySelector('.news-panel');
+    return !!document.querySelector(panelSelector(type));
+  }
+
+  // Margonem potrafi trzymać panel w DOM nawet wtedy, gdy okno jest zamknięte.
+  // Samo querySelector nie może więc oznaczać, że panel jest już otwarty.
+  function panelIsOpen(type) {
+    const panel = document.querySelector(panelSelector(type));
+    if (!panel || panel.getClientRects().length === 0) return false;
+
+    for (let node = panel; node && node !== document.documentElement; node = node.parentElement) {
+      const style = window.getComputedStyle(node);
+      if (style.display === 'none' || style.visibility === 'hidden' ||
+          Number.parseFloat(style.opacity || '1') === 0) return false;
+    }
+    return true;
   }
 
   function findPanelButton(type) {
@@ -2794,14 +2810,14 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   async function openPanel(type) {
-    if (panelExists(type)) return { type, button: null, opened: false };
+    if (panelIsOpen(type)) return { type, button: null, opened: false };
     const button = findPanelButton(type);
     if (!button) return { type, button: null, opened: false };
     button.click();
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 40; i++) {
       await WAIT(LOAD_WAIT);
-      if (panelExists(type)) {
-        await WAIT(300);
+      if (panelIsOpen(type)) {
+        await WAIT(250);
         return { type, button, opened: true };
       }
     }
@@ -2914,9 +2930,9 @@ if (location.hostname === 'riventia.margonem.pl') {
       let calPanel = null;
       let newsPanel = null;
       try {
-        hidePanels();
         calPanel = await openPanel('calendar');
         newsPanel = await openPanel('news');
+        hidePanels();
         await WAIT(200);
 
         const hasCalendarEvent = calendarHasActiveEvent();
@@ -3000,10 +3016,10 @@ if (location.hostname === 'riventia.margonem.pl') {
       }
       if (!enabled.freeRewards || !findPanelButton('calendar') || !findPanelButton('news')) return false;
 
-      hidePanels();
       calendarToastObserver = beginCalendarToastMute();
       calPanel = await openPanel('calendar');
       newsPanel = await openPanel('news');
+      hidePanels();
       await WAIT(200);
       const hasCalendarEvent = calendarHasActiveEvent();
       setCalendarHoverHint(hasCalendarEvent);
@@ -3048,7 +3064,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       const remaining = Math.max(0, CALENDAR_CHECK_INTERVAL - elapsed);
       // Pierwsze sprawdzenie po uruchomieniu ma być szybkie. Nie może
       // czekać 3 godzin tylko dlatego, że brak zapisanego znacznika czasu.
-      const delay = initial ? 5000 : (retry ? 60000 : Math.max(60000, remaining));
+      const delay = initial ? 1000 : (retry ? 60000 : Math.max(60000, remaining));
       hourlyTimer = setTimeout(async () => {
         hourlyTimer = null;
         if (stopped || !enabled.freeRewards) return;
