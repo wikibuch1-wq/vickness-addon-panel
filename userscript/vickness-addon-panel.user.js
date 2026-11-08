@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.61
-// @description  Vickness Addon Panel 1.2.61 - widget tylko przy dostępnych nagrodach
+// @version      1.2.62
+// @description  Vickness Addon Panel 1.2.62 - przywrócone natywne powiadomienia gry
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4293,58 +4293,6 @@ if (location.hostname === 'riventia.margonem.pl') {
   let stopped = false;
   let pendingPanelsClose = [];
 
-  // Wycisza wyłącznie element komunikatu kalendarza podczas automatycznego sprawdzania.
-  // Nie ukrywa rodziców, kontenerów gry ani elementów tooltipów.
-  const INACTIVE_CALENDAR_TEXT = 'obecnie nie trwa żadne wydarzenie czasowe';
-
-  function normalizeNoticeText(value) {
-    return String(value || '')
-      .replace(/\\u00a0/g, ' ')
-      .replace(/\\s+/g, ' ')
-      .trim()
-      .toLocaleLowerCase('pl-PL');
-  }
-
-  function hideInactiveCalendarToast(root = document) {
-    if (!root || !root.querySelectorAll) return;
-    const nodes = [];
-    if (root instanceof HTMLElement) nodes.push(root);
-    nodes.push(...root.querySelectorAll('*'));
-
-    for (const el of nodes) {
-      if (!(el instanceof HTMLElement) || el.dataset.vxInactiveCalendarToast === '1') continue;
-      // Tylko dokładny tekst komunikatu — nigdy element zawierający dodatkową treść.
-      if (normalizeNoticeText(el.textContent) !== INACTIVE_CALENDAR_TEXT) continue;
-      el.dataset.vxInactiveCalendarToast = '1';
-      el.style.setProperty('display', 'none', 'important');
-      el.setAttribute('aria-hidden', 'true');
-    }
-  }
-
-  function beginCalendarToastMute() {
-    const observer = new MutationObserver(records => {
-      for (const record of records) {
-        if (record.type === 'characterData') {
-          const parent = record.target.parentElement;
-          if (parent) hideInactiveCalendarToast(parent);
-        } else {
-          for (const node of record.addedNodes) {
-            if (node instanceof HTMLElement) hideInactiveCalendarToast(node);
-          }
-          if (record.target instanceof HTMLElement) hideInactiveCalendarToast(record.target);
-        }
-      }
-    });
-    if (document.body) observer.observe(document.body, {
-      childList: true, subtree: true, characterData: true
-    });
-    return observer;
-  }
-
-  function endCalendarToastMute(observer) {
-    observer?.disconnect();
-  }
-
   // Nie ukrywamy paneli ani nadrzędnych okien CSS-em podczas skanowania.
   // Ukrycie samej zawartości pozostawiało warstwę/modal okna gry aktywną,
   // przez co inne wyskakujące okna mogły nie przyjmować kliknięć.
@@ -4641,7 +4589,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     checking = true;
     let calPanel = null;
     let newsPanel = null;
-    let calendarToastObserver = null;
     try {
       // Krótkie oczekiwanie na interfejs: zamiast blokować skan nawet minutę,
       // sprawdzaj gotowość co 250 ms i zakończ oczekiwanie po 20 sekundach.
@@ -4657,7 +4604,6 @@ if (location.hostname === 'riventia.margonem.pl') {
       if (!uiReady) return false;
       if (!enabled.freeRewards || !findPanelButton('calendar') || !findPanelButton('news')) return false;
 
-      calendarToastObserver = beginCalendarToastMute();
       // Skanowanie nie może otwierać okna Aktualności ani klikać jego ikony.
       // Odczytujemy wyłącznie kafelki, które gra już udostępniła w DOM.
       // Kalendarz pozostaje obsługiwany dotychczasowym mechanizmem.
@@ -4693,7 +4639,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     } finally {
       closeOpenedPanel(newsPanel);
       closeOpenedPanel(calPanel);
-      endCalendarToastMute(calendarToastObserver);
       if (!window.__vicknessShouldPauseAddons?.()) showPanels();
       checking = false;
     }
