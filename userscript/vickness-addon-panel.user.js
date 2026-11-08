@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.68
-// @description  Vickness Addon Panel 1.2.68 - skan Aktualności i kalendarza co godzinę
+// @version      1.2.69
+// @description  Vickness Addon Panel 1.2.69 - okno DC w lewym górnym rogu po wykryciu
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -2614,7 +2614,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
         // Po rozpoznaniu NPC pokaż osobne okno DC, bez otwierania całego panelu Vickness.
         if (typeof window.__vicknessOpenDCWindow === 'function') {
-            window.__vicknessOpenDCWindow();
+            window.__vicknessOpenDCWindow(true);
         } else {
             // Wykrywanie mogło zakończyć się przed startem menedżera Vickness.
             window.__vicknessPendingOpenDCWindow = true;
@@ -6148,7 +6148,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
   }
 
-  function openDCWindow() {
+  function openDCWindow(moveToTopLeft = false) {
     const dc = getPanel('margDc221Panel');
     const dcMini = getPanel('margDc221Mini');
     if (!dc || !dcMini) {
@@ -6177,8 +6177,22 @@ if (location.hostname === 'riventia.margonem.pl') {
 
     // Utrzymaj okno w granicach widocznego ekranu.
     const rect = dc.getBoundingClientRect();
-    dc.style.left = Math.max(0, Math.min(rect.left, innerWidth - dc.offsetWidth)) + 'px';
-    dc.style.top = Math.max(0, Math.min(rect.top, innerHeight - dc.offsetHeight)) + 'px';
+    const targetLeft = moveToTopLeft ? 8 : rect.left;
+    const targetTop = moveToTopLeft ? 8 : rect.top;
+    dc.style.left = Math.max(0, Math.min(targetLeft, innerWidth - dc.offsetWidth)) + 'px';
+    dc.style.top = Math.max(0, Math.min(targetTop, innerHeight - dc.offsetHeight)) + 'px';
+    if (moveToTopLeft) {
+      // Zapamiętaj nowe położenie, aby kolejne rozwinięcia nie wracały
+      // do starej pozycji okna.
+      try {
+        const dcState = GM_getValue('marg_dc_riventia_221', null);
+        if (dcState && typeof dcState === 'object') {
+          dcState.panelX = parseInt(dc.style.left, 10) || 8;
+          dcState.panelY = parseInt(dc.style.top, 10) || 8;
+          GM_setValue('marg_dc_riventia_221', dcState);
+        }
+      } catch (_) {}
+    }
     applyToggles();
   }
 
@@ -6791,7 +6805,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     // Obsłuż wykrycie, które nastąpiło przed uruchomieniem menedżera Vickness.
     if (window.__vicknessPendingOpenDCWindow) {
       window.__vicknessPendingOpenDCWindow = false;
-      openDCWindow();
+      openDCWindow(true);
     }
 
     // Zmiany przełączników i tak stosują się natychmiast; ten timer jest tylko zabezpieczeniem dla paneli ładowanych później.
