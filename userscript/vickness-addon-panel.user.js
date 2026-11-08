@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.66
-// @description  Vickness Addon Panel 1.2.66 - Aktualności co 10 sekund, kalendarz co godzinę bez migania
+// @version      1.2.68
+// @description  Vickness Addon Panel 1.2.68 - skan Aktualności i kalendarza co godzinę
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4270,7 +4270,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   const WAIT = ms => new Promise(resolve => setTimeout(resolve, ms));
   const CLICK_WAIT = 250;
   const LOAD_WAIT = 100;
-  const CALENDAR_CHECK_INTERVAL = 10 * 1000; // Aktualności: sprawdzanie co 10 sekund
+  const CALENDAR_CHECK_INTERVAL = 60 * 60 * 1000; // Aktualności: sprawdzanie maksymalnie raz na godzinę
   const CALENDAR_ONLY_INTERVAL = 60 * 60 * 1000; // Kalendarz: najwyżej raz na godzinę
   const CALENDAR_LAST_CHECK_KEY = 'vickness_free_rewards_last_check_v1';
   const CALENDAR_EVENT_LAST_CHECK_KEY = 'vickness_calendar_event_last_check_v1';
@@ -4364,15 +4364,28 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   async function openPanel(type) {
     if (window.__vicknessShouldPauseAddons?.()) return { type, button: null, opened: false };
-    if (panelIsOpen(type)) return { type, button: null, opened: false };
-    const button = findPanelButton(type);
-    if (!button || window.__vicknessShouldPauseAddons?.()) return { type, button: null, opened: false };
 
-    const result = { type, button, opened: false, hiddenWindow: null };
+    // Najpierw aktywuj ukrywanie Aktualności, dopiero potem sprawdzaj,
+    // czy panel już istnieje/jest otwarty. Przy F5 gra może odtworzyć
+    // okno przed startem skanera — wcześniejszy warunek omijał wtedy CSS.
+    const result = { type, button: null, opened: false, hiddenWindow: null };
     if (type === 'news') {
       document.documentElement.classList.add('vx-news-scan-active');
       result.newsScanClassAdded = true;
     }
+
+    if (panelIsOpen(type)) {
+      result.button = findPanelButton(type);
+      result.opened = true;
+      return result;
+    }
+
+    const button = findPanelButton(type);
+    if (!button || window.__vicknessShouldPauseAddons?.()) {
+      restoreTemporarilyHiddenWindow(result);
+      return result;
+    }
+    result.button = button;
     // Okno Aktualności musi być niewidoczne już przed kliknięciem ikony,
     // inaczej przez moment pojawia się na ekranie. Ukrywamy tylko ten
     // konkretny kontener przez visibility (bez pointer-events i bez CSS
