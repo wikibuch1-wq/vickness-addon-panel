@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.69
-// @description  Vickness Addon Panel 1.2.69 - okno DC w lewym górnym rogu po wykryciu
+// @version      1.2.70
+// @description  Vickness Addon Panel 1.2.70 - dodatki pod natywnymi oknami Margonem
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -97,7 +97,7 @@
 
     #vickness-lootbar {
       position: fixed;
-      z-index: 9000;
+      z-index: 20;
       left: ${x}px;
       top: ${y}px;
       display: flex;
@@ -276,7 +276,7 @@
     .vl-tip {
       display: none;
       position: fixed;
-      z-index: 9002;
+      z-index: 22;
       width: 276px;
       max-width: min(300px,calc(100vw - 16px));
       padding: 10px;
@@ -1893,7 +1893,7 @@ if (location.hostname === 'riventia.margonem.pl') {
                 width:245px;
                 max-width:calc(100vw - 12px);
                 box-sizing:border-box;
-                z-index:9002;
+                z-index:22;
                 color:#fff;
                 background:rgba(12,12,12,.97);
                 border:1px solid #d4af37;
@@ -2002,7 +2002,7 @@ if (location.hostname === 'riventia.margonem.pl') {
                 display:flex;
                 align-items:center;
                 justify-content:center;
-                z-index:9002;
+                z-index:22;
                 background:rgba(12,12,12,.97);
                 color:#d4af37;
                 border:2px solid #d4af37;
@@ -3873,7 +3873,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
             #tmLootPanel {
                 position: fixed;
-                z-index: 999999;
+                z-index: 20;
                 width: 260px;
                 background: linear-gradient(
                     145deg,
@@ -4179,7 +4179,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
             .tmHeroicLoot {
                 position: relative !important;
-                z-index: 99990 !important;
+                z-index: 0 !important;
                 box-shadow:
                     0 0 8px var(--tm-loot-color-a),
                     0 0 18px var(--tm-loot-color-b),
@@ -4189,7 +4189,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
             .tmUniqueLoot {
                 position: relative !important;
-                z-index: 99990 !important;
+                z-index: 0 !important;
                 box-shadow:
                     0 0 6px var(--tm-loot-color-a),
                     0 0 14px var(--tm-loot-color-b) !important;
@@ -4198,7 +4198,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
             .tmLegendaryLoot {
                 position: relative !important;
-                z-index: 99990 !important;
+                z-index: 0 !important;
                 box-shadow:
                     0 0 8px var(--tm-loot-color-a),
                     0 0 18px var(--tm-loot-color-b),
@@ -4208,7 +4208,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
             .tmCommonLoot {
                 position: relative !important;
-                z-index: 99990 !important;
+                z-index: 0 !important;
                 box-shadow:
                     0 0 6px var(--tm-loot-color-a),
                     0 0 14px var(--tm-loot-color-b) !important;
@@ -4509,7 +4509,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     widget.id = 'vx-free-rewards-widget';
     Object.assign(widget.style, {
       position: 'fixed', left: '50%', top: '40%', right: 'auto', bottom: 'auto',
-      transform: 'translate(-50%, -50%)', zIndex: '999999', width: '205px',
+      transform: 'translate(-50%, -50%)', zIndex: '20', width: '205px',
       padding: '12px', boxSizing: 'border-box', background: 'rgba(8, 8, 8, 0.78)',
       color: '#e8c45a', border: '1px solid rgba(196, 155, 54, 0.85)',
       borderRadius: '7px', boxShadow: '0 0 9px rgba(0,0,0,0.45)',
@@ -5070,7 +5070,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   root.innerHTML = `
   <style>
     #vicknessStandaloneRoot { all:initial; font-family:Arial,sans-serif; --vx-accent:#dfb943; --vx-accent-line:rgba(201,162,39,.72); --vx-accent-soft:rgba(46,35,8,.62); }
-    #vxStandalonePanel { position:fixed; z-index:9001; left:20px; top:20px; display:flex; flex-direction:column; width:min(840px,calc(100vw - 20px)); height:min(560px,calc(100vh - 16px)); min-width:650px; min-height:360px; max-width:calc(100vw - 12px); max-height:calc(100vh - 12px); resize:both; overflow:hidden; background:rgba(8,8,8,.88); color:#eee; border:1px solid #c9a227; border-radius:8px; box-shadow:0 8px 26px #000b; font:12px Arial,sans-serif; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+    #vxStandalonePanel { position:fixed; z-index: 20; left:20px; top:20px; display:flex; flex-direction:column; width:min(840px,calc(100vw - 20px)); height:min(560px,calc(100vh - 16px)); min-width:650px; min-height:360px; max-width:calc(100vw - 12px); max-height:calc(100vh - 12px); resize:both; overflow:hidden; background:rgba(8,8,8,.88); color:#eee; border:1px solid #c9a227; border-radius:8px; box-shadow:0 8px 26px #000b; font:12px Arial,sans-serif; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
     #vxStandalonePanel * { box-sizing:border-box; }
     #vxStandaloneHeader { position:relative; flex:0 0 auto; padding:9px 35px 8px 10px; text-align:center; background:rgba(16,16,16,.92); border-bottom:1px solid #765b20; cursor:move; user-select:none; }
     #vxStandaloneBrand { color:#dfb943; font-size:16px; font-weight:bold; letter-spacing:2px; }
@@ -5102,7 +5102,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     .vxUpdateTile { border-style:dashed; }
     .vxUpdateTileIcon { flex:0 0 auto; align-self:center; color:var(--vx-accent); font-size:23px; font-weight:bold; padding:0 5px; }
     .vxInfoModal[hidden] { display:none!important; }
-    .vxInfoModal { position:fixed; inset:0; z-index:9002; display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(0,0,0,.72); }
+    .vxInfoModal { position:fixed; inset:0; z-index:22; display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(0,0,0,.72); }
     .vxInfoDialog { width:min(390px,100%); padding:12px; border:1px solid var(--vx-accent); border-radius:7px; background:linear-gradient(145deg,rgba(30,28,22,.99),rgba(8,8,8,.99)); color:#eee; box-shadow:0 10px 35px #000c; font:12px Arial,Helvetica,sans-serif; }
     .vxInfoDialogHead { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--vx-accent); font-size:13px; margin-bottom:10px; }
     .vxInfoDialogHead button { width:23px; height:23px; border:1px solid var(--vx-accent-line); border-radius:4px; background:#17130a; color:var(--vx-accent); font-size:18px; cursor:pointer; }
@@ -5137,7 +5137,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     #vxCurrentSetting { color:#e0bd53; font-weight:bold; flex:1; text-align:center; }
     .vxSettingsSlot { min-width:0; padding:7px; }
     .vxSettingsSlot[hidden] { display:none!important; }
-    #vxStandaloneMini { position:fixed; z-index:9001; display:none; align-items:center; gap:8px; padding:10px 14px; background:rgba(11,11,11,.9); color:#dfb943; border:1px solid #c9a227; border-radius:5px; font:bold 12px Arial,sans-serif; cursor:pointer; user-select:none; box-shadow:0 4px 16px #0008; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+    #vxStandaloneMini { position:fixed; z-index: 20; display:none; align-items:center; gap:8px; padding:10px 14px; background:rgba(11,11,11,.9); color:#dfb943; border:1px solid #c9a227; border-radius:5px; font:bold 12px Arial,sans-serif; cursor:pointer; user-select:none; box-shadow:0 4px 16px #0008; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
     #vxStandaloneMini .diamond { display:inline-block; width:22px; height:27px; border:1px solid var(--vx-accent-line); border-radius:4px; background:rgba(10,10,10,.7) url("data:image/png;base64,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") center/18px 25px no-repeat; color:transparent; font-size:0; }
     #vxStandalonePanel { border-color:var(--vx-accent-line); }
     #vxStandaloneBrand,#vxStandaloneMin,.vxStandaloneName,#vxCurrentSetting,.vxChangelogVersion { color:var(--vx-accent); }
@@ -7194,7 +7194,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         style.id = 'rtt-styles';
         style.textContent = `
             #rtt-panel {
-                position:fixed;z-index:9002;top:100px;left:15px;
+                position:fixed;z-index:22;top:100px;left:15px;
                 width:280px;min-width:280px;max-width:280px;
                 height:auto;min-height:0;max-height:calc(100vh - 8px);
                 box-sizing:border-box;background:${BLACK};color:#f4e8bd;
@@ -7833,7 +7833,7 @@ if (location.hostname === 'riventia.margonem.pl') {
        label = document.createElement('span');
        label.className = 'mlc513-label';
        label.style.cssText =
-         'position:fixed;z-index:9002;display:none;pointer-events:none;' +
+         'position:fixed;z-index:22;display:none;pointer-events:none;' +
          'margin:0;padding:0;background:transparent;border:0;white-space:nowrap;' +
          'font:bold 12px/14px Arial,sans-serif;text-align:center;' +
          'text-shadow:-1px -1px 2px #000,1px -1px 2px #000,-1px 1px 2px #000,1px 1px 2px #000;';
@@ -8021,7 +8021,7 @@ if (location.hostname === 'riventia.margonem.pl') {
      style.id = 'mlc513-style';
      style.textContent = `
        #mlc513-panel {
-         position:fixed;z-index:9001;left:auto;top:auto;right:12px;bottom:12px;
+         position:fixed;z-index: 20;left:auto;top:auto;right:12px;bottom:12px;
          width:190px;max-width:calc(100vw - 24px);padding:8px;color:#f5f0d5;
          background:rgba(8,8,8,.97);border:1px solid #e4bd28;border-radius:5px;
          box-shadow:0 2px 10px #000b;font:11px/1.35 Arial,sans-serif;
@@ -8253,7 +8253,7 @@ if (location.hostname === 'riventia.margonem.pl') {
    style.textContent = `
      #tc-online-panel {
        position: fixed;
-       z-index: 100;
+       z-index: 20;
        display: flex;
        flex-direction: column;
        box-sizing: border-box;
@@ -8498,7 +8498,7 @@ if (location.hostname === 'riventia.margonem.pl') {
        position: fixed;
        left: var(--tc-open-left, calc(100vw - 155px));
        top: var(--tc-open-top, calc(100vh - 100px));
-       z-index: 100;
+       z-index: 20;
        padding: 6px 9px;
        font: 12px Arial, sans-serif;
        color: #e7c36e;
@@ -9315,7 +9315,7 @@ if (location.hostname === 'riventia.margonem.pl') {
        position: fixed;
        top: 14px;
        right: 14px;
-       z-index: 999999;
+       z-index: 20;
        width: 245px;
        max-width: calc(100vw - 28px);
        max-height: 70vh;
@@ -10047,7 +10047,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     alertBox.id = 'wnm-alert';
     Object.assign(alertBox.style, {
       position: 'fixed', top: '45%', left: '50%', transform: 'translate(-50%, -50%)',
-      zIndex: '2147483647', display: 'none', textAlign: 'center',
+      zIndex: '25', display: 'none', textAlign: 'center',
       fontFamily: 'Arial,sans-serif', fontSize: '25px', fontWeight: 'bold',
       lineHeight: '1.5', textShadow: '2px 2px 4px #000,-1px -1px 2px #000',
       cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', pointerEvents: 'auto'
