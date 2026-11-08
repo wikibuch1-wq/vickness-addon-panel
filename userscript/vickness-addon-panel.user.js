@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.63
-// @description  Vickness Addon Panel 1.2.63 - skan nagród maksymalnie raz na godzinę
+// @version      1.2.64
+// @description  Vickness Addon Panel 1.2.64 - skan aktualności maksymalnie co 10 sekund
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4270,7 +4270,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   const WAIT = ms => new Promise(resolve => setTimeout(resolve, ms));
   const CLICK_WAIT = 250;
   const LOAD_WAIT = 100;
-  const CALENDAR_CHECK_INTERVAL = 60 * 60 * 1000; // sprawdzanie maksymalnie raz na godzinę
+  const CALENDAR_CHECK_INTERVAL = 10 * 1000; // sprawdzanie maksymalnie co 10 sekund
   const CALENDAR_LAST_CHECK_KEY = 'vickness_free_rewards_last_check_v1';
   const getLastCheck = () => {
     try {
