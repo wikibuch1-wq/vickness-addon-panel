@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.65
-// @description  Vickness Addon Panel 1.2.65 - skan kalendarza i Aktualności co 10 sekund
+// @version      1.2.66
+// @description  Vickness Addon Panel 1.2.66 - Aktualności co 10 sekund, kalendarz co godzinę bez migania
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4270,8 +4270,10 @@ if (location.hostname === 'riventia.margonem.pl') {
   const WAIT = ms => new Promise(resolve => setTimeout(resolve, ms));
   const CLICK_WAIT = 250;
   const LOAD_WAIT = 100;
-  const CALENDAR_CHECK_INTERVAL = 10 * 1000; // sprawdzanie maksymalnie co 10 sekund
+  const CALENDAR_CHECK_INTERVAL = 10 * 1000; // Aktualności: sprawdzanie co 10 sekund
+  const CALENDAR_ONLY_INTERVAL = 60 * 60 * 1000; // Kalendarz: najwyżej raz na godzinę
   const CALENDAR_LAST_CHECK_KEY = 'vickness_free_rewards_last_check_v1';
+  const CALENDAR_EVENT_LAST_CHECK_KEY = 'vickness_calendar_event_last_check_v1';
   const getLastCheck = () => {
     try {
       const value = Number(localStorage.getItem(CALENDAR_LAST_CHECK_KEY) || 0);
@@ -4280,6 +4282,15 @@ if (location.hostname === 'riventia.margonem.pl') {
   };
   const saveLastCheck = () => {
     try { localStorage.setItem(CALENDAR_LAST_CHECK_KEY, String(Date.now())); } catch (_) {}
+  };
+  const getLastCalendarEventCheck = () => {
+    try {
+      const value = Number(localStorage.getItem(CALENDAR_EVENT_LAST_CHECK_KEY) || 0);
+      return Number.isFinite(value) && value > 0 ? value : 0;
+    } catch (_) { return 0; }
+  };
+  const saveLastCalendarEventCheck = () => {
+    try { localStorage.setItem(CALENDAR_EVENT_LAST_CHECK_KEY, String(Date.now())); } catch (_) {}
   };
   const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = {});
   if (typeof enabled.freeRewards !== 'boolean') enabled.freeRewards = true;
@@ -4292,6 +4303,10 @@ if (location.hostname === 'riventia.margonem.pl') {
   let hourlyTimer = null;
   let stopped = false;
   let pendingPanelsClose = [];
+
+  const newsScanStyle = document.createElement('style');
+  newsScanStyle.textContent = 'html.vx-news-scan-active .c-window:has(.news-panel){visibility:hidden!important;}';
+  (document.head || document.documentElement).appendChild(newsScanStyle);
 
   // Nie ukrywamy paneli ani nadrzędnych okien CSS-em podczas skanowania.
   // Ukrycie samej zawartości pozostawiało warstwę/modal okna gry aktywną,
@@ -4333,6 +4348,10 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   function restoreTemporarilyHiddenWindow(result) {
+    if (result?.newsScanClassAdded) {
+      document.documentElement.classList.remove('vx-news-scan-active');
+      result.newsScanClassAdded = false;
+    }
     const el = result?.hiddenWindow;
     if (!el) return;
     if (result.hadVisibility) {
@@ -4350,6 +4369,10 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (!button || window.__vicknessShouldPauseAddons?.()) return { type, button: null, opened: false };
 
     const result = { type, button, opened: false, hiddenWindow: null };
+    if (type === 'news') {
+      document.documentElement.classList.add('vx-news-scan-active');
+      result.newsScanClassAdded = true;
+    }
     // Okno Aktualności musi być niewidoczne już przed kliknięciem ikony,
     // inaczej przez moment pojawia się na ekranie. Ukrywamy tylko ten
     // konkretny kontener przez visibility (bez pointer-events i bez CSS
@@ -4608,10 +4631,16 @@ if (location.hostname === 'riventia.margonem.pl') {
       // Odczytujemy wyłącznie kafelki, które gra już udostępniła w DOM.
       // Kalendarz pozostaje obsługiwany dotychczasowym mechanizmem.
       hidePanels();
-      calPanel = await openPanel('calendar');
-      if (window.__vicknessShouldPauseAddons?.()) return false;
-      await WAIT(200);
-      if (window.__vicknessShouldPauseAddons?.()) return false;
+      const shouldCheckCalendar = Date.now() - getLastCalendarEventCheck() >= CALENDAR_ONLY_INTERVAL;
+      if (shouldCheckCalendar) {
+        // Komunikat natywny kalendarza może pojawić się przy otwieraniu,
+        // dlatego kalendarz sprawdzamy rzadziej niż Aktualności.
+        saveLastCalendarEventCheck();
+        calPanel = await openPanel('calendar');
+        if (window.__vicknessShouldPauseAddons?.()) return false;
+        await WAIT(200);
+        if (window.__vicknessShouldPauseAddons?.()) return false;
+      }
 
       // Otwórz Aktualności w trybie niewidocznym, aby gra załadowała
       // kafelki do DOM. openPanel('news') ukrywa okno przed kliknięciem
@@ -4621,7 +4650,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       await WAIT(200);
       if (window.__vicknessShouldPauseAddons?.()) return false;
 
-      const hasCalendarEvent = calendarHasActiveEvent();
+      const hasCalendarEvent = shouldCheckCalendar && calendarHasActiveEvent();
       setCalendarHoverHint(hasCalendarEvent);
       const calendar = hasCalendarEvent ? findCalendarReward() : null;
       const news = findFreeNewsOffers();
