@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.64
-// @description  Vickness Addon Panel 1.2.64 - skan aktualności maksymalnie co 10 sekund
+// @version      1.2.65
+// @description  Vickness Addon Panel 1.2.65 - skan kalendarza i Aktualności co 10 sekund
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4612,6 +4612,15 @@ if (location.hostname === 'riventia.margonem.pl') {
       if (window.__vicknessShouldPauseAddons?.()) return false;
       await WAIT(200);
       if (window.__vicknessShouldPauseAddons?.()) return false;
+
+      // Otwórz Aktualności w trybie niewidocznym, aby gra załadowała
+      // kafelki do DOM. openPanel('news') ukrywa okno przed kliknięciem
+      // ikony, a closeOpenedPanel przywraca jego pierwotny stan.
+      newsPanel = await openPanel('news');
+      if (window.__vicknessShouldPauseAddons?.()) return false;
+      await WAIT(200);
+      if (window.__vicknessShouldPauseAddons?.()) return false;
+
       const hasCalendarEvent = calendarHasActiveEvent();
       setCalendarHoverHint(hasCalendarEvent);
       const calendar = hasCalendarEvent ? findCalendarReward() : null;
