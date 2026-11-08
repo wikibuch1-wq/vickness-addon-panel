@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.62
-// @description  Vickness Addon Panel 1.2.62 - przywrócone natywne powiadomienia gry
+// @version      1.2.63
+// @description  Vickness Addon Panel 1.2.63 - skan nagród maksymalnie raz na godzinę
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4270,7 +4270,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   const WAIT = ms => new Promise(resolve => setTimeout(resolve, ms));
   const CLICK_WAIT = 250;
   const LOAD_WAIT = 100;
-  const CALENDAR_CHECK_INTERVAL = 3 * 60 * 60 * 1000; // sprawdzanie co 3 godziny
+  const CALENDAR_CHECK_INTERVAL = 60 * 60 * 1000; // sprawdzanie maksymalnie raz na godzinę
   const CALENDAR_LAST_CHECK_KEY = 'vickness_free_rewards_last_check_v1';
   const getLastCheck = () => {
     try {
@@ -4660,9 +4660,10 @@ if (location.hostname === 'riventia.margonem.pl') {
       if (stopped || !enabled.freeRewards) return;
       const elapsed = Date.now() - getLastCheck();
       const remaining = Math.max(0, CALENDAR_CHECK_INTERVAL - elapsed);
-      // Pierwsze sprawdzenie po uruchomieniu ma być szybkie. Nie może
-      // czekać 3 godzin tylko dlatego, że brak zapisanego znacznika czasu.
-      const delay = initial ? 500 : (retry ? 15000 : Math.max(60000, remaining));
+      // Po F5 i przelogowaniu nie wykonuj natychmiast kolejnego skanu.
+      // Korzystaj ze wspólnego znacznika czasu w localStorage, aby limit
+      // obowiązywał także po przeładowaniu strony i zmianie postaci.
+      const delay = Math.max(1000, remaining);
       hourlyTimer = setTimeout(async () => {
         hourlyTimer = null;
         if (stopped || !enabled.freeRewards) return;
@@ -4670,13 +4671,13 @@ if (location.hostname === 'riventia.margonem.pl') {
           scheduleNextCheck(false, true);
           return;
         }
+        // Zapisz próbę przed rozpoczęciem skanowania, również gdy UI nie
+        // jest gotowy. Dzięki temu F5 nie wywoła serii kolejnych prób.
+        saveLastCheck();
         finished = false;
         removeWidget();
-        const checked = await initialCheck();
-        if (checked) saveLastCheck();
-        // Jeśli interfejs gry nie był gotowy albo skan przerwano,
-        // ponów próbę za minutę; po udanym skanie wróć do cyklu 3 h.
-        scheduleNextCheck(false, !checked);
+        await initialCheck();
+        scheduleNextCheck(false, false);
       }, delay);
     };
     scheduleNextCheck(true);
