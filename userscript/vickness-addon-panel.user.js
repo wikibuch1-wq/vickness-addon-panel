@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.77
-// @description  Vickness Addon Panel 1.2.77 - bez automatycznego otwierania, ukryte okno podczas ręcznego odbioru
+// @version      1.2.78
+// @description  Vickness Addon Panel 1.2.78 - skan Aktualności w ukrytym oknie bez globalnego obserwatora
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4326,11 +4326,13 @@ if (location.hostname === 'riventia.margonem.pl') {
   let stopped = false;
   let pendingPanelsClose = [];
 
-  // Ukrywaj wyłącznie natywne okno Aktualności, gdy skrypt je otwiera
-  // na potrzeby ręcznego odbioru. Bez MutationObserver i bez obserwowania DOM.
+  // Ukrywa wyłącznie natywne okno Aktualności podczas skanowania/odbioru.
+  // Reguła jest aktywowana przed kliknięciem ikony; bez MutationObserver.
   const newsScanStyle = document.createElement('style');
   newsScanStyle.textContent =
-    'html.vx-news-scan-active .c-window:has(.news-panel){visibility:hidden!important;pointer-events:none!important;}';
+    'html.vx-news-scan-active .c-window:has(.news-panel),' +
+    'html.vx-news-scan-active .c-window:has(.news-panel) *' +
+    '{visibility:hidden!important;opacity:0!important;pointer-events:none!important;}';
   (document.head || document.documentElement).appendChild(newsScanStyle);
 
   // Nie ukrywamy paneli ani nadrzędnych okien CSS-em podczas skanowania.
@@ -4473,14 +4475,18 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (panelIsOpen(result.type)) result.button.click();
 
     if (result.type === 'news') {
-      // Nie odsłaniaj okna w trakcie animacji zamykania Margonem.
-      // Po usunięciu/ukryciu panelu zdejmij naszą tymczasową regułę.
+      // Trzymaj okno ukryte aż Margonem zakończy animację zamykania.
       const hiddenResult = result;
-      setTimeout(() => {
-        if (!window.__vicknessShouldPauseAddons?.()) {
-          restoreTemporarilyHiddenWindow(hiddenResult);
+      let attempts = 0;
+      const finishClose = () => {
+        if (window.__vicknessShouldPauseAddons?.()) return;
+        if (panelIsOpen('news') && attempts++ < 20) {
+          setTimeout(finishClose, 100);
+          return;
         }
-      }, 900);
+        restoreTemporarilyHiddenWindow(hiddenResult);
+      };
+      setTimeout(finishClose, 100);
       return;
     }
 
@@ -4686,36 +4692,34 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
 
     checking = true;
+    let newsPanel = null;
     try {
-      // Nie otwieraj kalendarza ani Aktualności. Odczytuj wyłącznie elementy,
-      // które Margonem już ma w DOM. To eliminuje miganie okien, animacje
-      // paneli i kosztowne przebudowy interfejsu podczas skanowania.
-      await WAIT(250);
+      // Poczekaj krótko na interfejs gry.
+      let newsButton = findPanelButton('news');
+      for (let i = 0; !newsButton && i < 40; i++) {
+        if (stopped || !enabled.freeRewards || window.__vicknessShouldPauseAddons?.()) return false;
+        await WAIT(250);
+        newsButton = findPanelButton('news');
+      }
+      if (!newsButton || window.__vicknessShouldPauseAddons?.()) return false;
+
+      // Otwórz Aktualności dopiero po aktywowaniu reguły ukrywającej
+      // całe natywne .c-window. Bez obserwatora całego DOM i bez skanów DOM w pętli.
+      newsPanel = await openPanel('news');
+      if (window.__vicknessShouldPauseAddons?.()) return false;
+      if (!newsPanel?.opened) return false;
+
+      await WAIT(150);
       if (stopped || !enabled.freeRewards || window.__vicknessShouldPauseAddons?.()) return false;
 
-      const hasCalendarPanel = !!document.querySelector('.rewards-calendar');
-      const shouldCheckCalendar =
-        hasCalendarPanel &&
-        Date.now() - getLastCalendarEventCheck() >= CALENDAR_ONLY_INTERVAL;
+      const news = findFreeNewsOffers();
+      closeOpenedPanel(newsPanel);
+      newsPanel = null;
 
-      let calendar = null;
-      if (shouldCheckCalendar) {
-        saveLastCalendarEventCheck();
-        const hasCalendarEvent = calendarHasActiveEvent();
-        setCalendarHoverHint(hasCalendarEvent);
-        calendar = hasCalendarEvent ? findCalendarReward() : null;
-      }
-
-      // Aktualności są skanowane tylko wtedy, gdy panel jest już obecny
-      // w DOM. Skrypt nigdy nie klika ikony news ani nie otwiera okna.
-      const hasNewsPanel = !!document.querySelector('.news-panel');
-      const news = hasNewsPanel ? findFreeNewsOffers() : [];
-
-      if (calendar || news.length > 0) {
-        createWidget(calendar, news);
-      } else {
-        removeWidget();
-      }
+      // Kalendarz pozostaje oddzielny i nie jest otwierany automatycznie,
+      // żeby nie wywoływać natywnych komunikatów wydarzeń.
+      if (news.length > 0) createWidget(null, news);
+      else removeWidget();
 
       finished = true;
       return true;
@@ -4723,6 +4727,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       console.error('[Nagrody] Błąd sprawdzania:', error);
       return false;
     } finally {
+      if (newsPanel) closeOpenedPanel(newsPanel);
       checking = false;
     }
   }
