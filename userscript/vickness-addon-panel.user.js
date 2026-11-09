@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.86
-// @description  Vickness Addon Panel 1.2.86 - przywrócono widget tarczy; ustawienia tylko w panelu
+// @version      1.2.87
+// @description  Vickness Addon Panel 1.2.87 - poprawiono inicjalizację Anti Friendly Fire
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -11529,7 +11529,9 @@ if (location.hostname === 'riventia.margonem.pl') {
         installAttackProtection();
         createPanel();
 
-        if (typeof window._g === 'function' && document.getElementById('aff-panel')) {
+        if (typeof window._g === 'function' &&
+            document.getElementById('aff-settings') &&
+            document.getElementById('aff-shield-widget')) {
             clearInterval(init);
             setInterval(installAttackProtection, 2000);
         }
