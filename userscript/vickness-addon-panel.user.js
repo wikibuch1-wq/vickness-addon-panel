@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.73
-// @description  Vickness Addon Panel 1.2.73 - ukrywanie okna Aktualności przed pierwszym renderem
+// @version      1.2.74
+// @description  Vickness Addon Panel 1.2.74 - ukrywanie całego okna Aktualności i jego zawartości
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4327,7 +4327,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   let pendingPanelsClose = [];
 
   const newsScanStyle = document.createElement('style');
-  newsScanStyle.textContent = 'html.vx-news-scan-active .c-window:has(.news-panel){visibility:hidden!important;}';
+  newsScanStyle.textContent = 'html.vx-news-scan-active .c-window:has(.news-panel),html.vx-news-scan-active .c-window:has(.news-panel) *{visibility:hidden!important;}';
   (document.head || document.documentElement).appendChild(newsScanStyle);
 
   // Nie ukrywamy paneli ani nadrzędnych okien CSS-em podczas skanowania.
