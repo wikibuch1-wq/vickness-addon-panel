@@ -1,9 +1,8 @@
-
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.79
-// @description  Vickness Addon Panel 1.2.79 - diagnostyczne wyłączenie kosztownego ukrywania Aktualności
+// @version      1.2.80
+// @description  Vickness Addon Panel 1.2.80 - poprawione zamykanie okna Aktualności po skanowaniu
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4462,16 +4461,38 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (panelIsOpen(result.type)) result.button.click();
 
     if (result.type === 'news') {
-      // Trzymaj okno ukryte aż Margonem zakończy animację zamykania.
+      // Nie przywracaj widoczności, dopóki okno naprawdę się nie zamknie.
+      // W poprzedniej wersji limit 20 prób kończył się po ok. 2 s i odsłaniał
+      // okno nawet wtedy, gdy Margonem nadal raportował je jako otwarte.
       const hiddenResult = result;
       let attempts = 0;
+      let closeRetried = false;
       const finishClose = () => {
-        if (window.__vicknessShouldPauseAddons?.()) return;
-        if (panelIsOpen('news') && attempts++ < 20) {
+        if (window.__vicknessShouldPauseAddons?.()) {
+          pendingPanelsClose.push(hiddenResult);
+          return;
+        }
+
+        if (!panelIsOpen('news')) {
+          restoreTemporarilyHiddenWindow(hiddenResult);
+          return;
+        }
+
+        attempts++;
+        // Jeśli pierwsze kliknięcie nie zamknęło okna, ponów je tylko raz.
+        if (attempts === 20 && !closeRetried && hiddenResult.button?.isConnected) {
+          closeRetried = true;
+          hiddenResult.button.click();
+        }
+
+        if (attempts < 50) {
           setTimeout(finishClose, 100);
           return;
         }
-        restoreTemporarilyHiddenWindow(hiddenResult);
+
+        // Awaryjnie pozostaw okno ukryte zamiast odsłaniać je otwarte.
+        // Kolejna próba zamknięcia nastąpi przy wznowieniu dodatków/relogu.
+        console.warn('[Nagrody] Okno Aktualności nie potwierdziło zamknięcia; pozostawiono je ukryte.');
       };
       setTimeout(finishClose, 100);
       return;
