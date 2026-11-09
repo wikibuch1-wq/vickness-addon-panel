@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.71
-// @description  Vickness Addon Panel 1.2.71 - poprawka kliknięcia odbierania nagród i niższe warstwy dodatków
+// @version      1.2.72
+// @description  Vickness Addon Panel 1.2.72 - natychmiastowy skan po wejściu i zapamiętanie odbioru per postać
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4274,6 +4274,28 @@ if (location.hostname === 'riventia.margonem.pl') {
   const CALENDAR_ONLY_INTERVAL = 60 * 60 * 1000; // Kalendarz: najwyżej raz na godzinę
   const CALENDAR_LAST_CHECK_KEY = 'vickness_free_rewards_last_check_v1';
   const CALENDAR_EVENT_LAST_CHECK_KEY = 'vickness_calendar_event_last_check_v1';
+  const CLAIMED_CHARACTER_KEY = 'vickness_free_rewards_claimed_character_v1';
+  const GAME = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+  const getCurrentCharacterKey = () => {
+    const engine = GAME.Engine;
+    const hero = engine?.hero?.d;
+    if (!engine || engine.logOff || !hero) return '';
+    const id = hero.id ?? hero.nick ?? hero.name;
+    if (id == null) return '';
+    return `${String(id)}@${String(engine.world ?? engine.worldName ?? '')}`;
+  };
+  const wasClaimedByCurrentCharacter = () => {
+    const characterKey = getCurrentCharacterKey();
+    if (!characterKey) return false;
+    try {
+      return localStorage.getItem(CLAIMED_CHARACTER_KEY) === characterKey;
+    } catch (_) { return false; }
+  };
+  const markClaimedForCurrentCharacter = () => {
+    const characterKey = getCurrentCharacterKey();
+    if (!characterKey) return;
+    try { localStorage.setItem(CLAIMED_CHARACTER_KEY, characterKey); } catch (_) {}
+  };
   const getLastCheck = () => {
     try {
       const value = Number(localStorage.getItem(CALENDAR_LAST_CHECK_KEY) || 0);
@@ -4574,6 +4596,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         }
         await WAIT(250);
         if (window.__vicknessShouldPauseAddons?.()) return;
+        markClaimedForCurrentCharacter();
         finished = true;
         removeWidget();
       } catch (error) {
@@ -4623,6 +4646,11 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   async function initialCheck() {
     if (checking || finished || stopped || !enabled.freeRewards) return false;
+    if (wasClaimedByCurrentCharacter()) {
+      finished = true;
+      removeWidget();
+      return true;
+    }
     checking = true;
     let calPanel = null;
     let newsPanel = null;
@@ -4715,7 +4743,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       // Po F5 i przelogowaniu nie wykonuj natychmiast kolejnego skanu.
       // Korzystaj ze wspólnego znacznika czasu w localStorage, aby limit
       // obowiązywał także po przeładowaniu strony i zmianie postaci.
-      const delay = Math.max(1000, remaining);
+      const delay = initial ? 0 : Math.max(1000, remaining);
       hourlyTimer = setTimeout(async () => {
         hourlyTimer = null;
         if (stopped || !enabled.freeRewards) return;
@@ -4732,7 +4760,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         scheduleNextCheck(false, false);
       }, delay);
     };
-    scheduleNextCheck(true);
+    if (!wasClaimedByCurrentCharacter()) scheduleNextCheck(true);
   }
 
   window.__vicknessFreeRewardsCheckNow = () => {
