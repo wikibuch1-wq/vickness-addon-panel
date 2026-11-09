@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.90
-// @description  Vickness Addon Panel 1.2.90 - poprawiony dostęp dodatków do API gry przez unsafeWindow
+// @version      1.2.91
+// @description  Vickness Addon Panel 1.2.91 - zaktualizowany Riventia Quick Split
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -11611,10 +11611,15 @@ if (location.hostname === 'riventia.margonem.pl') {
 
 })();
 (() => {
-(() => {
   'use strict';
 
   const GAME_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+  let moduleEnabled = window.__vicknessAddonEnabled?.quickSplit !== false;
+  window.__vicknessQuickSplitSetEnabled = value => {
+    moduleEnabled = !!value;
+    if (!moduleEnabled) closeModal();
+  };
+
   const TAG = '[Riventia Quick Split]';
   const ENHANCEMENT_CLASS = 26; // Rarytas agronoma: cl=26
   const TELEPORT_CLASS = 32;   // Teleporty z ekwipunku: cl=32
@@ -11622,11 +11627,6 @@ if (location.hostname === 'riventia.margonem.pl') {
   const MODAL_ID = 'rqs-modal';
   let busy = false;
   let hooked = false;
-  let moduleEnabled = window.__vicknessAddonEnabled?.quickSplit !== false;
-  window.__vicknessQuickSplitSetEnabled = value => {
-    moduleEnabled = !!value;
-    if (!moduleEnabled) closeModal();
-  };
 
   const log = (...args) => console.log(TAG, ...args);
   const notify = (message) => {
@@ -11636,16 +11636,16 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   function getItemFromElement(element) {
     try {
-      const jq = GAME_WINDOW.jQuery || GAME_WINDOW.$;
-      if (jq) return jq(element).data('item') || null;
+      if (GAME_WINDOW.$) return GAME_WINDOW.$(element).data('item') || null;
     } catch (_) {}
     return null;
   }
 
   function isTeleportItem(item) {
-    // cl=32 obejmuje też inne przedmioty, więc dodatkowo filtrujemy nazwę.
-    const name = String(item?.getName?.() || item?.name || '');
-    return Number(item?.cl) === TELEPORT_CLASS && /teleport|kamień teleport|zwój czerwonego smoka/i.test(name);
+    // Nie filtrujemy po nazwie ani randze: nazwy teleportów bywają nietypowe
+    // (np. „Mrożny zwitek III”). Klasa 32 to typ „Teleporty”, a cansplit=1
+    // odpowiada informacji „Można dzielić” w tooltipie.
+    return Number(item?.cl) === TELEPORT_CLASS && validStack(item);
   }
 
   function validStack(item) {
@@ -11854,7 +11854,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     };
 
     hooked = true;
-    log('Podpięto natywny podział teleportów: SHIFT + przeciągnięcie wydziela 1 sztukę.');
+    log('Podpięto podział wszystkich dzielonych przedmiotów typu Teleporty (cl=32), bez filtra nazwy/rangi: SHIFT + przeciągnięcie wydziela 1 sztukę.');
     return true;
   }
 
@@ -11884,7 +11884,6 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   boot();
-})();
 
 })();
 
