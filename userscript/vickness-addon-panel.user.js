@@ -6497,14 +6497,19 @@ if (location.hostname === 'riventia.margonem.pl') {
     };
     Object.entries(widgetVars).forEach(([key, value]) => html.style.setProperty(`--vx-widget-${key.replace(/[A-Z]/g, m => '-' + m.toLowerCase())}`, value));
     window.dispatchEvent(new CustomEvent('vickness-theme-change', { detail: { theme: appearance.theme, ...widgetVars } }));
-    panel.style.background = `rgba(8,8,8,${alpha})`;
-    panel.style.backdropFilter = `blur(${appearance.blur}px)`;
-    panel.style.webkitBackdropFilter = `blur(${appearance.blur}px)`;
-    if (header) header.style.background = `rgba(16,16,16,${Math.min(.99, alpha + .04)})`;
-    if (footer) footer.style.background = `rgba(10,10,10,${Math.max(.55, alpha - .02)})`;
+    // Wymuś style bezpośrednio na elementach. W Margonem style panelu
+    // bywają nadpisywane przez arkusze dodatków z !important.
+    panel.style.setProperty('background', `rgba(8,8,8,${alpha})`, 'important');
+    panel.style.setProperty('backdrop-filter', `blur(${appearance.blur}px)`, 'important');
+    panel.style.setProperty('-webkit-backdrop-filter', `blur(${appearance.blur}px)`, 'important');
+    if (header) header.style.setProperty('background', `rgba(16,16,16,${Math.min(.99, alpha + .04)})`, 'important');
+    if (footer) footer.style.setProperty('background', `rgba(10,10,10,${Math.max(.25, alpha - .02)})`, 'important');
     root.querySelectorAll('.vxStandaloneRow,.vxPageCard').forEach(card => {
-      card.style.background = `rgba(20,20,20,${Math.max(.25, alpha - .12)})`;
+      card.style.setProperty('background', `rgba(20,20,20,${Math.max(.12, alpha - .12)})`, 'important');
     });
+    // Zachowaj również zmienne CSS dla pozostałych elementów panelu.
+    root.style.setProperty('--vx-panel-alpha', String(alpha));
+    root.style.setProperty('--vx-panel-blur', `${appearance.blur}px`);
     root.querySelector('#vxOpacityValue').textContent = `${appearance.opacity}%`;
     root.querySelector('#vxBlurValue').textContent = `${appearance.blur} px`;
   }
@@ -6596,7 +6601,27 @@ if (location.hostname === 'riventia.margonem.pl') {
     // Oczyść podtytuł ze starszych wariantów, jeśli został pozostawiony przez wcześniejszy panel.
     root.querySelectorAll('#vxStandaloneHeader [data-vickness-subtitle], #vxStandaloneHeader .vxStandaloneSubtitle').forEach(el => el.remove());
 
-    // Przewijanie pozostawione natywnemu overflow-y widoku, bez przechwytywania wheel.
+    // 1.2.92 – niezawodne przewijanie kółkiem w obrębie widoków panelu.
+    // Nie blokuj scrolla gry ani przewijania poza panelem.
+    root.addEventListener('wheel', event => {
+      if (!event.deltaY) return;
+      const scrollArea = event.target.closest(
+        '#vxHomeView, #vxSettingsView, #vxAppearanceView, #vxUpdateInfoView, .vxExtraView'
+      );
+      if (!scrollArea || !root.contains(scrollArea)) return;
+      const maxScroll = scrollArea.scrollHeight - scrollArea.clientHeight;
+      if (maxScroll <= 1) return;
+      const delta = event.deltaMode === 1
+        ? event.deltaY * 16
+        : event.deltaMode === 2
+          ? event.deltaY * scrollArea.clientHeight
+          : event.deltaY;
+      const nextTop = Math.max(0, Math.min(maxScroll, scrollArea.scrollTop + delta));
+      if (nextTop === scrollArea.scrollTop) return;
+      event.preventDefault();
+      event.stopPropagation();
+      scrollArea.scrollTop = nextTop;
+    }, { passive: false });
 
 
 
