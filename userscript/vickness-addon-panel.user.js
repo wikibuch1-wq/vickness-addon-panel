@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.87
-// @description  Vickness Addon Panel 1.2.87 - poprawiono inicjalizację Anti Friendly Fire
+// @version      1.2.88
+// @description  Vickness Addon Panel 1.2.88 - przywrócono przesuwanie widgetu tarczy
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -11458,6 +11458,63 @@ if (location.hostname === 'riventia.margonem.pl') {
         document.body.appendChild(shield);
         const compact = shield.querySelector('#aff-compact');
         const menu = shield.querySelector('#aff-menu');
+
+        // Przywracanie i zapisywanie pozycji widgetu tarczy.
+        const AFF_POSITION_KEY = 'riventia_anti_friendly_fire_position';
+        try {
+            const savedPosition = JSON.parse(localStorage.getItem(AFF_POSITION_KEY));
+            if (savedPosition && Number.isFinite(savedPosition.left) && Number.isFinite(savedPosition.top)) {
+                shield.style.left = Math.max(0, Math.min(window.innerWidth - 34, savedPosition.left)) + 'px';
+                shield.style.top = Math.max(0, Math.min(window.innerHeight - 34, savedPosition.top)) + 'px';
+                shield.style.right = 'auto';
+            }
+        } catch (_) {}
+
+        compact.addEventListener('pointerdown', event => {
+            if (event.button !== 0) return;
+            const startX = event.clientX;
+            const startY = event.clientY;
+            const rect = shield.getBoundingClientRect();
+            const offsetX = startX - rect.left;
+            const offsetY = startY - rect.top;
+            let moved = false;
+
+            function move(ev) {
+                const dx = ev.clientX - startX;
+                const dy = ev.clientY - startY;
+                if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+                if (!moved) return;
+                menu.style.display = 'none';
+                shield.style.left = Math.max(0, Math.min(window.innerWidth - 34, ev.clientX - offsetX)) + 'px';
+                shield.style.top = Math.max(0, Math.min(window.innerHeight - 34, ev.clientY - offsetY)) + 'px';
+                shield.style.right = 'auto';
+            }
+            function stop() {
+                document.removeEventListener('pointermove', move);
+                document.removeEventListener('pointerup', stop);
+                if (moved) {
+                    const position = shield.getBoundingClientRect();
+                    try {
+                        localStorage.setItem(AFF_POSITION_KEY, JSON.stringify({
+                            left: Math.round(position.left),
+                            top: Math.round(position.top)
+                        }));
+                    } catch (_) {}
+                    compact.dataset.dragged = '1';
+                    setTimeout(() => { delete compact.dataset.dragged; }, 0);
+                }
+            }
+            document.addEventListener('pointermove', move);
+            document.addEventListener('pointerup', stop);
+        });
+
+        compact.addEventListener('click', event => {
+            if (compact.dataset.dragged === '1') {
+                event.stopImmediatePropagation();
+                delete compact.dataset.dragged;
+            }
+        }, true);
+
         const $ = id => settings.querySelector('#' + id);
         $('aff-clans').value = CONFIG.alliedClans.join(', ');
         $('aff-friends').checked = CONFIG.protectFriends;
