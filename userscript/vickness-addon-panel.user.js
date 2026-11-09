@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.81
-// @description  Vickness Addon Panel 1.2.81 - natychmiastowe ukrywanie okna Aktualności
+// @version      1.2.82
+// @description  Vickness Addon Panel 1.2.82 - ukrywanie Aktualności tylko podczas skanowania
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4432,6 +4432,10 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (panelIsOpen(type)) {
       result.button = findPanelButton(type);
       result.opened = true;
+      if (type === 'news' && result.newsObserver) {
+        result.newsObserver.disconnect();
+        result.newsObserver = null;
+      }
       if (type !== 'news') restoreTemporarilyHiddenWindow(result);
       return result;
     }
@@ -4454,7 +4458,16 @@ if (location.hostname === 'riventia.margonem.pl') {
       }
       if (panelIsOpen(type)) {
         await WAIT(100);
-        if (type === 'news') hideNewsWindowNow(result);
+        if (type === 'news') {
+          hideNewsWindowNow(result);
+          // Obserwator jest potrzebny tylko podczas tworzenia okna przez grę.
+          // Po zakończeniu otwierania odłączamy go, aby nie przechwytywał
+          // późniejszych, ręcznych zmian i otwierania Aktualności przez gracza.
+          if (result.newsObserver) {
+            result.newsObserver.disconnect();
+            result.newsObserver = null;
+          }
+        }
         result.opened = true;
         return result;
       }
