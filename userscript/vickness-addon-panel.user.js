@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.89
-// @description  Vickness Addon Panel 1.2.89 - poprawiona identyfikacja celów Anti Friendly Fire
+// @version      1.2.90
+// @description  Vickness Addon Panel 1.2.90 - poprawiony dostęp dodatków do API gry przez unsafeWindow
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -11193,11 +11193,13 @@ if (location.hostname === 'riventia.margonem.pl') {
 // =============================================================
 // ZINTEGROWANE DODATKI: ANTI FRIENDLY FIRE + RIVENTIA QUICK SPLIT
 // Źródła przekazane przez użytkownika; sterowanie z kafelków panelu.
+// API gry pobieramy z unsafeWindow, ponieważ userscript działa w izolowanym świecie.
 // =============================================================
 (() => {
 (() => {
     'use strict';
 
+    const GAME_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
     const STORAGE = 'riventia_anti_friendly_fire';
     const POSITION_STORAGE = 'riventia_anti_friendly_fire_position';
 
@@ -11249,7 +11251,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
     function getPlayers() {
         try {
-            const list = window.Engine?.whoIsHere?.getList?.();
+            const list = GAME_WINDOW.Engine?.whoIsHere?.getList?.();
             return list || {};
         } catch (e) {
             return {};
@@ -11401,10 +11403,10 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
 
     function installAttackProtection() {
-        if (typeof window._g !== 'function') return;
-        if (window._g === wrappedG) return;
+        if (typeof GAME_WINDOW._g !== 'function') return;
+        if (GAME_WINDOW._g === wrappedG) return;
 
-        const originalG = window._g;
+        const originalG = GAME_WINDOW._g;
 
         const wrapper = function(action, callback, ...args) {
             if (typeof action === 'string') {
@@ -11425,7 +11427,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         };
 
         wrapper.__affOriginal = originalG;
-        window._g = wrapper;
+        GAME_WINDOW._g = wrapper;
         wrappedG = wrapper;
 
         console.log('[AFF] Przechwytywanie akcji ataku zainstalowane.');
@@ -11596,7 +11598,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         installAttackProtection();
         createPanel();
 
-        if (typeof window._g === 'function' &&
+        if (typeof GAME_WINDOW._g === 'function' &&
             document.getElementById('aff-settings') &&
             document.getElementById('aff-shield-widget')) {
             clearInterval(init);
@@ -11612,6 +11614,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 (() => {
   'use strict';
 
+  const GAME_WINDOW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
   const TAG = '[Riventia Quick Split]';
   const ENHANCEMENT_CLASS = 26; // Rarytas agronoma: cl=26
   const TELEPORT_CLASS = 32;   // Teleporty z ekwipunku: cl=32
@@ -11627,13 +11630,14 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   const log = (...args) => console.log(TAG, ...args);
   const notify = (message) => {
-    if (typeof window.message === 'function') window.message(message);
+    if (typeof GAME_WINDOW.message === 'function') GAME_WINDOW.message(message);
     else console.info(TAG, message);
   };
 
   function getItemFromElement(element) {
     try {
-      if (window.$) return window.$(element).data('item') || null;
+      const jq = GAME_WINDOW.jQuery || GAME_WINDOW.$;
+      if (jq) return jq(element).data('item') || null;
     } catch (_) {}
     return null;
   }
@@ -11740,7 +11744,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   function waitForAmount(itemId, expectedAmount, done) {
     const started = Date.now();
     const timer = window.setInterval(() => {
-      const current = window.Engine?.items?.getItemById(String(itemId));
+      const current = GAME_WINDOW.Engine?.items?.getItemById(String(itemId));
       const currentAmount = current && Number(current.getAmountStat?.());
       if (Number.isFinite(currentAmount) && currentAmount === expectedAmount) {
         clearInterval(timer);
@@ -11769,7 +11773,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         notify('Podział zakończony. Sprawdź ekwipunek.');
         return;
       }
-      const current = window.Engine?.items?.getItemById(itemId);
+      const current = GAME_WINDOW.Engine?.items?.getItemById(itemId);
       if (!current || Number(current.getAmountStat?.()) !== expected || !validStack(current)) {
         busy = false;
         notify('Przerwano podział: stan stacka zmienił się. Sprawdź ekwipunek.');
@@ -11778,14 +11782,14 @@ if (location.hostname === 'riventia.margonem.pl') {
       const moveAmount = toMove[index];
       const nextExpected = expected - moveAmount;
       const url = `moveitem&findslot=1&st=0&id=${encodeURIComponent(itemId)}&x=${current.getX()}&y=${current.getY()}&split=${moveAmount}`;
-      if (typeof window._g !== 'function') {
+      if (typeof GAME_WINDOW._g !== 'function') {
         busy = false;
         notify('Nie znaleziono funkcji komunikacji gry (_g).');
         return;
       }
       let callbackCalled = false;
       try {
-        window._g(url, response => {
+        GAME_WINDOW._g(url, response => {
           callbackCalled = true;
           if (response && response.alert) {
             busy = false;
@@ -11820,8 +11824,8 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   function hookTeleportSplit() {
-    if (hooked || !window.Engine?.heroEquipment || typeof Engine.heroEquipment.splitItem !== 'function') return false;
-    const equipment = Engine.heroEquipment;
+    if (hooked || !GAME_WINDOW.Engine?.heroEquipment || typeof GAME_WINDOW.Engine.heroEquipment.splitItem !== 'function') return false;
+    const equipment = GAME_WINDOW.Engine.heroEquipment;
     const originalSplit = equipment.splitItem;
     const originalAlert = equipment.alertWindow;
 
