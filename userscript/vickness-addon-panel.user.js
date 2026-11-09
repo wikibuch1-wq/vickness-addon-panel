@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.82
-// @description  Vickness Addon Panel 1.2.82 - ukrywanie Aktualności tylko podczas skanowania
+// @version      1.2.83
+// @description  Vickness Addon Panel 1.2.83 - bez ingerencji w kliknięcie przelogowania
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -1630,28 +1630,9 @@ if (location.hostname === 'riventia.margonem.pl' && window.top === window.self) 
       }
     };
 
-    // Rozpoznaje wyłącznie akcję przelogowania; nie zatrzymuje ani nie anuluje kliknięcia.
-    document.addEventListener('click', event => {
-      const path = typeof event.composedPath === 'function' ? event.composedPath() : [event.target];
-      let depth = 0;
-      for (const node of path) {
-        if (!(node instanceof Element)) continue;
-        if (++depth > 5) break;
-        const rawText = [
-          node.getAttribute('aria-label'),
-          node.getAttribute('title'),
-          node.getAttribute('data-action'),
-          node.textContent
-        ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-        // Nie analizuj dużych kontenerów (np. całego menu lub strony).
-        if (rawText.length <= 120 &&
-            /(przeloguj|zmień postać|zmien postac|wybierz postać|wybierz postac)/i.test(rawText)) {
-          beginPause();
-          break;
-        }
-        if (node.matches('button,a,[role="button"],input,[onclick]')) break;
-      }
-    }, true);
+    // Nie przechwytujemy kliknięcia „Przeloguj postać”.
+    // Wstrzymanie dodatków następuje dopiero po zmianie stanu Engine
+    // (logOff/brak aktywnej postaci), aby nie ingerować w obsługę gry.
 
     const initialKey = getHeroKey();
     if (initialKey) state.heroKey = initialKey;
