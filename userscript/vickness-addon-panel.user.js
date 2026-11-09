@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.75
-// @description  Vickness Addon Panel 1.2.75 - skan Aktualności bez globalnego obserwatora i bez odsłaniania przy zamykaniu
+// @version      1.2.77
+// @description  Vickness Addon Panel 1.2.77 - bez automatycznego otwierania, ukryte okno podczas ręcznego odbioru
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4326,8 +4326,11 @@ if (location.hostname === 'riventia.margonem.pl') {
   let stopped = false;
   let pendingPanelsClose = [];
 
+  // Ukrywaj wyłącznie natywne okno Aktualności, gdy skrypt je otwiera
+  // na potrzeby ręcznego odbioru. Bez MutationObserver i bez obserwowania DOM.
   const newsScanStyle = document.createElement('style');
-  newsScanStyle.textContent = 'html.vx-news-scan-active .c-window:has(.news-panel),html.vx-news-scan-active .c-window:has(.news-panel) *{visibility:hidden!important;}';
+  newsScanStyle.textContent =
+    'html.vx-news-scan-active .c-window:has(.news-panel){visibility:hidden!important;pointer-events:none!important;}';
   (document.head || document.documentElement).appendChild(newsScanStyle);
 
   // Nie ukrywamy paneli ani nadrzędnych okien CSS-em podczas skanowania.
@@ -4595,8 +4598,10 @@ if (location.hostname === 'riventia.margonem.pl') {
       try {
         if (window.__vicknessShouldPauseAddons?.()) return;
         hidePanels();
-        calPanel = await openPanel('calendar');
-        if (window.__vicknessShouldPauseAddons?.()) return;
+        if (document.querySelector('.rewards-calendar')) {
+          calPanel = await openPanel('calendar');
+          if (window.__vicknessShouldPauseAddons?.()) return;
+        }
         newsPanel = await openPanel('news');
         if (window.__vicknessShouldPauseAddons?.()) return;
         await WAIT(200);
@@ -4679,75 +4684,45 @@ if (location.hostname === 'riventia.margonem.pl') {
       removeWidget();
       return true;
     }
+
     checking = true;
-    let calPanel = null;
-    let newsPanel = null;
     try {
-      // Krótkie oczekiwanie na interfejs: zamiast blokować skan nawet minutę,
-      // sprawdzaj gotowość co 250 ms i zakończ oczekiwanie po 20 sekundach.
-      let uiReady = false;
-      for (let i = 0; i < 80; i++) {
-        if (stopped || !enabled.freeRewards || window.__vicknessShouldPauseAddons?.()) return false;
-        if (findPanelButton('calendar') && findPanelButton('news')) {
-          uiReady = true;
-          break;
-        }
-        await WAIT(250);
-      }
-      if (!uiReady) return false;
-      if (!enabled.freeRewards || !findPanelButton('calendar') || !findPanelButton('news')) return false;
+      // Nie otwieraj kalendarza ani Aktualności. Odczytuj wyłącznie elementy,
+      // które Margonem już ma w DOM. To eliminuje miganie okien, animacje
+      // paneli i kosztowne przebudowy interfejsu podczas skanowania.
+      await WAIT(250);
+      if (stopped || !enabled.freeRewards || window.__vicknessShouldPauseAddons?.()) return false;
 
-      // Skanowanie nie może otwierać okna Aktualności ani klikać jego ikony.
-      // Odczytujemy wyłącznie kafelki, które gra już udostępniła w DOM.
-      // Kalendarz pozostaje obsługiwany dotychczasowym mechanizmem.
-      hidePanels();
-      const shouldCheckCalendar = Date.now() - getLastCalendarEventCheck() >= CALENDAR_ONLY_INTERVAL;
+      const hasCalendarPanel = !!document.querySelector('.rewards-calendar');
+      const shouldCheckCalendar =
+        hasCalendarPanel &&
+        Date.now() - getLastCalendarEventCheck() >= CALENDAR_ONLY_INTERVAL;
+
+      let calendar = null;
       if (shouldCheckCalendar) {
-        // Komunikat natywny kalendarza może pojawić się przy otwieraniu,
-        // dlatego kalendarz sprawdzamy rzadziej niż Aktualności.
         saveLastCalendarEventCheck();
-        calPanel = await openPanel('calendar');
-        if (window.__vicknessShouldPauseAddons?.()) return false;
-        await WAIT(200);
-        if (window.__vicknessShouldPauseAddons?.()) return false;
+        const hasCalendarEvent = calendarHasActiveEvent();
+        setCalendarHoverHint(hasCalendarEvent);
+        calendar = hasCalendarEvent ? findCalendarReward() : null;
       }
 
-      // Otwórz Aktualności w trybie niewidocznym, aby gra załadowała
-      // kafelki do DOM. openPanel('news') ukrywa okno przed kliknięciem
-      // ikony, a closeOpenedPanel przywraca jego pierwotny stan.
-      newsPanel = await openPanel('news');
-      if (window.__vicknessShouldPauseAddons?.()) return false;
-      await WAIT(200);
-      if (window.__vicknessShouldPauseAddons?.()) return false;
+      // Aktualności są skanowane tylko wtedy, gdy panel jest już obecny
+      // w DOM. Skrypt nigdy nie klika ikony news ani nie otwiera okna.
+      const hasNewsPanel = !!document.querySelector('.news-panel');
+      const news = hasNewsPanel ? findFreeNewsOffers() : [];
 
-      const hasCalendarEvent = shouldCheckCalendar && calendarHasActiveEvent();
-      setCalendarHoverHint(hasCalendarEvent);
-      const calendar = hasCalendarEvent ? findCalendarReward() : null;
-      const news = findFreeNewsOffers();
-
-      // Skanowanie ma wyłącznie wykrywać nagrody i pokazać okienko.
-      // Odbiór następuje dopiero po ręcznym kliknięciu „ODBIERZ WSZYSTKO”.
-      closeOpenedPanel(newsPanel);
-      newsPanel = null;
-      closeOpenedPanel(calPanel);
-      calPanel = null;
-
-      // Pokazuj widget wyłącznie wtedy, gdy wykryto co najmniej jedną
-      // możliwą do odebrania nagrodę. Przy zerowym wyniku nie zasłaniaj gry.
       if (calendar || news.length > 0) {
         createWidget(calendar, news);
       } else {
         removeWidget();
       }
+
       finished = true;
       return true;
     } catch (error) {
       console.error('[Nagrody] Błąd sprawdzania:', error);
       return false;
     } finally {
-      closeOpenedPanel(newsPanel);
-      closeOpenedPanel(calPanel);
-      if (!window.__vicknessShouldPauseAddons?.()) showPanels();
       checking = false;
     }
   }
