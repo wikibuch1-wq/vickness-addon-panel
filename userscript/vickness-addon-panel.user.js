@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.83
-// @description  Vickness Addon Panel 1.2.83 - bez ingerencji w kliknięcie przelogowania
+// @version      1.2.84
+// @description  Vickness Addon Panel 1.2.84 - integracja Anti Friendly Fire i Quick Split
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4296,6 +4296,8 @@ if (location.hostname === 'riventia.margonem.pl') {
   };
   const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = {});
   if (typeof enabled.freeRewards !== 'boolean') enabled.freeRewards = true;
+  if (typeof enabled.antiFriendlyFire !== 'boolean') enabled.antiFriendlyFire = false;
+  if (typeof enabled.quickSplit !== 'boolean') enabled.quickSplit = true;
   if (typeof enabled.itemChat !== 'boolean') enabled.itemChat = true;
 
   let checking = false;
@@ -4821,7 +4823,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   const KEY = 'vickness_addon_panel_layout_v2';
   const FLAGS_KEY = 'vickness_addon_enabled_v1';
-  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true, freeRewards: true, itemChat: true });
+  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true, freeRewards: true, itemChat: true, antiFriendlyFire: false, quickSplit: true });
   if (typeof enabled.profileFinder !== 'boolean') enabled.profileFinder = true;
   try {
     const saved = JSON.parse(localStorage.getItem(FLAGS_KEY) || '{}');
@@ -4839,6 +4841,8 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (typeof saved.rankChat === 'boolean') enabled.rankChat = saved.rankChat;
     if (typeof saved.freeRewards === 'boolean') enabled.freeRewards = saved.freeRewards;
     if (typeof saved.itemChat === 'boolean') enabled.itemChat = saved.itemChat;
+    if (typeof saved.antiFriendlyFire === 'boolean') enabled.antiFriendlyFire = saved.antiFriendlyFire;
+    if (typeof saved.quickSplit === 'boolean') enabled.quickSplit = saved.quickSplit;
   } catch (_) { if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true; if (typeof enabled.titan !== 'boolean') enabled.titan = true; if (typeof enabled.crewOnline !== 'boolean') enabled.crewOnline = true; if (typeof enabled.rankChat !== 'boolean') enabled.rankChat = true; }
   if (typeof enabled.lootlog !== 'boolean') enabled.lootlog = true;
   if (typeof enabled.titan !== 'boolean') enabled.titan = true;
@@ -4868,6 +4872,14 @@ if (location.hostname === 'riventia.margonem.pl') {
   let lastTitanEnabledApplied = null;
 
   function saveFlags() { try { localStorage.setItem(FLAGS_KEY, JSON.stringify(enabled)); } catch (_) {} }
+
+  window.addEventListener('vickness-addon-flag-change', event => {
+    const key = event.detail?.key;
+    if (key !== 'antiFriendlyFire') return;
+    enabled[key] = !!event.detail.value;
+    saveFlags();
+    if (root && root.isConnected) applyToggles();
+  });
   function saveProfileFinderFlag() { try { GM_setValue(PROFILE_FINDER_GM_KEY, !!enabled.profileFinder); } catch (_) {} }
   function saveLayout() { try { localStorage.setItem(KEY, JSON.stringify(layout)); } catch (_) {} }
 
@@ -5148,10 +5160,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     #vxMapDimmerCard { padding:8px 9px; border-color:var(--vx-accent-line); }
     #vxMapDimmerCard .vxAppearanceControl { margin:6px 0; }
     #vxMapDimmerCard .vxPageNote { line-height:1.35; }
-    .vxChangelogEntry { padding:8px 0; border-top:1px solid rgba(201,162,39,.16); }
-    .vxChangelogEntry:first-of-type { border-top:0; }
-    .vxChangelogVersion { color:var(--vx-accent); font-weight:bold; }
-    .vxChangelogDate { margin-left:6px; color:#777; font-size:9px; }
 
     .vxInfoBtn { flex:0 0 15px; width:15px; height:15px; padding:0; border:1px solid var(--vx-accent-line); border-radius:50%; background:rgba(10,10,10,.72); color:var(--vx-accent); font: bold 10px Arial,sans-serif; line-height:13px; cursor:pointer; }
     .vxInfoBtn:hover { background:var(--vx-accent-soft); filter:brightness(1.25); }
@@ -5196,7 +5204,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     #vxStandaloneMini { position:fixed; z-index:20; display:none; align-items:center; gap:8px; padding:10px 14px; background:rgba(11,11,11,.9); color:#dfb943; border:1px solid #c9a227; border-radius:5px; font:bold 12px Arial,sans-serif; cursor:pointer; user-select:none; box-shadow:0 4px 16px #0008; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
     #vxStandaloneMini .diamond { display:inline-block; width:22px; height:27px; border:1px solid var(--vx-accent-line); border-radius:4px; background:rgba(10,10,10,.7) url("data:image/png;base64,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") center/18px 25px no-repeat; color:transparent; font-size:0; }
     #vxStandalonePanel { border-color:var(--vx-accent-line); }
-    #vxStandaloneBrand,#vxStandaloneMin,.vxStandaloneName,#vxCurrentSetting,.vxChangelogVersion { color:var(--vx-accent); }
+    #vxStandaloneBrand,#vxStandaloneMin,.vxStandaloneName,#vxCurrentSetting,{ color:var(--vx-accent); }
     #vxStandaloneMin,.vxOpenSettings,.vxNavBtn,.vxActionBtn { border-color:var(--vx-accent-line); }
     .vxStandaloneRow { border-color:var(--vx-accent-line); }
     #vxStandaloneFooter { border-top-color:var(--vx-accent-line); }
@@ -5205,13 +5213,13 @@ if (location.hostname === 'riventia.margonem.pl') {
     /* Widok główny jest przewijany wewnątrz okna; stopka zostaje na dole. */
     #vxHomeView { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(86px,auto)); grid-auto-rows:minmax(86px,auto); align-content:start; align-items:stretch; gap:4px; padding:5px; flex:1 1 0%; height:0; min-height:0; max-height:none; overflow-y:auto; overflow-x:hidden; }
     #vxHomeView.vxNarrow { grid-template-columns:minmax(0,1fr); grid-template-rows:none; grid-auto-rows:minmax(68px,auto); }
-    #vxHomeView, #vxSettingsView, #vxChangelogView, #vxAppearanceView { scrollbar-width:thin; scrollbar-color:rgba(201,162,39,.25) transparent; overscroll-behavior:contain; }
+    #vxHomeView, #vxSettingsView, #vxAppearanceView { scrollbar-width:thin; scrollbar-color:rgba(201,162,39,.25) transparent; overscroll-behavior:contain; }
     #vxSettingsWnm .vxWnmControl { width:100%; box-sizing:border-box; padding:6px 8px; border:1px solid var(--vx-accent-line); border-radius:5px; color:#f3e7c5; background:#171717; font:12px Arial,sans-serif; }
     #vxSettingsWnm input[type="checkbox"] { accent-color:var(--vx-accent); }
-    #vxHomeView::-webkit-scrollbar, #vxSettingsView::-webkit-scrollbar, #vxChangelogView::-webkit-scrollbar, #vxAppearanceView::-webkit-scrollbar { width:4px; }
-    #vxHomeView::-webkit-scrollbar-track, #vxSettingsView::-webkit-scrollbar-track, #vxChangelogView::-webkit-scrollbar-track, #vxAppearanceView::-webkit-scrollbar-track { background:transparent; }
-    #vxHomeView::-webkit-scrollbar-thumb, #vxSettingsView::-webkit-scrollbar-thumb, #vxChangelogView::-webkit-scrollbar-thumb, #vxAppearanceView::-webkit-scrollbar-thumb { background:rgba(201,162,39,.22); border-radius:8px; }
-    #vxHomeView::-webkit-scrollbar-thumb:hover, #vxSettingsView::-webkit-scrollbar-thumb:hover, #vxChangelogView::-webkit-scrollbar-thumb:hover, #vxAppearanceView::-webkit-scrollbar-thumb:hover { background:rgba(201,162,39,.42); }
+    #vxHomeView::-webkit-scrollbar, #vxSettingsView::-webkit-scrollbar, #vxAppearanceView::-webkit-scrollbar { width:4px; }
+    #vxHomeView::-webkit-scrollbar-track, #vxSettingsView::-webkit-scrollbar-track, #vxAppearanceView::-webkit-scrollbar-track { background:transparent; }
+    #vxHomeView::-webkit-scrollbar-thumb, #vxSettingsView::-webkit-scrollbar-thumb, #vxAppearanceView::-webkit-scrollbar-thumb { background:rgba(201,162,39,.22); border-radius:8px; }
+    #vxHomeView::-webkit-scrollbar-thumb:hover, #vxSettingsView::-webkit-scrollbar-thumb:hover, #vxAppearanceView::-webkit-scrollbar-thumb:hover { background:rgba(201,162,39,.42); }
     @media (max-width:560px) { #vxStandalonePanel { max-width:calc(100vw - 12px); max-height:calc(100vh - 12px); left:6px; top:6px; } #vxSidebar { flex-basis:86px; width:86px; padding:6px 4px; } .vxSideTab { padding:6px 4px; gap:4px; } #vxHomeView { grid-template-columns:minmax(0,1fr); grid-auto-rows:minmax(68px,auto); } #vxSettingsView { max-height:none; } .vxStandaloneRow { min-height:68px; padding:5px; } .vxStandaloneName { font-size:9px; } .vxStandaloneDesc { font-size:7.5px; } .vxStandaloneState { font-size:6.8px; } .vxOpenSettings { font-size:7.5px; padding:3px 5px; } }
     #vxSettingsLootChance #mlc513-panel { position:relative!important; left:auto!important; top:auto!important; right:auto!important; bottom:auto!important; width:100%!important; max-width:100%!important; margin:0!important; padding:3px!important; z-index:1!important; box-shadow:none!important; border:0!important; border-radius:0!important; background:transparent!important; display:block!important; }
     #mlc513-panel { display:none!important; }
@@ -5249,10 +5257,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     .vxOpenSettings,.vxNavBtn { font-size:10px; line-height:1.15; padding:4px 6px; margin-top:4px; }
     .vxPageCard { font-size:12px; line-height:1.38; padding:10px; }
     .vxPageTitle { font-size:15px; line-height:1.25; margin-bottom:6px; }
-    .vxChangelogEntry { font-size:12px; line-height:1.38; padding:7px 0; }
-    .vxChangelogEntry > div { font-size:12px; line-height:1.4; margin-top:4px; }
-    .vxChangelogVersion { font-size:13px; }
-    .vxChangelogDate { font-size:9px; }
     .vxPageNote { font-size:10px; line-height:1.4; }
     .vxAppearanceControl { font-size:12px; line-height:1.35; margin:8px 0; }
     .vxAppearanceControl output { font-size:12px; }
@@ -5265,7 +5269,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       .vxStandaloneDesc { font-size:9px; }
       .vxStandaloneState { font-size:8px; }
       .vxOpenSettings,.vxNavBtn { font-size:9px; }
-      .vxPageCard,.vxChangelogEntry,.vxChangelogEntry > div { font-size:11px; }
+      .vxPageCard { font-size:11px; }
       .vxPageTitle { font-size:14px; }
       #vxHomeView { grid-auto-rows:minmax(76px,auto); }
     }
@@ -5524,7 +5528,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
     #vicknessStandaloneRoot #vxUpdateInfoView,
     #vicknessStandaloneRoot #vxSettingsView,
-    #vicknessStandaloneRoot #vxChangelogView,
+    #vicknessStandaloneRoot 
     #vicknessStandaloneRoot #vxAppearanceView {
       min-width:0!important; min-height:0!important; overflow:auto!important;
       font-size:11px!important; line-height:1.4!important;
@@ -5645,7 +5649,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
     #vicknessStandaloneRoot #vxUpdateInfoView,
     #vicknessStandaloneRoot #vxSettingsView,
-    #vicknessStandaloneRoot #vxChangelogView,
+    #vicknessStandaloneRoot 
     #vicknessStandaloneRoot #vxAppearanceView {
       font-size:12px!important;
       line-height:1.5!important;
@@ -5797,7 +5801,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     #vicknessStandaloneRoot #vxContentTitle,
     #vicknessStandaloneRoot .vxPageTitle,
     #vicknessStandaloneRoot #vxAddonInfoTitle,
-    #vicknessStandaloneRoot .vxChangelogVersion,
+    #vicknessStandaloneRoot 
     #vicknessStandaloneRoot #vxMapDimmerCard .vxPageTitle {
       color:#fff0b8!important;
       text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 7px rgba(0,0,0,.7)!important;
@@ -5840,7 +5844,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     #vicknessStandaloneRoot #vxHomeView,
     #vicknessStandaloneRoot #vxSettingsView,
     #vicknessStandaloneRoot #vxUpdateInfoView,
-    #vicknessStandaloneRoot #vxChangelogView,
+    #vicknessStandaloneRoot 
     #vicknessStandaloneRoot #vxAppearanceView,
     #vicknessStandaloneRoot .vxExtraView {
       background:var(--vx-widget-row-alt)!important;
@@ -5861,17 +5865,17 @@ if (location.hostname === 'riventia.margonem.pl') {
     #vicknessStandaloneRoot .vxPageTitle,
     #vicknessStandaloneRoot #vxContentTitle,
     #vicknessStandaloneRoot #vxCurrentSetting,
-    #vicknessStandaloneRoot .vxChangelogVersion {
+    #vicknessStandaloneRoot {
       color:var(--vx-widget-light)!important;
     }
     #vicknessStandaloneRoot #vxContentSubtitle,
     #vicknessStandaloneRoot .vxPageNote,
     #vicknessStandaloneRoot .vxStandaloneDesc,
     #vicknessStandaloneRoot .vxStandaloneState,
-    #vicknessStandaloneRoot .vxChangelogEntry {
+    #vicknessStandaloneRoot {
       color:var(--vx-widget-secondary)!important;
     }
-    #vicknessStandaloneRoot .vxChangelogEntry {
+    #vicknessStandaloneRoot {
       border-top-color:var(--vx-widget-line)!important;
     }
     #vicknessStandaloneRoot .vxAppearanceControl select,
@@ -5984,7 +5988,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     #vicknessStandaloneRoot .vxPageCard > strong.vxPageTitle,
     #vicknessStandaloneRoot #vxContentTitle,
     #vicknessStandaloneRoot .vxStandaloneName,
-    #vicknessStandaloneRoot .vxChangelogVersion {
+    #vicknessStandaloneRoot {
       color:var(--vx-accent)!important;
       font-weight:700!important;
       text-shadow:0 0 5px color-mix(in srgb,var(--vx-accent) 22%,transparent)!important;
@@ -6003,7 +6007,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       font-size:13px!important;
       line-height:1.35!important;
     }
-    #vicknessStandaloneRoot .vxChangelogVersion {
+    #vicknessStandaloneRoot {
       font-size:12px!important;
     }
     #vicknessStandaloneRoot #vxBrandSub > span {
@@ -6018,10 +6022,9 @@ if (location.hostname === 'riventia.margonem.pl') {
         <button type="button" class="vxSideTab active" data-vx-tab="addons"><span class="vxTabIcon">♧</span><span>Dodatki</span></button>
         <button type="button" class="vxSideTab" data-vx-tab="appearance"><span class="vxTabIcon">◩</span><span>Wygląd</span></button>
         <button type="button" class="vxSideTab" data-vx-tab="update"><span class="vxTabIcon">↻</span><span>Aktualizacja</span></button>
-        <button type="button" class="vxSideTab" data-vx-tab="changelog"><span class="vxTabIcon">▤</span><span>Log zmian</span></button>
       </nav>
       <div id="vxContentArea">
-    <div id="vxContentHeading"><div><span class="vxHeadingIcon">♧</span><div><strong id="vxContentTitle">Dodatki</strong><small id="vxContentSubtitle">Zarządzaj rozszerzeniami (dodatkami) pakietu Riventia.</small></div></div><span id="vxAddonCount">10 / 10 dodatków</span></div>
+    <div id="vxContentHeading"><div><span class="vxHeadingIcon">♧</span><div><strong id="vxContentTitle">Dodatki</strong><small id="vxContentSubtitle">Zarządzaj rozszerzeniami (dodatkami) pakietu Riventia.</small></div></div><span id="vxAddonCount">13 / 13 dodatków</span></div>
     <div id="vxUpdateInfoView" class="vxExtraView" style="display:none">
       <div class="vxPageCard"><strong class="vxPageTitle">Aktualizowanie skryptu</strong>Aktualizacje panelu instalujesz przez Tampermonkey. Po opublikowaniu nowej wersji na GitHubie:</div>
       <div class="vxPageCard"><ol class="vxUpdateSteps"><li>Otwórz ikonę Tampermonkey w przeglądarce.</li><li>Przejdź do panelu zarządzania dodatkami.</li><li>Wybierz Vickness Addons i sprawdź dostępność aktualizacji.</li><li>Użyj opcji aktualizacji, aby pobrać najnowszą wersję.</li><li>Odśwież kartę Margonem, jeśli Tampermonkey tego wymaga.</li></ol><p class="vxPageNote">Nie instaluj kolejnej kopii skryptu — aktualizuj istniejący wpis, aby uniknąć duplikatów.</p></div>
@@ -6038,6 +6041,9 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">▤</span>Kolory rang Lootloga na czacie<button type="button" class="vxInfoBtn" data-vx-info="Kolory rang Lootloga na czacie" aria-label="Informacje: Kolory rang Lootloga na czacie" title="Informacje">?</button><button type="button" class="vxOpenSettings" id="vxRankChatOpen">⚙</button></span><span class="vxStandaloneDesc">Koloruje nicki nadawców według rang The Crew na Lootlogu</span><div class="vxStandaloneState" id="vxRankChatState"></div></div><label class="vxToggle"><input id="vxRankChatSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">✧</span>Darmowe Nagrody<button type="button" class="vxInfoBtn" data-vx-info="Darmowe Nagrody" aria-label="Informacje: Darmowe Nagrody" title="Informacje">?</button><button type="button" class="vxOpenSettings" id="vxFreeRewardsOpen">⚙</button></span><span class="vxStandaloneDesc">Automatyczne wykrywanie darmowych nagród z kalendarza i ofert</span><div class="vxStandaloneState" id="vxFreeRewardsState"></div></div><label class="vxToggle"><input id="vxFreeRewardsSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">✧</span>Kolorowanie przedmiotów na czacie<button type="button" class="vxInfoBtn" data-vx-info="Kolorowanie przedmiotów na czacie" aria-label="Informacje: Kolorowanie przedmiotów na czacie" title="Informacje">?</button><button type="button" class="vxOpenSettings" id="vxItemChatOpen">⚙</button></span><span class="vxStandaloneDesc">Koloruje nazwy połączonych przedmiotów według rzadkości i dodaje delikatną poświatę</span><div class="vxStandaloneState" id="vxItemChatState"></div></div><label class="vxToggle"><input id="vxItemChatSwitch" type="checkbox"><span></span></label></div>
+      <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">🛡</span>Anti Friendly Fire<button type="button" class="vxInfoBtn" data-vx-info="Anti Friendly Fire" aria-label="Informacje: Anti Friendly Fire" title="Informacje">?</button></span><span class="vxStandaloneDesc">Blokuje ataki na przyjaciół, własny i sojusznicze klany</span><div class="vxStandaloneState" id="vxAntiFriendlyFireState"></div></div><label class="vxToggle"><input id="vxAntiFriendlyFireSwitch" type="checkbox"><span></span></label></div>
+      <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">✂</span>Riventia Quick Split<button type="button" class="vxInfoBtn" data-vx-info="Riventia Quick Split" aria-label="Informacje: Riventia Quick Split" title="Informacje">?</button></span><span class="vxStandaloneDesc">Szybki podział stacków ulepszeń i teleportów</span><div class="vxStandaloneState" id="vxQuickSplitState"></div></div><label class="vxToggle"><input id="vxQuickSplitSwitch" type="checkbox"><span></span></label></div>
+</div>
     </div>
     <div id="vxSettingsView">
       <div id="vxSettingsToolbar"><button class="vxNavBtn" id="vxBackHome" type="button">← WSTECZ</button><span id="vxCurrentSetting">USTAWIENIA</span><button class="vxNavBtn" id="vxSwitchAddon" type="button">DRUGI DODATEK →</button></div>
@@ -6104,15 +6110,6 @@ if (location.hostname === 'riventia.margonem.pl') {
         <div class="vxLootlogInfo" id="vxRankChatStatus" role="status" aria-live="polite" style="margin-top:8px">Oczekiwanie na uruchomienie synchronizacji…</div>
       </div>
     </div>
-    <div id="vxChangelogView" class="vxExtraView">
-      <div class="vxPageCard">
-        <span class="vxPageTitle">Dziennik zmian Vickness Addons</span>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.2.07</span><div>Poprawiono dostęp dodatku kolorowania do jQuery strony w sandboxie userscriptu.</div></div>\n      <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.78</span><div>Usunięto kafelek instrukcji aktualizacji z zakładki Dodatki. Uzupełniono opisy dodatków zgodnie z przekazanymi treściami. Dziennik zmian zawiera wyłącznie informacje o zmianach.</div></div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.77</span><div>Powiększono panel oraz czcionki w nagłówku, menu, kafelkach i opisach dodatków. Zwiększono również ikony i przełączniki.</div></div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.76</span><div>Naprawiono przełączanie zakładek, aby zawartość Dodatków, Wyglądu, Aktualizacji i Logu zmian nie wyświetlała się jednocześnie.</div></div>
-        <div class="vxChangelogEntry"><span class="vxChangelogVersion">1.1.75</span><div>Poprawiono układ zawartości zakładek i przewijanie panelu.</div></div>
-      </div>
-    </div>
     <div id="vxAppearanceView" class="vxExtraView">
       <div class="vxPageCard" id="vxMapDimmerCard">
         <span class="vxPageTitle">Złote przyciemnienie mapy <button type="button" class="vxInfoBtn" data-vx-info="Przyciemnianie mapek" aria-label="Informacje: Przyciemnianie mapek" title="Informacje">?</button></span>
@@ -6134,7 +6131,6 @@ if (location.hostname === 'riventia.margonem.pl') {
 
     </div>
       </div>
-    </div>
     <div id="vxAddonInfoModal" class="vxInfoModal" hidden role="dialog" aria-modal="true" aria-labelledby="vxAddonInfoTitle">
       <div class="vxInfoDialog">
         <div class="vxInfoDialogHead"><strong id="vxAddonInfoTitle">Informacje o dodatku</strong><button type="button" id="vxAddonInfoClose" aria-label="Zamknij">×</button></div>
@@ -6269,6 +6265,13 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxFreeRewardsState').textContent = enabled.freeRewards ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxItemChatSwitch').checked = !!enabled.itemChat;
     root.querySelector('#vxItemChatState').textContent = enabled.itemChat ? 'WŁĄCZONY' : 'WYŁĄCZONY';
+
+    root.querySelector('#vxAntiFriendlyFireSwitch').checked = !!enabled.antiFriendlyFire;
+    root.querySelector('#vxAntiFriendlyFireState').textContent = enabled.antiFriendlyFire ? 'WŁĄCZONY' : 'WYŁĄCZONY';
+    root.querySelector('#vxQuickSplitSwitch').checked = !!enabled.quickSplit;
+    root.querySelector('#vxQuickSplitState').textContent = enabled.quickSplit ? 'WŁĄCZONY' : 'WYŁĄCZONY';
+    if (typeof window.__vicknessAntiFriendlyFireSetEnabled === 'function') window.__vicknessAntiFriendlyFireSetEnabled(!!enabled.antiFriendlyFire);
+    if (typeof window.__vicknessQuickSplitSetEnabled === 'function') window.__vicknessQuickSplitSetEnabled(!!enabled.quickSplit);
     if (typeof window.__vicknessItemChatSetEnabled === 'function') window.__vicknessItemChatSetEnabled(!!enabled.itemChat);
     if (typeof window.__vicknessFreeRewardsSetEnabled === 'function') window.__vicknessFreeRewardsSetEnabled(!!enabled.freeRewards);
     if (typeof window.__vicknessRankChatSetEnabled === 'function') window.__vicknessRankChatSetEnabled(!!enabled.rankChat);
@@ -6279,12 +6282,12 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxLootState').textContent = enabled.loot ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxDcState').textContent = enabled.dc ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxLootlogState').textContent = enabled.lootlog ? 'WŁĄCZONY' : 'WYŁĄCZONY';
-    const addonKeys = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat', 'freeRewards', 'itemChat'];
+    const addonKeys = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat', 'freeRewards', 'itemChat', 'antiFriendlyFire', 'quickSplit'];
     const enabledCount = addonKeys.reduce((sum, key) => sum + (enabled[key] ? 1 : 0), 0);
     const countLabel = root.querySelector('#vxAddonCount');
     if (countLabel) countLabel.textContent = `${enabledCount} / ${addonKeys.length} dodatków`;
     const miniCount = root.querySelector('#vxMiniAddonCount');
-    if (miniCount) miniCount.textContent = `${enabledCount}/11`;
+    if (miniCount) miniCount.textContent = `${enabledCount}/13`;
     dockWidgets();
   }
   function setActiveTab(tab) {
@@ -6299,19 +6302,17 @@ if (location.hostname === 'riventia.margonem.pl') {
     const subtitle = root.querySelector('#vxContentSubtitle');
     const headingIcon = root.querySelector('.vxHeadingIcon');
     if (title && subtitle && headingIcon) {
-      title.textContent = tab === 'addons' ? 'Dodatki' : (tab === 'appearance' ? 'Wygląd' : 'Log zmian');
-      subtitle.textContent = tab === 'addons' ? 'Zarządzaj rozszerzeniami (dodatkami) pakietu Riventia.' : (tab === 'appearance' ? 'Dostosuj wygląd panelu do własnych preferencji.' : 'Historia ostatnich aktualizacji pakietu.');
-      headingIcon.textContent = tab === 'addons' ? '♧' : (tab === 'appearance' ? '◩' : '▤');
+      title.textContent = tab === 'addons' ? 'Dodatki' : (tab === 'appearance' ? 'Wygląd' : 'Aktualizacja');
+      subtitle.textContent = tab === 'addons' ? 'Zarządzaj rozszerzeniami (dodatkami) pakietu Riventia.' : (tab === 'appearance' ? 'Dostosuj wygląd panelu do własnych preferencji.' : 'Jak pobierać najnowszą wersję panelu.');
+      headingIcon.textContent = tab === 'addons' ? '♧' : (tab === 'appearance' ? '◩' : '↻');
     }
 
     const home = root.querySelector('#vxHomeView');
     const settings = root.querySelector('#vxSettingsView');
-    const changelog = root.querySelector('#vxChangelogView');
     const appearance = root.querySelector('#vxAppearanceView');
     const update = root.querySelector('#vxUpdateInfoView');
     home.style.display = tab === 'addons' ? 'grid' : 'none';
     settings.style.display = 'none';
-    changelog.style.display = tab === 'changelog' ? 'flex' : 'none';
     appearance.style.display = tab === 'appearance' ? 'flex' : 'none';
     if (update) update.style.display = tab === 'update' ? 'flex' : 'none';
     setActiveTab(tab);
@@ -6321,7 +6322,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     if (!['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat', 'freeRewards', 'itemChat'].includes(which)) which = 'dc';
     setActiveTab('addons');
     root.querySelector('#vxHomeView').style.display = 'none';
-    root.querySelector('#vxChangelogView').style.display = 'none';
     root.querySelector('#vxAppearanceView').style.display = 'none';
     enabled[which] = true;
     saveFlags();
@@ -6597,7 +6597,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelectorAll('#vxStandaloneHeader [data-vickness-subtitle], #vxStandaloneHeader .vxStandaloneSubtitle').forEach(el => el.remove());
 
     root.addEventListener('wheel', event => {
-      const candidates = ['#vxHomeView', '#vxSettingsView', '#vxChangelogView', '#vxAppearanceView', '#vxUpdateInfoView'];
+      const candidates = ['#vxHomeView', '#vxSettingsView', '', '#vxAppearanceView', '#vxUpdateInfoView'];
       const activeView = candidates.map(selector => root.querySelector(selector)).find(view => view && getComputedStyle(view).display !== 'none');
       if (!activeView || activeView.scrollHeight <= activeView.clientHeight) return;
       // Przewijaj aktywną zakładkę kółkiem nad jej tłem i tekstem.
@@ -6691,6 +6691,13 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxItemChatSwitch').addEventListener('change', e => {
       enabled.itemChat = e.target.checked; saveFlags(); applyToggles();
     });
+
+    root.querySelector('#vxAntiFriendlyFireSwitch').addEventListener('change', e => {
+      enabled.antiFriendlyFire = e.target.checked; saveFlags(); applyToggles();
+    });
+    root.querySelector('#vxQuickSplitSwitch').addEventListener('change', e => {
+      enabled.quickSplit = e.target.checked; saveFlags(); applyToggles();
+    });
     root.querySelector('#vxItemChatOpen').addEventListener('click', () => openSettings('itemChat'));
     root.querySelector('#vxFreeRewardsOpen').addEventListener('click', () => openSettings('freeRewards'));
     root.querySelector('#vxFreeRewardsCheck').addEventListener('click', () => {
@@ -6737,7 +6744,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxCrewOnlineCollapse').addEventListener('click', () => crewAction('collapse'));
     root.querySelector('#vxBackHome').addEventListener('click', backHome);
     root.querySelector('[data-vx-tab="addons"]').addEventListener('click', () => setMainTab('addons'));
-    root.querySelector('[data-vx-tab="changelog"]').addEventListener('click', () => setMainTab('changelog'));
     root.querySelector('[data-vx-tab="appearance"]').addEventListener('click', () => setMainTab('appearance'));
     root.querySelector('[data-vx-tab="update"]')?.addEventListener('click', () => {
       setMainTab('update');
@@ -6768,10 +6774,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxLootlogScaleDown').addEventListener('click', () => getPanel('vickness-lootbar')?.querySelector('.vl-minus')?.click());
     root.querySelector('#vxLootlogScaleUp').addEventListener('click', () => getPanel('vickness-lootbar')?.querySelector('.vl-plus')?.click());
 
-    // Dziennik zmian pokazuje tylko cztery najnowsze wpisy.
-    const changelogEntries = root.querySelectorAll('#vxChangelogView .vxChangelogEntry');
-    changelogEntries.forEach((entry, index) => { if (index >= 4) entry.remove(); });
-
     const addonDescriptions = {
       'Loot Glow': 'Daje możliwość podświetlenia lootu: pospolitego, unikatowego, heroicznego oraz legendarnego. Możliwość dopasowania koloru pod użytkownika.',
       'DC Wykrywacz': 'Wykrywa herosa/grzyba/tropiciela herosów i po kliknięciu(lub automatycznie) wysyła informację o nim na dedykowany kanał Discord (Riventii)',
@@ -6784,6 +6786,8 @@ if (location.hostname === 'riventia.margonem.pl') {
       'Kolory rang Lootloga na czacie': 'Dodatek pobiera dane z Lootloga The Crew i jest połączony z rangami na Discordzie. Kolor rangi na Discord = kolorowi na Czacie.',
       'Darmowe Nagrody': 'Wykrywa dostępne darmowe nagrody z kalendarza i ofert oraz pomaga je odebrać.',
       'Kolorowanie przedmiotów na czacie': 'Koloruje nazwy przedmiotów połączonych w wiadomościach czatu według ich rzadkości i dodaje delikatną poświatę.',
+      'Anti Friendly Fire': 'Blokuje ataki na przyjaciół, członków własnego klanu i wskazanych klanów sojuszniczych. Można też włączyć blokowanie nierozpoznanych celów.',
+      'Riventia Quick Split': 'SHIFT + kliknięcie stacka ulepszeń otwiera okno podziału. SHIFT + przeciągnięcie teleportu wydziela jedną sztukę z użyciem natywnego mechanizmu gry.',
       'Przyciemnianie mapek': 'Przyciemnia mapki na wybrany procent, przyciemnienie nie ingeruje w warstwy mapy przez co npc/mobki/światełka są podświetlone a pozostałe elementy mapy zostaną przyciemnione (BETA)'
     }
 
@@ -11186,6 +11190,841 @@ if (location.hostname === 'riventia.margonem.pl') {
     } else {
         waitForJQuery();
     }
+})();
+
+
+// =============================================================
+// ZINTEGROWANE DODATKI: ANTI FRIENDLY FIRE + RIVENTIA QUICK SPLIT
+// Źródła przekazane przez użytkownika; sterowanie z kafelków panelu.
+// =============================================================
+(() => {
+(() => {
+    'use strict';
+
+    const STORAGE = 'riventia_anti_friendly_fire';
+    const POSITION_STORAGE = 'riventia_anti_friendly_fire_position';
+
+    const CONFIG = {
+        enabled: false,
+        alliedClans: ['The Crew'],
+        protectFriends: true,
+        protectOwnClan: true,
+        blockUnknown: true,
+        showMessages: true,
+        refreshClanMs: 30000
+    };
+
+    let ownClanMembers = new Set();
+    let lastWarning = '';
+    let lastWarningTime = 0;
+    let wrappedG = null;
+    let syncPanel = () => {};
+
+    function loadSettings() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(STORAGE));
+            if (saved && typeof saved === 'object') {
+                Object.assign(CONFIG, saved);
+            }
+        } catch (e) {
+            console.warn('[AFF] Nie mozna odczytac ustawien.', e);
+        }
+    }
+
+    function saveSettings() {
+        try {
+            localStorage.setItem(STORAGE, JSON.stringify({
+                enabled: CONFIG.enabled,
+                alliedClans: CONFIG.alliedClans,
+                protectFriends: CONFIG.protectFriends,
+                protectOwnClan: CONFIG.protectOwnClan,
+                blockUnknown: CONFIG.blockUnknown,
+                showMessages: CONFIG.showMessages
+            }));
+        } catch (e) {
+            console.warn('[AFF] Nie mozna zapisac ustawien.', e);
+        }
+    }
+
+    // Celowo nie wywolujemy clan&a=members, poniewaz na tej wersji
+    // gry moze to otwierac okno klanu.
+    function refreshClan() {}
+
+    function getPlayers() {
+        try {
+            const list = window.Engine?.whoIsHere?.getList?.();
+            return list || {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function getTarget(id) {
+        const players = getPlayers();
+        return players[String(id)] || null;
+    }
+
+    function normalize(value) {
+        return String(value ?? '').trim().toLocaleLowerCase('pl');
+    }
+
+    function getClanName(player) {
+        if (!player) return null;
+
+        const possible = [
+            player.clan,
+            player.clanName,
+            player.clan_name,
+            player.guild,
+            player.guildName
+        ];
+
+        for (const value of possible) {
+            if (typeof value === 'string' && value.trim()) {
+                return value.trim();
+            }
+            if (value && typeof value === 'object') {
+                const name = value.name || value.nick || value.clanName;
+                if (name) return String(name).trim();
+            }
+        }
+        return null;
+    }
+
+    function isFriend(player) {
+        if (!player) return false;
+        const relation = normalize(player.relation);
+        return ['friend', 'friends'].includes(relation) ||
+            player.isFriend === true || player.friend === true;
+    }
+
+    function isOwnClan(player, id) {
+        if (!CONFIG.protectOwnClan) return false;
+        if (ownClanMembers.has(String(id))) return true;
+
+        const relation = normalize(player?.relation);
+        return ['clan-member', 'clan-members', 'my-clan'].includes(relation);
+    }
+
+    function isAlliedClan(player) {
+        const clanName = getClanName(player);
+        if (!clanName) return false;
+
+        return CONFIG.alliedClans.some(
+            clan => normalize(clan) === normalize(clanName)
+        );
+    }
+
+    function isExplicitlyClanless(player) {
+        if (!player) return false;
+
+        const clanFields = [
+            player.clan,
+            player.clanName,
+            player.clan_name,
+            player.guild,
+            player.guildName
+        ];
+
+        if (clanFields.some(v => v === null || v === '')) return true;
+
+        const relation = normalize(player.relation);
+        return ['no-clan', 'noclan', 'no-clan-member'].includes(relation);
+    }
+
+    function shouldBlockAttack(id) {
+        if (!CONFIG.enabled) return false;
+
+        const target = getTarget(id);
+
+        // Nieznany cel: blokuj, jeśli włączono tryb ostrożny.
+        if (!target) return CONFIG.blockUnknown;
+
+        if (CONFIG.protectFriends && isFriend(target)) return true;
+        if (isOwnClan(target, id)) return true;
+        if (isAlliedClan(target)) return true;
+
+        // Jawnie rozpoznany gracz bez klanu może być atakowany.
+        if (isExplicitlyClanless(target)) return false;
+
+        // Nieznana przynależność: domyślnie blokuj.
+        if (CONFIG.blockUnknown && !getClanName(target)) return true;
+
+        return false;
+    }
+
+    function notify() {
+        if (!CONFIG.showMessages) return;
+
+        const now = Date.now();
+        if (now - lastWarningTime < 900) return;
+        lastWarningTime = now;
+
+        const old = document.getElementById('aff-warning');
+        if (old) old.remove();
+
+        const message = document.createElement('div');
+        message.id = 'aff-warning';
+        message.textContent = 'ATAK ZABLOKOWANY!';
+
+        Object.assign(message.style, {
+            position: 'fixed',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: '2147483647',
+            color: '#ff2525',
+            fontSize: '17px',
+            fontWeight: 'bold',
+            fontFamily: 'Arial, sans-serif',
+            textShadow: '0 0 5px #000, 0 0 12px #000',
+            background: 'transparent',
+            border: 'none',
+            padding: '0',
+            margin: '0',
+            pointerEvents: 'auto',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap'
+        });
+
+        // Klikniecie komunikatu zamyka go natychmiast.
+        message.addEventListener('click', () => message.remove());
+        document.body.appendChild(message);
+        setTimeout(() => message.remove(), 1800);
+    }
+
+    function installAttackProtection() {
+        if (typeof window._g !== 'function') return;
+        if (window._g === wrappedG) return;
+
+        const originalG = window._g;
+
+        const wrapper = function(action, callback, ...args) {
+            if (typeof action === 'string') {
+                const match = action.match(/(?:^|&)fight&a=attack&id=(\d+)/);
+
+                if (match && CONFIG.enabled) {
+                    const targetId = match[1];
+
+                    if (shouldBlockAttack(targetId)) {
+                        console.warn('[AFF] Zablokowano atak na gracza:', targetId);
+                        notify(targetId);
+                        return false;
+                    }
+                }
+            }
+
+            return originalG.call(this, action, callback, ...args);
+        };
+
+        wrapper.__affOriginal = originalG;
+        window._g = wrapper;
+        wrappedG = wrapper;
+
+        console.log('[AFF] Przechwytywanie akcji ataku zainstalowane.');
+    }
+
+    function createPanel() {
+        if (document.getElementById('aff-panel')) return;
+
+        const panel = document.createElement('div');
+        panel.id = 'aff-panel';
+
+        Object.assign(panel.style, {
+            position: 'fixed',
+            top: '150px',
+            right: '15px',
+            width: '34px',
+            height: '34px',
+            background: 'transparent',
+            color: '#fff',
+            zIndex: '2147483000',
+            font: '13px Arial, sans-serif',
+            userSelect: 'none'
+        });
+
+        panel.innerHTML = `
+            <div id="aff-compact" title="Lewy klik: menu • PPM: włącz/wyłącz"
+                style="display:flex;width:34px;height:34px;box-sizing:border-box;
+                align-items:center;justify-content:center;font-size:18px;
+                line-height:1;cursor:grab;background:#8b2020;border-radius:7px;
+                border:1px solid #b18a32;box-shadow:0 0 9px rgba(220,45,45,.45);">
+                <span style="font-size:18px;">🛡</span>
+            </div>
+
+            <div id="aff-menu" style="
+                display:none;position:absolute;top:42px;right:0;width:205px;
+                padding:10px;background:#171717;color:#fff;
+                border:1px solid #b18a32;border-radius:8px;
+                box-shadow:0 3px 15px #000;z-index:2;">
+                <div style="font-weight:bold;color:#ffd66b;margin-bottom:9px;">
+                    🛡 ANTI FRIENDLY FIRE
+                </div>
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <button id="aff-toggle" style="
+                        flex:1;padding:8px 5px;font-weight:bold;cursor:pointer;
+                        color:#fff;border:1px solid #888;border-radius:4px;">
+                    </button>
+                    <button id="aff-gear" title="Ustawienia" style="
+                        width:34px;height:34px;cursor:pointer;font-size:18px;
+                        color:#ffd66b;background:#292929;
+                        border:1px solid #80652d;border-radius:4px;">⚙</button>
+                </div>
+                <div id="aff-status" style="font-size:11px;color:#aaa;margin-top:8px;"></div>
+            </div>
+
+            <div id="aff-settings" style="
+                display:none;position:absolute;top:42px;right:0;width:260px;
+                padding:12px;background:#171717;color:#fff;
+                border:2px solid #b18a32;border-radius:9px;
+                box-shadow:0 3px 15px #000;z-index:3;
+                font:13px Arial,sans-serif;">
+                <div id="aff-settings-header" style="
+                    display:flex;align-items:center;justify-content:space-between;
+                    padding-bottom:9px;margin-bottom:10px;
+                    border-bottom:1px solid #80652d;cursor:move;
+                    color:#ffd66b;font-weight:bold;">
+                    <span>⚙ USTAWIENIA ANTI FRIENDLY FIRE</span>
+                    <button id="aff-settings-close" title="Zamknij ustawienia"
+                        style="background:none;color:white;border:0;
+                        font-size:18px;cursor:pointer;">×</button>
+                </div>
+
+                <div style="margin-bottom:5px;">Sojusznicze klany:</div>
+                <textarea id="aff-clans" rows="4" style="
+                    width:100%;box-sizing:border-box;resize:vertical;
+                    margin-bottom:10px;background:#292929;color:white;
+                    border:1px solid #555;padding:5px;"></textarea>
+
+                <label style="display:block;margin:7px 0;">
+                    <input type="checkbox" id="aff-friends"> Chroń przyjaciół
+                </label>
+                <label style="display:block;margin:7px 0;">
+                    <input type="checkbox" id="aff-own"> Chroń własny klan
+                </label>
+                <label style="display:block;margin:7px 0;">
+                    <input type="checkbox" id="aff-unknown"> Blokuj nierozpoznane cele
+                </label>
+                <label style="display:block;margin:7px 0;">
+                    <input type="checkbox" id="aff-messages"> Pokazuj komunikaty
+                </label>
+
+                <button id="aff-save" style="
+                    width:100%;padding:9px;margin-top:10px;cursor:pointer;
+                    border:1px solid #777;border-radius:3px;">
+                    ZAPISZ USTAWIENIA
+                </button>
+                <div id="aff-settings-status" style="
+                    font-size:11px;color:#aaa;margin-top:9px;">
+                    Ustawienia ochrony
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(panel);
+
+        const $ = id => panel.querySelector('#' + id);
+        const compact = $('aff-compact');
+        const menu = $('aff-menu');
+        const settings = $('aff-settings');
+
+        // Przywracanie zapisanej pozycji po F5.
+        try {
+            const saved = JSON.parse(localStorage.getItem(POSITION_STORAGE));
+            if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
+                panel.style.left = Math.max(0, Math.min(window.innerWidth - 34, saved.left)) + 'px';
+                panel.style.top = Math.max(0, Math.min(window.innerHeight - 34, saved.top)) + 'px';
+                panel.style.right = 'auto';
+            }
+        } catch (e) {
+            console.warn('[AFF] Nie mozna odczytac pozycji widgetu.', e);
+        }
+
+        function savePosition() {
+            const rect = panel.getBoundingClientRect();
+            try {
+                localStorage.setItem(POSITION_STORAGE, JSON.stringify({
+                    left: Math.round(rect.left),
+                    top: Math.round(rect.top)
+                }));
+            } catch (e) {
+                console.warn('[AFF] Nie mozna zapisac pozycji widgetu.', e);
+            }
+        }
+
+        $('aff-clans').value = CONFIG.alliedClans.join(', ');
+        $('aff-friends').checked = CONFIG.protectFriends;
+        $('aff-own').checked = CONFIG.protectOwnClan;
+        $('aff-unknown').checked = CONFIG.blockUnknown;
+        $('aff-messages').checked = CONFIG.showMessages;
+
+        function updatePanel() {
+            const active = CONFIG.enabled;
+            compact.style.background = active ? '#176b32' : '#8b2020';
+            compact.style.boxShadow = active
+                ? '0 0 9px rgba(35,190,75,.55)'
+                : '0 0 9px rgba(220,45,45,.45)';
+
+            $('aff-toggle').textContent = active ? 'WYŁĄCZ OCHRONĘ' : 'WŁĄCZ OCHRONĘ';
+            $('aff-toggle').style.background = active ? '#236d35' : '#792626';
+            $('aff-status').textContent = active ? 'Ochrona jest aktywna' : 'Ochrona jest wyłączona';
+        }
+        syncPanel = updatePanel;
+
+        function toggleProtection() {
+            CONFIG.enabled = !CONFIG.enabled;
+            if (window.__vicknessAddonEnabled) {
+                window.__vicknessAddonEnabled.antiFriendlyFire = CONFIG.enabled;
+                try { window.dispatchEvent(new CustomEvent('vickness-addon-flag-change', { detail: { key: 'antiFriendlyFire', value: CONFIG.enabled } })); } catch (_) {}
+            }
+            saveSettings();
+            updatePanel();
+        }
+
+        function closeOverlays() {
+            menu.style.display = 'none';
+            settings.style.display = 'none';
+        }
+
+        // Lewy klik widgetu otwiera małe menu.
+        compact.addEventListener('click', () => {
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+            settings.style.display = 'none';
+        });
+
+        // Prawy klik widgetu natychmiast włącza/wyłącza ochronę.
+        compact.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            toggleProtection();
+            menu.style.display = 'none';
+            settings.style.display = 'none';
+        });
+
+        $('aff-toggle').addEventListener('click', toggleProtection);
+
+        $('aff-gear').addEventListener('click', () => {
+            menu.style.display = 'none';
+            settings.style.display = 'block';
+        });
+
+        $('aff-settings-close').addEventListener('click', () => {
+            settings.style.display = 'none';
+        });
+
+        $('aff-save').addEventListener('click', () => {
+            CONFIG.alliedClans = $('aff-clans').value
+                .split(',')
+                .map(x => x.trim())
+                .filter(Boolean);
+            CONFIG.protectFriends = $('aff-friends').checked;
+            CONFIG.protectOwnClan = $('aff-own').checked;
+            CONFIG.blockUnknown = $('aff-unknown').checked;
+            CONFIG.showMessages = $('aff-messages').checked;
+
+            saveSettings();
+            $('aff-settings-status').textContent = 'Ustawienia zapisane!';
+        });
+
+        // Przeciąganie widgetu bez otwierania menu.
+        compact.addEventListener('pointerdown', e => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const rect = panel.getBoundingClientRect();
+            const offsetX = startX - rect.left;
+            const offsetY = startY - rect.top;
+            let moved = false;
+
+            panel.style.left = rect.left + 'px';
+            panel.style.top = rect.top + 'px';
+            panel.style.right = 'auto';
+
+            function move(ev) {
+                const dx = ev.clientX - startX;
+                const dy = ev.clientY - startY;
+                if (Math.abs(dx) > 5 || Math.abs(dy) > 5) moved = true;
+                if (!moved) return;
+
+                menu.style.display = 'none';
+                settings.style.display = 'none';
+
+                const maxLeft = Math.max(0, window.innerWidth - 34);
+                const maxTop = Math.max(0, window.innerHeight - 34);
+                panel.style.left = Math.max(0, Math.min(maxLeft, ev.clientX - offsetX)) + 'px';
+                panel.style.top = Math.max(0, Math.min(maxTop, ev.clientY - offsetY)) + 'px';
+            }
+
+            function stop() {
+                document.removeEventListener('pointermove', move);
+                document.removeEventListener('pointerup', stop);
+                if (moved) {
+                    savePosition();
+                    // Zapobiega kliknięciu otwierającemu menu po przeciągnięciu.
+                    compact.dataset.dragged = '1';
+                    setTimeout(() => { delete compact.dataset.dragged; }, 0);
+                }
+            }
+
+            document.addEventListener('pointermove', move);
+            document.addEventListener('pointerup', stop);
+        });
+
+        // Po przeciąganiu nie otwieraj menu przez wygenerowany click.
+        compact.addEventListener('click', e => {
+            if (compact.dataset.dragged === '1') {
+                e.stopImmediatePropagation();
+                delete compact.dataset.dragged;
+            }
+        }, true);
+
+        // Przeciąganie okna ustawień za nagłówek.
+        $('aff-settings-header').addEventListener('pointerdown', e => {
+            if (e.target.closest('button')) return;
+            e.preventDefault();
+
+            const rect = panel.getBoundingClientRect();
+            const settingsRect = settings.getBoundingClientRect();
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const left = rect.left;
+            const top = rect.top;
+            const relativeX = settingsRect.left - rect.left;
+            const relativeY = settingsRect.top - rect.top;
+
+            function move(ev) {
+                panel.style.left = Math.max(0, Math.min(
+                    window.innerWidth - settingsRect.width,
+                    left + ev.clientX - startX
+                )) + 'px';
+                panel.style.top = Math.max(0, Math.min(
+                    window.innerHeight - settingsRect.height,
+                    top + ev.clientY - startY
+                )) + 'px';
+                panel.style.right = 'auto';
+                settings.style.left = relativeX + 'px';
+                settings.style.top = relativeY + 'px';
+            }
+
+            function stop() {
+                document.removeEventListener('pointermove', move);
+                document.removeEventListener('pointerup', stop);
+                savePosition();
+            }
+
+            document.addEventListener('pointermove', move);
+            document.addEventListener('pointerup', stop);
+        });
+
+        // Kliknięcie poza menu zamyka wyskakujące okna.
+        document.addEventListener('pointerdown', e => {
+            if (!panel.contains(e.target)) closeOverlays();
+        });
+
+        updatePanel();
+    }
+
+    loadSettings();
+    if (typeof window.__vicknessAddonEnabled?.antiFriendlyFire === 'boolean') {
+        CONFIG.enabled = window.__vicknessAddonEnabled.antiFriendlyFire;
+    }
+    window.__vicknessAntiFriendlyFireSetEnabled = value => {
+        CONFIG.enabled = !!value;
+        saveSettings();
+        syncPanel();
+    };
+
+    const init = setInterval(() => {
+        if (!document.body) return;
+
+        installAttackProtection();
+        createPanel();
+
+        if (typeof window._g === 'function' && document.getElementById('aff-panel')) {
+            clearInterval(init);
+            setInterval(installAttackProtection, 2000);
+        }
+    }, 500);
+
+    console.log('[AFF] Anti Friendly Fire 1.2.0 uruchomiony.');
+})();
+
+})();
+(() => {
+(() => {
+  'use strict';
+
+  const TAG = '[Riventia Quick Split]';
+  const ENHANCEMENT_CLASS = 26; // Rarytas agronoma: cl=26
+  const TELEPORT_CLASS = 32;   // Teleporty z ekwipunku: cl=32
+  const STYLE_ID = 'rqs-style';
+  const MODAL_ID = 'rqs-modal';
+  let busy = false;
+  let hooked = false;
+  let moduleEnabled = window.__vicknessAddonEnabled?.quickSplit !== false;
+  window.__vicknessQuickSplitSetEnabled = value => {
+    moduleEnabled = !!value;
+    if (!moduleEnabled) closeModal();
+  };
+
+  const log = (...args) => console.log(TAG, ...args);
+  const notify = (message) => {
+    if (typeof window.message === 'function') window.message(message);
+    else console.info(TAG, message);
+  };
+
+  function getItemFromElement(element) {
+    try {
+      if (window.$) return window.$(element).data('item') || null;
+    } catch (_) {}
+    return null;
+  }
+
+  function isTeleportItem(item) {
+    // cl=32 obejmuje też inne przedmioty, więc dodatkowo filtrujemy nazwę.
+    const name = String(item?.getName?.() || item?.name || '');
+    return Number(item?.cl) === TELEPORT_CLASS && /teleport|kamień teleport|zwój czerwonego smoka/i.test(name);
+  }
+
+  function validStack(item) {
+    if (!item || typeof item.getAmountStat !== 'function' || typeof item.getCansplitStat !== 'function') return false;
+    const amount = Number(item.getAmountStat());
+    const canSplit = Number(item.getCansplitStat());
+    const capacity = Number(item.getCapacityStat?.());
+    return Number.isFinite(amount) && amount > 1 && canSplit === 1 && Number.isFinite(capacity) && capacity > 0;
+  }
+
+  function addStyle() {
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent = `
+      #${MODAL_ID}{position:fixed;inset:0;z-index:2147483646;background:rgba(0,0,0,.58);display:flex;align-items:center;justify-content:center;font:12px Georgia,serif;color:#ead9ad}
+      #${MODAL_ID} .rqs-box{box-sizing:border-box;width:min(310px,calc(100vw - 24px));padding:12px 14px 11px;background:linear-gradient(180deg,#17120d 0%,#090806 100%);color:#ead9ad;border:1px solid #9b7838;border-radius:3px;box-shadow:0 0 0 2px #2b2112,0 8px 28px #000c}
+      #${MODAL_ID} h3{margin:0 0 7px;padding-bottom:5px;border-bottom:1px solid #594321;color:#f2d58d;font:bold 14px Georgia,serif}
+      #${MODAL_ID} p{margin:6px 0 9px;color:#c9b98f;line-height:1.35}
+      #${MODAL_ID} label{display:block;margin:7px 0 4px;color:#ead9ad}
+      #${MODAL_ID} input{box-sizing:border-box;width:100%;height:30px;padding:4px 8px;border:1px solid #9b7838;border-radius:2px;background:#050403;color:#ffe8ad;font:13px Georgia,serif;outline:none}
+      #${MODAL_ID} input:focus{border-color:#e3bd68;box-shadow:0 0 4px #b88b36}
+      #${MODAL_ID} .rqs-preview{margin-top:7px;color:#b9aa83;white-space:pre-line;font:11px Georgia,serif;line-height:1.4}
+      #${MODAL_ID} .rqs-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:10px}
+      #${MODAL_ID} button{min-width:66px;padding:5px 10px;border:1px solid #9b7838;border-radius:2px;cursor:pointer;font:bold 11px Georgia,serif}
+      #${MODAL_ID} .rqs-ok{background:linear-gradient(#543b16,#241707);color:#ffe3a0} #${MODAL_ID} .rqs-cancel{background:linear-gradient(#30251a,#15100b);color:#d4c29b}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function closeModal() {
+    document.getElementById(MODAL_ID)?.remove();
+  }
+
+  function showSplitDialog(item) {
+    if (busy || document.getElementById(MODAL_ID)) return;
+    if (!validStack(item)) return notify('Tego stacka nie można podzielić.');
+
+    const amount = Number(item.getAmountStat());
+    const capacity = Number(item.getCapacityStat());
+    const minStacks = Math.max(2, Math.ceil(amount / capacity));
+
+    addStyle();
+    const overlay = document.createElement('div');
+    overlay.id = MODAL_ID;
+    overlay.innerHTML = `
+      <div class="rqs-box" role="dialog" aria-modal="true" aria-label="Podział stacka">
+        <h3>Podziel przedmiot</h3>
+        <p><b>${escapeHtml(item.getName?.() || item.name || 'Przedmiot')}</b><br>Ilość: ${amount.toLocaleString('pl-PL')} · Limit stacka: ${capacity.toLocaleString('pl-PL')}</p>
+        <label for="rqs-count">Na ile stacków podzielić?</label>
+        <input id="rqs-count" type="number" min="${minStacks}" max="${amount}" step="1" value="${minStacks}" />
+        <div class="rqs-preview" id="rqs-preview"></div>
+        <div class="rqs-actions"><button class="rqs-cancel" type="button">Anuluj</button><button class="rqs-ok" type="button">Podziel</button></div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const input = overlay.querySelector('#rqs-count');
+    const preview = overlay.querySelector('#rqs-preview');
+    const updatePreview = () => {
+      const count = Number(input.value);
+      if (!Number.isInteger(count) || count < 2 || count > amount) {
+        preview.textContent = 'Podaj liczbę całkowitą od 2 do ' + amount + '.';
+        return;
+      }
+      const parts = splitParts(amount, count);
+      const maxPart = Math.max(...parts);
+      preview.textContent = `Stacki: ${parts.length}\nIlości: ${parts.slice(0, 8).join(', ')}${parts.length > 8 ? ', …' : ''}${maxPart > capacity ? '\nCzęść stacków przekracza limit przedmiotu!' : ''}`;
+    };
+    input.addEventListener('input', updatePreview);
+    updatePreview();
+    overlay.querySelector('.rqs-cancel').addEventListener('click', closeModal);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+    input.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); if (e.key === 'Enter') overlay.querySelector('.rqs-ok').click(); });
+    overlay.querySelector('.rqs-ok').addEventListener('click', () => {
+      const count = Number(input.value);
+      if (!Number.isInteger(count) || count < 2 || count > amount) return notify('Nieprawidłowa liczba stacków.');
+      const parts = splitParts(amount, count);
+      if (Math.max(...parts) > capacity) return notify('Za mało stacków — część przekracza pojemność przedmiotu.');
+      closeModal();
+      splitEnhancement(item, parts);
+    });
+    input.focus();
+    input.select();
+  }
+
+  function splitParts(total, count) {
+    const base = Math.floor(total / count);
+    const remainder = total % count;
+    return Array.from({ length: count }, (_, i) => base + (i < remainder ? 1 : 0));
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function waitForAmount(itemId, expectedAmount, done) {
+    const started = Date.now();
+    const timer = window.setInterval(() => {
+      const current = window.Engine?.items?.getItemById(String(itemId));
+      const currentAmount = current && Number(current.getAmountStat?.());
+      if (Number.isFinite(currentAmount) && currentAmount === expectedAmount) {
+        clearInterval(timer);
+        done(true);
+      } else if (Date.now() - started > 10000) {
+        clearInterval(timer);
+        done(false);
+      }
+    }, 200);
+  }
+
+  function splitEnhancement(item, parts) {
+    if (busy) return;
+    const itemId = String(item.id);
+    const originalAmount = Number(item.getAmountStat());
+    // Oryginalny stack zostaje pierwszą (największą) częścią. Kolejne części
+    // są wydzielane po kolei przez natywny endpoint gry.
+    const toMove = parts.slice(1);
+    busy = true;
+    let index = 0;
+    let expected = originalAmount;
+
+    const next = () => {
+      if (index >= toMove.length) {
+        busy = false;
+        notify('Podział zakończony. Sprawdź ekwipunek.');
+        return;
+      }
+      const current = window.Engine?.items?.getItemById(itemId);
+      if (!current || Number(current.getAmountStat?.()) !== expected || !validStack(current)) {
+        busy = false;
+        notify('Przerwano podział: stan stacka zmienił się. Sprawdź ekwipunek.');
+        return;
+      }
+      const moveAmount = toMove[index];
+      const nextExpected = expected - moveAmount;
+      const url = `moveitem&findslot=1&st=0&id=${encodeURIComponent(itemId)}&x=${current.getX()}&y=${current.getY()}&split=${moveAmount}`;
+      if (typeof window._g !== 'function') {
+        busy = false;
+        notify('Nie znaleziono funkcji komunikacji gry (_g).');
+        return;
+      }
+      let callbackCalled = false;
+      try {
+        window._g(url, response => {
+          callbackCalled = true;
+          if (response && response.alert) {
+            busy = false;
+            notify('Serwer odrzucił podział. Dalsze operacje zatrzymane.');
+            return;
+          }
+          waitForAmount(itemId, nextExpected, ok => {
+            if (!ok) {
+              busy = false;
+              notify('Nie potwierdzono zmiany ilości na serwerze. Przerwano dalszy podział.');
+              return;
+            }
+            expected = nextExpected;
+            index++;
+            next();
+          });
+        });
+      } catch (error) {
+        busy = false;
+        console.error(TAG, error);
+        notify('Błąd wysyłania żądania. Dalsze operacje zatrzymane.');
+        return;
+      }
+      window.setTimeout(() => {
+        if (!callbackCalled) {
+          busy = false;
+          notify('Brak odpowiedzi serwera. Przerwano dalszy podział; sprawdź ekwipunek.');
+        }
+      }, 12000);
+    };
+    next();
+  }
+
+  function hookTeleportSplit() {
+    if (hooked || !window.Engine?.heroEquipment || typeof Engine.heroEquipment.splitItem !== 'function') return false;
+    const equipment = Engine.heroEquipment;
+    const originalSplit = equipment.splitItem;
+    const originalAlert = equipment.alertWindow;
+
+    equipment.splitItem = function(item, x, y, findSlot = false) {
+      if (!moduleEnabled || !isTeleportItem(item)) return originalSplit.call(this, item, x, y, findSlot);
+      if (!validStack(item)) {
+        notify('Ten teleport nie ma poprawnej ilości lub nie obsługuje dzielenia.');
+        return;
+      }
+
+      // Korzystamy z natywnego splitItem: gra sama buduje prawidłowe żądanie
+      // moveitem i sprawdza cansplit/capacity. Podmieniamy tylko okno ilości,
+      // aby automatycznie wydzielić dokładnie 1 sztukę.
+      try {
+        this.alertWindow = function(maxAmount, requestUrl) {
+          if (typeof this.checkValue !== 'function') {
+            notify('Brak natywnej walidacji podziału teleportu.');
+            return;
+          }
+          this.checkValue(1, maxAmount, requestUrl);
+        };
+        return originalSplit.call(this, item, x, y, findSlot);
+      } finally {
+        this.alertWindow = originalAlert;
+      }
+    };
+
+    hooked = true;
+    log('Podpięto natywny podział teleportów: SHIFT + przeciągnięcie wydziela 1 sztukę.');
+    return true;
+  }
+
+  function installClickHandler() {
+    document.addEventListener('click', event => {
+      if (!moduleEnabled || !event.shiftKey || event.button !== 0) return;
+      const element = event.target.closest?.('.inventory-grid .item, .scroll-pane .item');
+      if (!element) return;
+      const item = getItemFromElement(element);
+      if (!item || Number(item.cl) !== ENHANCEMENT_CLASS) return;
+      if (!validStack(item)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      showSplitDialog(item);
+    }, true);
+  }
+
+  function boot() {
+    if (hookTeleportSplit()) log('Gotowy. SHIFT+klik na ulepszeniu otwiera okno podziału.');
+    installClickHandler();
+    let attempts = 0;
+    const retry = window.setInterval(() => {
+      attempts++;
+      if (hookTeleportSplit() || attempts >= 40) clearInterval(retry);
+    }, 500);
+  }
+
+  boot();
+})();
+
 })();
 
   };
