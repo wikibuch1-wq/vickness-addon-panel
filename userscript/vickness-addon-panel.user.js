@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.80
-// @description  Vickness Addon Panel 1.2.80 - poprawione zamykanie okna Aktualności po skanowaniu
+// @version      1.2.81
+// @description  Vickness Addon Panel 1.2.81 - natychmiastowe ukrywanie okna Aktualności
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4365,6 +4365,10 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   function restoreTemporarilyHiddenWindow(result) {
+    if (result?.newsObserver) {
+      result.newsObserver.disconnect();
+      result.newsObserver = null;
+    }
     if (result?.newsScanClassAdded) {
       document.documentElement.classList.remove('vx-news-scan-active');
       result.newsScanClassAdded = false;
@@ -4408,8 +4412,20 @@ if (location.hostname === 'riventia.margonem.pl') {
 
     const result = { type, button: null, opened: false, hiddenWindow: null, newsObserver: null };
     if (type === 'news') {
-      // Diagnostycznie nie dodajemy globalnej klasy CSS :has().
-      // Dzięki temu można sprawdzić, czy koszt selektora powodował ścinki.
+      // Obserwator działa przed kliknięciem ikony. Gdy Margonem dopiero tworzy
+      // okno Aktualności, ukrywamy je w callbacku MutationObserver przed kolejnym
+      // renderowaniem — bez czekania na cykl WAIT/odpytywanie.
+      result.newsObserver = new MutationObserver(() => {
+        if (result.newsObserver && hideNewsWindowNow(result)) {
+          // Okno jest już ukryte; obserwator pozostaje aktywny do zamknięcia,
+          // bo Margonem może podmienić jego wrapper podczas inicjalizacji.
+        }
+      });
+      result.newsObserver.observe(document.documentElement, {
+        childList: true,
+        subtree: true
+      });
+      // Jeśli okno już istnieje w DOM, ukryj je jeszcze przed kliknięciem.
       hideNewsWindowNow(result);
     }
 
