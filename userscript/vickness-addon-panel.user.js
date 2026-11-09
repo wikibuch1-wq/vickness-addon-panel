@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.78
-// @description  Vickness Addon Panel 1.2.78 - skan Aktualności w ukrytym oknie bez globalnego obserwatora
+// @version      1.2.79
+// @description  Vickness Addon Panel 1.2.79 - diagnostyczne wyłączenie kosztownego ukrywania Aktualności
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4326,15 +4326,6 @@ if (location.hostname === 'riventia.margonem.pl') {
   let stopped = false;
   let pendingPanelsClose = [];
 
-  // Ukrywa wyłącznie natywne okno Aktualności podczas skanowania/odbioru.
-  // Reguła jest aktywowana przed kliknięciem ikony; bez MutationObserver.
-  const newsScanStyle = document.createElement('style');
-  newsScanStyle.textContent =
-    'html.vx-news-scan-active .c-window:has(.news-panel),' +
-    'html.vx-news-scan-active .c-window:has(.news-panel) *' +
-    '{visibility:hidden!important;opacity:0!important;pointer-events:none!important;}';
-  (document.head || document.documentElement).appendChild(newsScanStyle);
-
   // Nie ukrywamy paneli ani nadrzędnych okien CSS-em podczas skanowania.
   // Ukrycie samej zawartości pozostawiało warstwę/modal okna gry aktywną,
   // przez co inne wyskakujące okna mogły nie przyjmować kliknięć.
@@ -4418,12 +4409,8 @@ if (location.hostname === 'riventia.margonem.pl') {
 
     const result = { type, button: null, opened: false, hiddenWindow: null, newsObserver: null };
     if (type === 'news') {
-      document.documentElement.classList.add('vx-news-scan-active');
-      result.newsScanClassAdded = true;
-
-      // Nie obserwujemy całego DOM — powodowało to niepotrzebne obciążenie.
-      // Reguła CSS :has(.news-panel) ukrywa natywną ramkę od chwili
-      // wstawienia jej przez Margonem, bez oczekiwania na callback.
+      // Diagnostycznie nie dodajemy globalnej klasy CSS :has().
+      // Dzięki temu można sprawdzić, czy koszt selektora powodował ścinki.
       hideNewsWindowNow(result);
     }
 
@@ -4736,6 +4723,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     stopped = true;
     if (hourlyTimer) clearTimeout(hourlyTimer);
     hourlyTimer = null;
+    document.documentElement.classList.remove('vx-news-scan-active');
     removeWidget();
     showPanels();
   }
