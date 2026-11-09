@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.72
-// @description  Vickness Addon Panel 1.2.72 - natychmiastowy skan po wejściu i zapamiętanie odbioru per postać
+// @version      1.2.73
+// @description  Vickness Addon Panel 1.2.73 - ukrywanie okna Aktualności przed pierwszym renderem
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4370,6 +4370,10 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   function restoreTemporarilyHiddenWindow(result) {
+    if (result?.newsObserver) {
+      result.newsObserver.disconnect();
+      result.newsObserver = null;
+    }
     if (result?.newsScanClassAdded) {
       document.documentElement.classList.remove('vx-news-scan-active');
       result.newsScanClassAdded = false;
@@ -4384,21 +4388,49 @@ if (location.hostname === 'riventia.margonem.pl') {
     result.hiddenWindow = null;
   }
 
+  function hideNewsWindowNow(result) {
+    const panel = document.querySelector(panelSelector('news'));
+    if (!panel) return false;
+
+    const win = panel.closest('.c-window') || panel.parentElement;
+    if (!win) return false;
+
+    if (result.hiddenWindow !== win) {
+      // Jeśli Margonem podmieni wrapper, przywróć poprzedni przed ukryciem nowego.
+      if (result.hiddenWindow) restoreTemporarilyHiddenWindow({
+        hiddenWindow: result.hiddenWindow,
+        hadVisibility: result.hadVisibility,
+        oldVisibility: result.oldVisibility,
+        oldVisibilityPriority: result.oldVisibilityPriority
+      });
+      result.hiddenWindow = win;
+      result.hadVisibility = win.style.getPropertyValue('visibility') !== '';
+      result.oldVisibility = win.style.getPropertyValue('visibility');
+      result.oldVisibilityPriority = win.style.getPropertyPriority('visibility');
+    }
+    win.style.setProperty('visibility', 'hidden', 'important');
+    return true;
+  }
+
   async function openPanel(type) {
     if (window.__vicknessShouldPauseAddons?.()) return { type, button: null, opened: false };
 
-    // Najpierw aktywuj ukrywanie Aktualności, dopiero potem sprawdzaj,
-    // czy panel już istnieje/jest otwarty. Przy F5 gra może odtworzyć
-    // okno przed startem skanera — wcześniejszy warunek omijał wtedy CSS.
-    const result = { type, button: null, opened: false, hiddenWindow: null };
+    const result = { type, button: null, opened: false, hiddenWindow: null, newsObserver: null };
     if (type === 'news') {
       document.documentElement.classList.add('vx-news-scan-active');
       result.newsScanClassAdded = true;
+
+      // Obserwuj DOM jeszcze przed kliknięciem. Gra może tworzyć okno dopiero
+      // po kliknięciu ikony, więc samo wcześniejsze ustawienie stylu nie wystarcza.
+      result.newsObserver = new MutationObserver(() => hideNewsWindowNow(result));
+      result.newsObserver.observe(document.documentElement, { childList: true, subtree: true });
+      hideNewsWindowNow(result);
     }
 
     if (panelIsOpen(type)) {
       result.button = findPanelButton(type);
       result.opened = true;
+      if (type !== 'news') restoreTemporarilyHiddenWindow(result);
       return result;
     }
 
@@ -4408,25 +4440,11 @@ if (location.hostname === 'riventia.margonem.pl') {
       return result;
     }
     result.button = button;
-    // Okno Aktualności musi być niewidoczne już przed kliknięciem ikony,
-    // inaczej przez moment pojawia się na ekranie. Ukrywamy tylko ten
-    // konkretny kontener przez visibility (bez pointer-events i bez CSS
-    // obejmującego inne okna); geometrię panelu nadal można wykryć.
-    if (type === 'news') {
-      const panel = document.querySelector(panelSelector(type));
-      const win = panel?.closest('.c-window');
-      if (win) {
-        result.hiddenWindow = win;
-        result.hadVisibility = win.style.getPropertyValue('visibility') !== '';
-        result.oldVisibility = win.style.getPropertyValue('visibility');
-        result.oldVisibilityPriority = win.style.getPropertyPriority('visibility');
-        win.style.setProperty('visibility', 'hidden', 'important');
-      }
-    }
 
     button.click();
     for (let i = 0; i < 25; i++) {
       await WAIT(LOAD_WAIT);
+      if (type === 'news') hideNewsWindowNow(result);
       if (window.__vicknessShouldPauseAddons?.()) {
         result.opened = panelIsOpen(type);
         if (!result.opened) restoreTemporarilyHiddenWindow(result);
@@ -4434,6 +4452,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       }
       if (panelIsOpen(type)) {
         await WAIT(100);
+        if (type === 'news') hideNewsWindowNow(result);
         result.opened = true;
         return result;
       }
