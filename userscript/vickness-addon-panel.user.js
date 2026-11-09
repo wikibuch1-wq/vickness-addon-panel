@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.88
-// @description  Vickness Addon Panel 1.2.88 - przywrócono przesuwanie widgetu tarczy
+// @version      1.2.89
+// @description  Vickness Addon Panel 1.2.89 - poprawiona identyfikacja celów Anti Friendly Fire
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -11258,7 +11258,12 @@ if (location.hostname === 'riventia.margonem.pl') {
 
     function getTarget(id) {
         const players = getPlayers();
-        return players[String(id)] || null;
+        const key = String(id);
+        if (players && !Array.isArray(players) && players[key]) return players[key];
+        const values = Array.isArray(players) ? players : Object.values(players || {});
+        return values.find(player =>
+            player && String(player.id ?? player.pid ?? player.playerId ?? '') === key
+        ) || null;
     }
 
     function normalize(value) {
@@ -11315,6 +11320,10 @@ if (location.hostname === 'riventia.margonem.pl') {
     function isExplicitlyClanless(player) {
         if (!player) return false;
 
+        // Brak jednego pola (np. clan=null) nie oznacza braku klanu,
+        // jeśli inna właściwość zawiera nazwę gildii/klanu.
+        if (getClanName(player)) return false;
+
         const clanFields = [
             player.clan,
             player.clanName,
@@ -11322,11 +11331,12 @@ if (location.hostname === 'riventia.margonem.pl') {
             player.guild,
             player.guildName
         ];
-
-        if (clanFields.some(v => v === null || v === '')) return true;
-
+        const hasExplicitEmptyClanData = clanFields.some(
+            value => value === '' || value === null
+        );
         const relation = normalize(player.relation);
-        return ['no-clan', 'noclan', 'no-clan-member'].includes(relation);
+        return ['no-clan', 'noclan', 'no-clan-member'].includes(relation) ||
+            hasExplicitEmptyClanData;
     }
 
     function shouldBlockAttack(id) {
@@ -11398,7 +11408,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
         const wrapper = function(action, callback, ...args) {
             if (typeof action === 'string') {
-                const match = action.match(/(?:^|&)fight&a=attack&id=(\d+)/);
+                const match = action.match(/fight&a=attack&id=(\d+)/i);
 
                 if (match && CONFIG.enabled) {
                     const targetId = match[1];
