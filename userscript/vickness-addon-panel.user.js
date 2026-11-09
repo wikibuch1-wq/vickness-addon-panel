@@ -2,8 +2,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.74
-// @description  Vickness Addon Panel 1.2.74 - ukrywanie całego okna Aktualności i jego zawartości
+// @version      1.2.75
+// @description  Vickness Addon Panel 1.2.75 - skan Aktualności bez globalnego obserwatora i bez odsłaniania przy zamykaniu
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4370,10 +4370,6 @@ if (location.hostname === 'riventia.margonem.pl') {
   }
 
   function restoreTemporarilyHiddenWindow(result) {
-    if (result?.newsObserver) {
-      result.newsObserver.disconnect();
-      result.newsObserver = null;
-    }
     if (result?.newsScanClassAdded) {
       document.documentElement.classList.remove('vx-news-scan-active');
       result.newsScanClassAdded = false;
@@ -4420,10 +4416,9 @@ if (location.hostname === 'riventia.margonem.pl') {
       document.documentElement.classList.add('vx-news-scan-active');
       result.newsScanClassAdded = true;
 
-      // Obserwuj DOM jeszcze przed kliknięciem. Gra może tworzyć okno dopiero
-      // po kliknięciu ikony, więc samo wcześniejsze ustawienie stylu nie wystarcza.
-      result.newsObserver = new MutationObserver(() => hideNewsWindowNow(result));
-      result.newsObserver.observe(document.documentElement, { childList: true, subtree: true });
+      // Nie obserwujemy całego DOM — powodowało to niepotrzebne obciążenie.
+      // Reguła CSS :has(.news-panel) ukrywa natywną ramkę od chwili
+      // wstawienia jej przez Margonem, bez oczekiwania na callback.
       hideNewsWindowNow(result);
     }
 
@@ -4471,7 +4466,21 @@ if (location.hostname === 'riventia.margonem.pl') {
       pendingPanelsClose.push(result);
       return;
     }
-    if (panelExists(result.type)) result.button.click();
+
+    if (panelIsOpen(result.type)) result.button.click();
+
+    if (result.type === 'news') {
+      // Nie odsłaniaj okna w trakcie animacji zamykania Margonem.
+      // Po usunięciu/ukryciu panelu zdejmij naszą tymczasową regułę.
+      const hiddenResult = result;
+      setTimeout(() => {
+        if (!window.__vicknessShouldPauseAddons?.()) {
+          restoreTemporarilyHiddenWindow(hiddenResult);
+        }
+      }, 900);
+      return;
+    }
+
     restoreTemporarilyHiddenWindow(result);
   }
 
