@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.84
-// @description  Vickness Addon Panel 1.2.84 - integracja Anti Friendly Fire i Quick Split
+// @version      1.2.86
+// @description  Vickness Addon Panel 1.2.86 - przywrócono widget tarczy; ustawienia tylko w panelu
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -5211,7 +5211,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     #vxStandaloneMini { border-color:var(--vx-accent-line); }
     #vxSettingsToolbar { border-bottom-color:var(--vx-accent-line); }
     /* Widok główny jest przewijany wewnątrz okna; stopka zostaje na dole. */
-    #vxHomeView { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(86px,auto)); grid-auto-rows:minmax(86px,auto); align-content:start; align-items:stretch; gap:4px; padding:5px; flex:1 1 0%; height:0; min-height:0; max-height:none; overflow-y:auto; overflow-x:hidden; }
+    #vxHomeView { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(86px,auto)); grid-auto-rows:minmax(86px,auto); align-content:start; align-items:stretch; gap:4px; padding:5px; flex:1 1 auto; height:auto; min-height:0; max-height:none; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; touch-action:pan-y; }
     #vxHomeView.vxNarrow { grid-template-columns:minmax(0,1fr); grid-template-rows:none; grid-auto-rows:minmax(68px,auto); }
     #vxHomeView, #vxSettingsView, #vxAppearanceView { scrollbar-width:thin; scrollbar-color:rgba(201,162,39,.25) transparent; overscroll-behavior:contain; }
     #vxSettingsWnm .vxWnmControl { width:100%; box-sizing:border-box; padding:6px 8px; border:1px solid var(--vx-accent-line); border-radius:5px; color:#f3e7c5; background:#171717; font:12px Arial,sans-serif; }
@@ -6041,7 +6041,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">▤</span>Kolory rang Lootloga na czacie<button type="button" class="vxInfoBtn" data-vx-info="Kolory rang Lootloga na czacie" aria-label="Informacje: Kolory rang Lootloga na czacie" title="Informacje">?</button><button type="button" class="vxOpenSettings" id="vxRankChatOpen">⚙</button></span><span class="vxStandaloneDesc">Koloruje nicki nadawców według rang The Crew na Lootlogu</span><div class="vxStandaloneState" id="vxRankChatState"></div></div><label class="vxToggle"><input id="vxRankChatSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">✧</span>Darmowe Nagrody<button type="button" class="vxInfoBtn" data-vx-info="Darmowe Nagrody" aria-label="Informacje: Darmowe Nagrody" title="Informacje">?</button><button type="button" class="vxOpenSettings" id="vxFreeRewardsOpen">⚙</button></span><span class="vxStandaloneDesc">Automatyczne wykrywanie darmowych nagród z kalendarza i ofert</span><div class="vxStandaloneState" id="vxFreeRewardsState"></div></div><label class="vxToggle"><input id="vxFreeRewardsSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">✧</span>Kolorowanie przedmiotów na czacie<button type="button" class="vxInfoBtn" data-vx-info="Kolorowanie przedmiotów na czacie" aria-label="Informacje: Kolorowanie przedmiotów na czacie" title="Informacje">?</button><button type="button" class="vxOpenSettings" id="vxItemChatOpen">⚙</button></span><span class="vxStandaloneDesc">Koloruje nazwy połączonych przedmiotów według rzadkości i dodaje delikatną poświatę</span><div class="vxStandaloneState" id="vxItemChatState"></div></div><label class="vxToggle"><input id="vxItemChatSwitch" type="checkbox"><span></span></label></div>
-      <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">🛡</span>Anti Friendly Fire<button type="button" class="vxInfoBtn" data-vx-info="Anti Friendly Fire" aria-label="Informacje: Anti Friendly Fire" title="Informacje">?</button></span><span class="vxStandaloneDesc">Blokuje ataki na przyjaciół, własny i sojusznicze klany</span><div class="vxStandaloneState" id="vxAntiFriendlyFireState"></div></div><label class="vxToggle"><input id="vxAntiFriendlyFireSwitch" type="checkbox"><span></span></label></div>
+      <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">🛡</span>Anti Friendly Fire<button type="button" class="vxInfoBtn" data-vx-info="Anti Friendly Fire" aria-label="Informacje: Anti Friendly Fire" title="Informacje">?</button><button type="button" class="vxInfoBtn" id="vxAntiFriendlyFireOpen" title="Ustawienia Anti Friendly Fire" aria-label="Ustawienia Anti Friendly Fire">⚙</button></span><span class="vxStandaloneDesc">Blokuje ataki na przyjaciół, własny i sojusznicze klany</span><div class="vxStandaloneState" id="vxAntiFriendlyFireState"></div></div><label class="vxToggle"><input id="vxAntiFriendlyFireSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">✂</span>Riventia Quick Split<button type="button" class="vxInfoBtn" data-vx-info="Riventia Quick Split" aria-label="Informacje: Riventia Quick Split" title="Informacje">?</button></span><span class="vxStandaloneDesc">Szybki podział stacków ulepszeń i teleportów</span><div class="vxStandaloneState" id="vxQuickSplitState"></div></div><label class="vxToggle"><input id="vxQuickSplitSwitch" type="checkbox"><span></span></label></div>
 </div>
     </div>
@@ -6596,16 +6596,8 @@ if (location.hostname === 'riventia.margonem.pl') {
     // Oczyść podtytuł ze starszych wariantów, jeśli został pozostawiony przez wcześniejszy panel.
     root.querySelectorAll('#vxStandaloneHeader [data-vickness-subtitle], #vxStandaloneHeader .vxStandaloneSubtitle').forEach(el => el.remove());
 
-    root.addEventListener('wheel', event => {
-      const candidates = ['#vxHomeView', '#vxSettingsView', '', '#vxAppearanceView', '#vxUpdateInfoView'];
-      const activeView = candidates.map(selector => root.querySelector(selector)).find(view => view && getComputedStyle(view).display !== 'none');
-      if (!activeView || activeView.scrollHeight <= activeView.clientHeight) return;
-      // Przewijaj aktywną zakładkę kółkiem nad jej tłem i tekstem.
-      // Nie przechwytuj kółka nad suwakami, polami wyboru ani przyciskami.
-      if (event.target.closest('input, select, button, textarea')) return;
-      event.preventDefault();
-      activeView.scrollTop += event.deltaY;
-    }, { passive: false });
+    // Przewijanie pozostawione natywnemu overflow-y widoku, bez przechwytywania wheel.
+
 
 
     // Ustawienia Wróg na mapie są przechowywane we wspólnym localStorage dodatku.
@@ -6697,6 +6689,11 @@ if (location.hostname === 'riventia.margonem.pl') {
     });
     root.querySelector('#vxQuickSplitSwitch').addEventListener('change', e => {
       enabled.quickSplit = e.target.checked; saveFlags(); applyToggles();
+    });
+    root.querySelector('#vxAntiFriendlyFireOpen').addEventListener('click', () => {
+      if (typeof window.__vicknessAntiFriendlyFireOpenSettings === 'function') {
+        window.__vicknessAntiFriendlyFireOpenSettings();
+      }
     });
     root.querySelector('#vxItemChatOpen').addEventListener('click', () => openSettings('itemChat'));
     root.querySelector('#vxFreeRewardsOpen').addEventListener('click', () => openSettings('freeRewards'));
@@ -11424,304 +11421,95 @@ if (location.hostname === 'riventia.margonem.pl') {
         console.log('[AFF] Przechwytywanie akcji ataku zainstalowane.');
     }
 
+
     function createPanel() {
-        if (document.getElementById('aff-panel')) return;
+        if (document.getElementById('aff-settings')) return;
+        const settings = document.createElement('div');
+        settings.id = 'aff-settings';
+        settings.style.cssText = 'display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(300px,calc(100vw - 24px));box-sizing:border-box;padding:12px;background:#171717;color:#fff;border:2px solid #b18a32;border-radius:9px;box-shadow:0 8px 28px #000;z-index:2147483647;font:13px Arial,sans-serif;';
+        settings.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:9px;margin-bottom:10px;border-bottom:1px solid #80652d;color:#ffd66b;font-weight:bold;">
+                <span>⚙ USTAWIENIA ANTI FRIENDLY FIRE</span>
+                <button id="aff-settings-close" title="Zamknij ustawienia" style="background:none;color:white;border:0;font-size:18px;cursor:pointer;">×</button>
+            </div>
+            <div style="margin-bottom:5px;">Sojusznicze klany:</div>
+            <textarea id="aff-clans" rows="4" style="width:100%;box-sizing:border-box;resize:vertical;margin-bottom:10px;background:#292929;color:white;border:1px solid #555;padding:5px;"></textarea>
+            <label style="display:block;margin:7px 0;"><input type="checkbox" id="aff-friends"> Chroń przyjaciół</label>
+            <label style="display:block;margin:7px 0;"><input type="checkbox" id="aff-own"> Chroń własny klan</label>
+            <label style="display:block;margin:7px 0;"><input type="checkbox" id="aff-unknown"> Blokuj nierozpoznane cele</label>
+            <label style="display:block;margin:7px 0;"><input type="checkbox" id="aff-messages"> Pokazuj komunikaty</label>
+            <button id="aff-save" style="width:100%;padding:9px;margin-top:10px;cursor:pointer;border:1px solid #777;border-radius:3px;">ZAPISZ USTAWIENIA</button>
+            <div id="aff-settings-status" style="font-size:11px;color:#aaa;margin-top:9px;">Ustawienia ochrony</div>`;
+        document.body.appendChild(settings);
 
-        const panel = document.createElement('div');
-        panel.id = 'aff-panel';
-
-        Object.assign(panel.style, {
-            position: 'fixed',
-            top: '150px',
-            right: '15px',
-            width: '34px',
-            height: '34px',
-            background: 'transparent',
-            color: '#fff',
-            zIndex: '2147483000',
-            font: '13px Arial, sans-serif',
-            userSelect: 'none'
-        });
-
-        panel.innerHTML = `
+        // Osobny, kompaktowy widget tarczy pozostaje na ekranie.
+        // Zawiera wyłącznie szybkie włączanie/wyłączanie ochrony — bez ustawień.
+        const shield = document.createElement('div');
+        shield.id = 'aff-shield-widget';
+        shield.style.cssText = 'position:fixed;top:150px;right:15px;width:34px;z-index:2147483000;font:13px Arial,sans-serif;user-select:none;';
+        shield.innerHTML = `
             <div id="aff-compact" title="Lewy klik: menu • PPM: włącz/wyłącz"
-                style="display:flex;width:34px;height:34px;box-sizing:border-box;
-                align-items:center;justify-content:center;font-size:18px;
-                line-height:1;cursor:grab;background:#8b2020;border-radius:7px;
-                border:1px solid #b18a32;box-shadow:0 0 9px rgba(220,45,45,.45);">
-                <span style="font-size:18px;">🛡</span>
-            </div>
-
-            <div id="aff-menu" style="
-                display:none;position:absolute;top:42px;right:0;width:205px;
-                padding:10px;background:#171717;color:#fff;
-                border:1px solid #b18a32;border-radius:8px;
-                box-shadow:0 3px 15px #000;z-index:2;">
-                <div style="font-weight:bold;color:#ffd66b;margin-bottom:9px;">
-                    🛡 ANTI FRIENDLY FIRE
-                </div>
-                <div style="display:flex;gap:6px;align-items:center;">
-                    <button id="aff-toggle" style="
-                        flex:1;padding:8px 5px;font-weight:bold;cursor:pointer;
-                        color:#fff;border:1px solid #888;border-radius:4px;">
-                    </button>
-                    <button id="aff-gear" title="Ustawienia" style="
-                        width:34px;height:34px;cursor:pointer;font-size:18px;
-                        color:#ffd66b;background:#292929;
-                        border:1px solid #80652d;border-radius:4px;">⚙</button>
-                </div>
+                style="display:flex;width:34px;height:34px;box-sizing:border-box;align-items:center;justify-content:center;font-size:18px;line-height:1;cursor:grab;background:#8b2020;border-radius:7px;border:1px solid #b18a32;box-shadow:0 0 9px rgba(220,45,45,.45);">🛡</div>
+            <div id="aff-menu" style="display:none;position:absolute;top:42px;right:0;width:175px;padding:9px;background:#171717;color:#fff;border:1px solid #b18a32;border-radius:8px;box-shadow:0 3px 15px #000;">
+                <div style="font-weight:bold;color:#ffd66b;margin-bottom:8px;">🛡 ANTI FRIENDLY FIRE</div>
+                <button id="aff-toggle" style="width:100%;padding:8px 5px;font-weight:bold;cursor:pointer;color:#fff;border:1px solid #888;border-radius:4px;"></button>
                 <div id="aff-status" style="font-size:11px;color:#aaa;margin-top:8px;"></div>
-            </div>
-
-            <div id="aff-settings" style="
-                display:none;position:absolute;top:42px;right:0;width:260px;
-                padding:12px;background:#171717;color:#fff;
-                border:2px solid #b18a32;border-radius:9px;
-                box-shadow:0 3px 15px #000;z-index:3;
-                font:13px Arial,sans-serif;">
-                <div id="aff-settings-header" style="
-                    display:flex;align-items:center;justify-content:space-between;
-                    padding-bottom:9px;margin-bottom:10px;
-                    border-bottom:1px solid #80652d;cursor:move;
-                    color:#ffd66b;font-weight:bold;">
-                    <span>⚙ USTAWIENIA ANTI FRIENDLY FIRE</span>
-                    <button id="aff-settings-close" title="Zamknij ustawienia"
-                        style="background:none;color:white;border:0;
-                        font-size:18px;cursor:pointer;">×</button>
-                </div>
-
-                <div style="margin-bottom:5px;">Sojusznicze klany:</div>
-                <textarea id="aff-clans" rows="4" style="
-                    width:100%;box-sizing:border-box;resize:vertical;
-                    margin-bottom:10px;background:#292929;color:white;
-                    border:1px solid #555;padding:5px;"></textarea>
-
-                <label style="display:block;margin:7px 0;">
-                    <input type="checkbox" id="aff-friends"> Chroń przyjaciół
-                </label>
-                <label style="display:block;margin:7px 0;">
-                    <input type="checkbox" id="aff-own"> Chroń własny klan
-                </label>
-                <label style="display:block;margin:7px 0;">
-                    <input type="checkbox" id="aff-unknown"> Blokuj nierozpoznane cele
-                </label>
-                <label style="display:block;margin:7px 0;">
-                    <input type="checkbox" id="aff-messages"> Pokazuj komunikaty
-                </label>
-
-                <button id="aff-save" style="
-                    width:100%;padding:9px;margin-top:10px;cursor:pointer;
-                    border:1px solid #777;border-radius:3px;">
-                    ZAPISZ USTAWIENIA
-                </button>
-                <div id="aff-settings-status" style="
-                    font-size:11px;color:#aaa;margin-top:9px;">
-                    Ustawienia ochrony
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(panel);
-
-        const $ = id => panel.querySelector('#' + id);
-        const compact = $('aff-compact');
-        const menu = $('aff-menu');
-        const settings = $('aff-settings');
-
-        // Przywracanie zapisanej pozycji po F5.
-        try {
-            const saved = JSON.parse(localStorage.getItem(POSITION_STORAGE));
-            if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
-                panel.style.left = Math.max(0, Math.min(window.innerWidth - 34, saved.left)) + 'px';
-                panel.style.top = Math.max(0, Math.min(window.innerHeight - 34, saved.top)) + 'px';
-                panel.style.right = 'auto';
-            }
-        } catch (e) {
-            console.warn('[AFF] Nie mozna odczytac pozycji widgetu.', e);
-        }
-
-        function savePosition() {
-            const rect = panel.getBoundingClientRect();
-            try {
-                localStorage.setItem(POSITION_STORAGE, JSON.stringify({
-                    left: Math.round(rect.left),
-                    top: Math.round(rect.top)
-                }));
-            } catch (e) {
-                console.warn('[AFF] Nie mozna zapisac pozycji widgetu.', e);
-            }
-        }
-
+            </div>`;
+        document.body.appendChild(shield);
+        const compact = shield.querySelector('#aff-compact');
+        const menu = shield.querySelector('#aff-menu');
+        const $ = id => settings.querySelector('#' + id);
         $('aff-clans').value = CONFIG.alliedClans.join(', ');
         $('aff-friends').checked = CONFIG.protectFriends;
         $('aff-own').checked = CONFIG.protectOwnClan;
         $('aff-unknown').checked = CONFIG.blockUnknown;
         $('aff-messages').checked = CONFIG.showMessages;
-
         function updatePanel() {
             const active = CONFIG.enabled;
+            $('aff-settings-status').textContent = active ? 'Ochrona jest aktywna' : 'Ochrona jest wyłączona';
             compact.style.background = active ? '#176b32' : '#8b2020';
-            compact.style.boxShadow = active
-                ? '0 0 9px rgba(35,190,75,.55)'
-                : '0 0 9px rgba(220,45,45,.45)';
-
-            $('aff-toggle').textContent = active ? 'WYŁĄCZ OCHRONĘ' : 'WŁĄCZ OCHRONĘ';
-            $('aff-toggle').style.background = active ? '#236d35' : '#792626';
-            $('aff-status').textContent = active ? 'Ochrona jest aktywna' : 'Ochrona jest wyłączona';
+            compact.style.boxShadow = active ? '0 0 9px rgba(35,190,75,.55)' : '0 0 9px rgba(220,45,45,.45)';
+            shield.querySelector('#aff-toggle').textContent = active ? 'WYŁĄCZ OCHRONĘ' : 'WŁĄCZ OCHRONĘ';
+            shield.querySelector('#aff-toggle').style.background = active ? '#236d35' : '#792626';
+            shield.querySelector('#aff-status').textContent = active ? 'Ochrona jest aktywna' : 'Ochrona jest wyłączona';
         }
         syncPanel = updatePanel;
 
         function toggleProtection() {
             CONFIG.enabled = !CONFIG.enabled;
+            saveSettings();
             if (window.__vicknessAddonEnabled) {
                 window.__vicknessAddonEnabled.antiFriendlyFire = CONFIG.enabled;
                 try { window.dispatchEvent(new CustomEvent('vickness-addon-flag-change', { detail: { key: 'antiFriendlyFire', value: CONFIG.enabled } })); } catch (_) {}
             }
-            saveSettings();
             updatePanel();
         }
-
-        function closeOverlays() {
-            menu.style.display = 'none';
-            settings.style.display = 'none';
-        }
-
-        // Lewy klik widgetu otwiera małe menu.
         compact.addEventListener('click', () => {
             menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-            settings.style.display = 'none';
         });
-
-        // Prawy klik widgetu natychmiast włącza/wyłącza ochronę.
-        compact.addEventListener('contextmenu', e => {
-            e.preventDefault();
+        compact.addEventListener('contextmenu', event => {
+            event.preventDefault();
             toggleProtection();
             menu.style.display = 'none';
-            settings.style.display = 'none';
         });
-
-        $('aff-toggle').addEventListener('click', toggleProtection);
-
-        $('aff-gear').addEventListener('click', () => {
-            menu.style.display = 'none';
-            settings.style.display = 'block';
-        });
-
-        $('aff-settings-close').addEventListener('click', () => {
-            settings.style.display = 'none';
-        });
-
+        shield.querySelector('#aff-toggle').addEventListener('click', toggleProtection);
+        $('aff-settings-close').addEventListener('click', () => { settings.style.display = 'none'; });
         $('aff-save').addEventListener('click', () => {
-            CONFIG.alliedClans = $('aff-clans').value
-                .split(',')
-                .map(x => x.trim())
-                .filter(Boolean);
+            CONFIG.alliedClans = $('aff-clans').value.split(',').map(x => x.trim()).filter(Boolean);
             CONFIG.protectFriends = $('aff-friends').checked;
             CONFIG.protectOwnClan = $('aff-own').checked;
             CONFIG.blockUnknown = $('aff-unknown').checked;
             CONFIG.showMessages = $('aff-messages').checked;
-
             saveSettings();
             $('aff-settings-status').textContent = 'Ustawienia zapisane!';
         });
-
-        // Przeciąganie widgetu bez otwierania menu.
-        compact.addEventListener('pointerdown', e => {
-            if (e.button !== 0) return;
-            e.preventDefault();
-
-            const startX = e.clientX;
-            const startY = e.clientY;
-            const rect = panel.getBoundingClientRect();
-            const offsetX = startX - rect.left;
-            const offsetY = startY - rect.top;
-            let moved = false;
-
-            panel.style.left = rect.left + 'px';
-            panel.style.top = rect.top + 'px';
-            panel.style.right = 'auto';
-
-            function move(ev) {
-                const dx = ev.clientX - startX;
-                const dy = ev.clientY - startY;
-                if (Math.abs(dx) > 5 || Math.abs(dy) > 5) moved = true;
-                if (!moved) return;
-
-                menu.style.display = 'none';
-                settings.style.display = 'none';
-
-                const maxLeft = Math.max(0, window.innerWidth - 34);
-                const maxTop = Math.max(0, window.innerHeight - 34);
-                panel.style.left = Math.max(0, Math.min(maxLeft, ev.clientX - offsetX)) + 'px';
-                panel.style.top = Math.max(0, Math.min(maxTop, ev.clientY - offsetY)) + 'px';
-            }
-
-            function stop() {
-                document.removeEventListener('pointermove', move);
-                document.removeEventListener('pointerup', stop);
-                if (moved) {
-                    savePosition();
-                    // Zapobiega kliknięciu otwierającemu menu po przeciągnięciu.
-                    compact.dataset.dragged = '1';
-                    setTimeout(() => { delete compact.dataset.dragged; }, 0);
-                }
-            }
-
-            document.addEventListener('pointermove', move);
-            document.addEventListener('pointerup', stop);
-        });
-
-        // Po przeciąganiu nie otwieraj menu przez wygenerowany click.
-        compact.addEventListener('click', e => {
-            if (compact.dataset.dragged === '1') {
-                e.stopImmediatePropagation();
-                delete compact.dataset.dragged;
-            }
-        }, true);
-
-        // Przeciąganie okna ustawień za nagłówek.
-        $('aff-settings-header').addEventListener('pointerdown', e => {
-            if (e.target.closest('button')) return;
-            e.preventDefault();
-
-            const rect = panel.getBoundingClientRect();
-            const settingsRect = settings.getBoundingClientRect();
-            const startX = e.clientX;
-            const startY = e.clientY;
-            const left = rect.left;
-            const top = rect.top;
-            const relativeX = settingsRect.left - rect.left;
-            const relativeY = settingsRect.top - rect.top;
-
-            function move(ev) {
-                panel.style.left = Math.max(0, Math.min(
-                    window.innerWidth - settingsRect.width,
-                    left + ev.clientX - startX
-                )) + 'px';
-                panel.style.top = Math.max(0, Math.min(
-                    window.innerHeight - settingsRect.height,
-                    top + ev.clientY - startY
-                )) + 'px';
-                panel.style.right = 'auto';
-                settings.style.left = relativeX + 'px';
-                settings.style.top = relativeY + 'px';
-            }
-
-            function stop() {
-                document.removeEventListener('pointermove', move);
-                document.removeEventListener('pointerup', stop);
-                savePosition();
-            }
-
-            document.addEventListener('pointermove', move);
-            document.addEventListener('pointerup', stop);
-        });
-
-        // Kliknięcie poza menu zamyka wyskakujące okna.
         document.addEventListener('pointerdown', e => {
-            if (!panel.contains(e.target)) closeOverlays();
+            if (settings.style.display !== 'none' && !settings.contains(e.target)) settings.style.display = 'none';
         });
-
+        window.__vicknessAntiFriendlyFireOpenSettings = () => {
+            settings.style.display = 'block';
+            updatePanel();
+        };
         updatePanel();
     }
 
