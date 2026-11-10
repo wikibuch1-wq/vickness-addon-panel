@@ -11378,11 +11378,10 @@ if (location.hostname === 'riventia.margonem.pl') {
         if (isOwnClan(target, id)) return true;
         if (isAlliedClan(target)) return true;
 
-        // Jawnie rozpoznany gracz bez klanu może być atakowany.
-        if (isExplicitlyClanless(target)) return false;
-
-        // Nieznana przynależność: domyślnie blokuj.
-        if (CONFIG.blockUnknown && !getClanName(target)) return true;
+        // Każdy rozpoznany gracz, który nie ma nazwy klanu,
+        // jest traktowany jako gracz bez klanu i może być atakowany.
+        // blockUnknown dotyczy wyłącznie celu, którego nie ma w danych gry.
+        if (!getClanName(target)) return false;
 
         return false;
     }
