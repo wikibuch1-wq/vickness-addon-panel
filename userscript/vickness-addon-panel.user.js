@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.95
-// @description  Vickness Addon Panel 1.2.95
+// @version      1.2.96
+// @description  Vickness Addon Panel 1.2.96 - dokładniejsze wykrywanie przyjaciół i sojuszników
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -11284,37 +11284,54 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
 
     function getTarget(id) {
-        const players = getPlayers();
         const key = String(id);
-        if (players && !Array.isArray(players) && players[key]) return players[key];
-        const values = Array.isArray(players) ? players : Object.values(players || {});
-        return values.find(player =>
-            player && String(player.id ?? player.pid ?? player.playerId ?? '') === key
-        ) || null;
+        const engine = GAME_WINDOW.Engine;
+        let players = null;
+        try { players = engine?.whoIsHere?.getList?.(); } catch (_) {}
+        if (!players || (typeof players === 'object' && !Object.keys(players).length)) {
+            players = engine?.whoIsHere?.list || {};
+        }
+
+        let player = null;
+        if (players instanceof Map) player = players.get(key) || players.get(Number(key)) || null;
+        else if (Array.isArray(players)) {
+            player = players.find(p => String(p?.id ?? p?.d?.id ?? p?.playerId ?? '') === key) || null;
+        } else if (players && typeof players === 'object') {
+            player = players[key] || Object.values(players).find(p =>
+                String(p?.id ?? p?.d?.id ?? p?.playerId ?? '') === key
+            ) || null;
+            if (player && player.id == null && player.d?.id == null) player = { ...player, id: key };
+        }
+
+        // whoIsHere bywa jedynie listą ID. Szczegóły relacji są wtedy w Engine.others.
+        let other = null;
+        try {
+            const others = engine?.others;
+            other = others?.getById?.(Number(key)) || others?.getById?.(key) ||
+                others?.get?.(Number(key)) || others?.get?.(key) ||
+                others?.[key] || others?.list?.[key] || others?.d?.[key] || null;
+        } catch (_) {}
+        if (!player && other) player = { id: key };
+        if (!player) return null;
+        return { ...player, d: { ...(player.d || {}), ...(other?.d || {}) },
+            _other: other || null };
     }
 
     function normalize(value) {
-        return String(value ?? '').trim().toLocaleLowerCase('pl');
+        return String(value ?? '').trim().toLocaleLowerCase('pl').replace(/[ _]+/g, '-');
     }
 
     function getClanName(player) {
         if (!player) return null;
-
-        const possible = [
-            player.clan,
-            player.clanName,
-            player.clan_name,
-            player.guild,
-            player.guildName
-        ];
-
-        for (const value of possible) {
-            if (typeof value === 'string' && value.trim()) {
-                return value.trim();
-            }
-            if (value && typeof value === 'object') {
-                const name = value.name || value.nick || value.clanName;
-                if (name) return String(name).trim();
+        const other = player._other || {};
+        const data = [player, player.d || {}, other, other.d || {}];
+        for (const source of data) {
+            for (const value of [source.clanName, source.clan_name, source.guildName, source.clan, source.guild]) {
+                if (typeof value === 'string' && value.trim()) return value.trim();
+                if (value && typeof value === 'object') {
+                    const name = value.name || value.nick || value.clanName;
+                    if (name) return String(name).trim();
+                }
             }
         }
         return null;
@@ -11322,67 +11339,49 @@ if (location.hostname === 'riventia.margonem.pl') {
 
     function isFriend(player) {
         if (!player) return false;
-        const relation = normalize(player.relation);
-        return ['friend', 'friends'].includes(relation) ||
-            player.isFriend === true || player.friend === true;
+        const other = player._other || {};
+        const sources = [player, player.d || {}, other, other.d || {}];
+        const relations = sources.flatMap(source => [
+            source.relation, source.relationName, source.relationType, source.rel, source.friendType
+        ]).map(normalize);
+        if (relations.some(value =>
+            ['friend', 'friends', 'przyjaciel', 'przyjaciele', 'my-friend', 'friendly'].includes(value) ||
+            value.includes('friend') || value.includes('przyjac')
+        )) return true;
+        return sources.some(source =>
+            source.isFriend === true || source.friend === true ||
+            source.is_friend === true || source.is_friends === true
+        );
     }
 
     function isOwnClan(player, id) {
-        if (!CONFIG.protectOwnClan) return false;
+        if (!CONFIG.protectOwnClan || !player) return false;
         if (ownClanMembers.has(String(id))) return true;
-
-        const relation = normalize(player?.relation);
-        return ['clan-member', 'clan-members', 'my-clan'].includes(relation);
+        const other = player._other || {};
+        const relations = [player.relation, player.relationName, player.relationType,
+            player.d?.relation, other.relation, other.relationName, other.relationType,
+            other.d?.relation].map(normalize);
+        return relations.some(value =>
+            ['clan-member', 'clan-members', 'my-clan', 'own-clan', 'myclan'].includes(value) ||
+            value.includes('my-clan') || value.includes('clan-member')
+        );
     }
 
     function isAlliedClan(player) {
         const clanName = getClanName(player);
         if (!clanName) return false;
-
-        return CONFIG.alliedClans.some(
-            clan => normalize(clan) === normalize(clanName)
-        );
-    }
-
-    function isExplicitlyClanless(player) {
-        if (!player) return false;
-
-        // Brak jednego pola (np. clan=null) nie oznacza braku klanu,
-        // jeśli inna właściwość zawiera nazwę gildii/klanu.
-        if (getClanName(player)) return false;
-
-        const clanFields = [
-            player.clan,
-            player.clanName,
-            player.clan_name,
-            player.guild,
-            player.guildName
-        ];
-        const hasExplicitEmptyClanData = clanFields.some(
-            value => value === '' || value === null
-        );
-        const relation = normalize(player.relation);
-        return ['no-clan', 'noclan', 'no-clan-member'].includes(relation) ||
-            hasExplicitEmptyClanData;
+        return CONFIG.alliedClans.some(clan => normalize(clan) === normalize(clanName));
     }
 
     function shouldBlockAttack(id) {
         if (!CONFIG.enabled) return false;
-
         const target = getTarget(id);
-
-        // Nieznany cel: blokuj, jeśli włączono tryb ostrożny.
-        if (!target) return CONFIG.blockUnknown;
-
+        // Nierozpoznany lub nieobecny na mapie cel nie jest automatycznie chroniony.
+        // Checkbox "Blokuj nierozpoznane cele" nie może wyłączać ochrony relacji.
+        if (!target) return false;
         if (CONFIG.protectFriends && isFriend(target)) return true;
         if (isOwnClan(target, id)) return true;
         if (isAlliedClan(target)) return true;
-
-        // Każdy rozpoznany gracz, który nie ma nazwy klanu,
-        // jest traktowany jako gracz bez klanu i może być atakowany.
-        // blockUnknown dotyczy wyłącznie celu, którego nie ma w danych gry.
-        if (!getClanName(target)) return false;
-
         return false;
     }
 
