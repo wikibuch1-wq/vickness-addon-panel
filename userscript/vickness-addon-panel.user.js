@@ -2,7 +2,7 @@
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
 // @version      1.2.98
-// @description  Vickness Addon Panel 1.2.98 - Niszczarka dla Riventia
+// @description  Vickness Addon Panel 1.2.98 - Niszczarka zintegrowana z panelem
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4298,6 +4298,7 @@ if (location.hostname === 'riventia.margonem.pl') {
   if (typeof enabled.freeRewards !== 'boolean') enabled.freeRewards = true;
   if (typeof enabled.antiFriendlyFire !== 'boolean') enabled.antiFriendlyFire = false;
   if (typeof enabled.quickSplit !== 'boolean') enabled.quickSplit = true;
+  if (typeof enabled.niszczarka !== 'boolean') enabled.niszczarka = false;
   if (typeof enabled.itemChat !== 'boolean') enabled.itemChat = true;
 
   let checking = false;
@@ -4823,7 +4824,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   const KEY = 'vickness_addon_panel_layout_v2';
   const FLAGS_KEY = 'vickness_addon_enabled_v1';
-  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true, freeRewards: true, itemChat: true, antiFriendlyFire: false, quickSplit: true, niszczarka: true });
+  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true, freeRewards: true, itemChat: true, antiFriendlyFire: false, quickSplit: true });
   if (typeof enabled.profileFinder !== 'boolean') enabled.profileFinder = true;
   try {
     const saved = JSON.parse(localStorage.getItem(FLAGS_KEY) || '{}');
@@ -6043,7 +6044,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">✧</span>Kolorowanie przedmiotów na czacie<button type="button" class="vxInfoBtn" data-vx-info="Kolorowanie przedmiotów na czacie" aria-label="Informacje: Kolorowanie przedmiotów na czacie" title="Informacje">?</button><button type="button" class="vxOpenSettings" id="vxItemChatOpen">⚙</button></span><span class="vxStandaloneDesc">Koloruje nazwy połączonych przedmiotów według rzadkości i dodaje delikatną poświatę</span><div class="vxStandaloneState" id="vxItemChatState"></div></div><label class="vxToggle"><input id="vxItemChatSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">🛡</span>Anti Friendly Fire<button type="button" class="vxInfoBtn" data-vx-info="Anti Friendly Fire" aria-label="Informacje: Anti Friendly Fire" title="Informacje">?</button><button type="button" class="vxInfoBtn" id="vxAntiFriendlyFireOpen" title="Ustawienia Anti Friendly Fire" aria-label="Ustawienia Anti Friendly Fire">⚙</button></span><span class="vxStandaloneDesc">Blokuje ataki na przyjaciół, własny i sojusznicze klany</span><div class="vxStandaloneState" id="vxAntiFriendlyFireState"></div></div><label class="vxToggle"><input id="vxAntiFriendlyFireSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">✂</span>Riventia Quick Split<button type="button" class="vxInfoBtn" data-vx-info="Riventia Quick Split" aria-label="Informacje: Riventia Quick Split" title="Informacje">?</button></span><span class="vxStandaloneDesc">Szybki podział stacków ulepszeń i teleportów</span><div class="vxStandaloneState" id="vxQuickSplitState"></div></div><label class="vxToggle"><input id="vxQuickSplitSwitch" type="checkbox"><span></span></label></div>
-      <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">🗑</span>Niszczarka</span><span class="vxStandaloneDesc">Wykrywa i podświetla bezpowrotnie nieaktywne przedmioty; niszczenie po potwierdzeniu</span><div class="vxStandaloneState" id="vxNiszczarkaState"></div></div><label class="vxToggle"><input id="vxNiszczarkaSwitch" type="checkbox"><span></span></label></div>
+      <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">♻</span>Niszczarka</span><span class="vxStandaloneDesc">Wykrywa bezpowrotnie nieaktywne przedmioty; niszczenie wymaga potwierdzenia</span><div class="vxStandaloneState" id="vxNiszczarkaState">WYŁĄCZONA</div><button type="button" class="vxInfoBtn" id="vxNiszczarkaOpen" style="margin-top:6px;padding:4px 9px">SKANUJ EKWIPUNEK</button></div><label class="vxToggle"><input id="vxNiszczarkaSwitch" type="checkbox"><span></span></label></div>
 </div>
     </div>
     <div id="vxSettingsView">
@@ -6272,10 +6273,10 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxQuickSplitSwitch').checked = !!enabled.quickSplit;
     root.querySelector('#vxQuickSplitState').textContent = enabled.quickSplit ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxNiszczarkaSwitch').checked = !!enabled.niszczarka;
-    root.querySelector('#vxNiszczarkaState').textContent = enabled.niszczarka ? 'WŁĄCZONY' : 'WYŁĄCZONY';
-    if (typeof window.__vicknessNiszczarkaSetEnabled === 'function') window.__vicknessNiszczarkaSetEnabled(!!enabled.niszczarka);
+    root.querySelector('#vxNiszczarkaState').textContent = enabled.niszczarka ? 'WŁĄCZONA' : 'WYŁĄCZONA';
     if (typeof window.__vicknessAntiFriendlyFireSetEnabled === 'function') window.__vicknessAntiFriendlyFireSetEnabled(!!enabled.antiFriendlyFire);
     if (typeof window.__vicknessQuickSplitSetEnabled === 'function') window.__vicknessQuickSplitSetEnabled(!!enabled.quickSplit);
+    if (typeof window.__vicknessNiszczarkaSetEnabled === 'function') window.__vicknessNiszczarkaSetEnabled(!!enabled.niszczarka);
     if (typeof window.__vicknessItemChatSetEnabled === 'function') window.__vicknessItemChatSetEnabled(!!enabled.itemChat);
     if (typeof window.__vicknessFreeRewardsSetEnabled === 'function') window.__vicknessFreeRewardsSetEnabled(!!enabled.freeRewards);
     if (typeof window.__vicknessRankChatSetEnabled === 'function') window.__vicknessRankChatSetEnabled(!!enabled.rankChat);
@@ -6291,7 +6292,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     const countLabel = root.querySelector('#vxAddonCount');
     if (countLabel) countLabel.textContent = `${enabledCount} / ${addonKeys.length} dodatków`;
     const miniCount = root.querySelector('#vxMiniAddonCount');
-    if (miniCount) miniCount.textContent = `${enabledCount}/13`;
+    if (miniCount) miniCount.textContent = `${enabledCount}/14`;
     dockWidgets();
   }
   function setActiveTab(tab) {
@@ -6718,9 +6719,6 @@ if (location.hostname === 'riventia.margonem.pl') {
     });
     root.querySelector('#vxQuickSplitSwitch').addEventListener('change', e => {
       enabled.quickSplit = e.target.checked; saveFlags(); applyToggles();
-    });
-    root.querySelector('#vxNiszczarkaSwitch').addEventListener('change', e => {
-      enabled.niszczarka = e.target.checked; saveFlags(); applyToggles();
     });
     root.querySelector('#vxAntiFriendlyFireOpen').addEventListener('click', () => {
       if (typeof window.__vicknessAntiFriendlyFireOpenSettings === 'function') {
@@ -11917,52 +11915,17 @@ if (location.hostname === 'riventia.margonem.pl') {
 
 })();
 
-  };
-
-  if (document.readyState === 'complete') {
-    startRemainingAddons();
-  } else {
-    window.addEventListener('load', startRemainingAddons, { once: true });
-  }
-})();
-
 
 // =============================================================
-// DODATEK: NISZCZARKA
-// =============================================================
+// NISZCZARKA - ZINTEGROWANA Z PANELEM VICKNESS
 (() => {
-    "use strict";
-    const GAME_WINDOW = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
-    let moduleEnabled = window.__vicknessAddonEnabled?.niszczarka !== false;
-    const setEnabled = value => {
-        moduleEnabled = !!value;
-        widget.style.display = moduleEnabled ? "block" : "none";
-        if (!moduleEnabled) closeModal();
-        else { scanBag(); schedulePosition(); }
-    };
-    window.__vicknessNiszczarkaSetEnabled = setEnabled;
-
+    if (location.hostname !== "riventia.margonem.pl") return;
+    const root = document.getElementById("vicknessStandaloneRoot");
+    if (!root) return;
     const STATUS = "Bezpowrotnie nieaktywny";
     const SELECTOR = ".item.inventory-item";
     const WIDGET_ID = "margonem-trash-widget";
     const HIGHLIGHT = "niszczarka-highlight";
-
-    window.__vicknessNiszczarkaCleanup?.();
-
-    [
-        WIDGET_ID,
-        "margonem-trash-modal",
-        "margonem-trash-notice",
-        "margonem-trash-style"
-    ].forEach(id => document.getElementById(id)?.remove());
-
-    let positionFrame = null;
-    let positionTimer = null;
-    let bagObserver = null;
-    let resizeObserver = null;
-    let observedBag = null;
-    let highlightedIds = new Set();
-
     // STYLE
     const style = document.createElement("style");
     style.id = "margonem-trash-style";
@@ -12040,141 +12003,9 @@ if (location.hostname === 'riventia.margonem.pl') {
 
     document.head.appendChild(style);
 
-    // IKONA
-    const widget = document.createElement("div");
-    widget.id = WIDGET_ID;
-
-    Object.assign(widget.style, {
-        position: "fixed",
-        zIndex: "999999",
-        display: "none",
-        width: "42px",
-        height: "42px",
-        pointerEvents: "none"
-    });
-
-    const button = document.createElement("button");
-    button.type = "button";
-    button.title = "Otwórz Niszczarkę";
-
-    button.innerHTML = `
-        <img
-            src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACMAAAAjCAYAAAAe2bNZAAADgUlEQVR42u2WT2hcVRTGf/e9NzPJxDiZyaRpGs2klLTpVKwmcRGVqKiLblxoU8EuSsGliAtxIbpRQXThxmXdudEEcSEUFyqUFkoriRHaUCdtk2mTpjNN6vx5M+/NvHfvddEpjGLbmTSNCPPBhft4cDnnO98554MWWmgOYhPeMOruuna2HvrfkzG2mhlRx8Cu2rcB5IHMP/4/UBjJJMFkkuCeXvOLL9/q8r75ZI/z7bHXq28cSGTaLJ6Zmpo0gUCzyYoN6EPV7gPvvtaXHh+2ODmH6t3R7T83Egoe+WhuemG1cugOLG56mZL7esWbpbKeGIrxuIcwjM4Oynmb4RicuUIhFOLEhSzTruI7oNJoQKIJRnR/hPfGHuHjXRECY7sFVntAORXJqwe2cep0gbmFMmO7LSO15HN+FU4t6l9Tqxx04Wpdt90RZhNiDT2dEFPvHww/HOiKuT2RChUzIh57Mk58sB/Lq5BzOtg2GFNBw5FD3bIabROJXy4yr2EWsOpKfM8ZcdcWHh1Fpa7r7PenfQa3Yx4/Iw3XkbRLi1A4ztDht3np2R0Ulgvi3B/S/Pok1k/nNGGT3GYL+LZwxxOd/DwUJ3SjCDu7oT8CY+Md2jWiYuHsMlkbrqwj1xwCSzmmeiRH0uABspnpeTeo2oA729nGUvwhYbywV6iOsKBvu8HM765YmV+mKE2sgGC4T4hoO1rAV2lwG0264Wl5aPIWO57icm+X4NF+U+dkmHc+PcrsguLFyQlGJ/ZS9bTeP2Sa1/K4MkDqdjKbGsz09C0h58rM2q7Gq6KjAUdnUjN0dwZ1OZvGX18kFBQqX1QiaHHBdVnRuvE50/QecSWFchVMqUApUbo0T7RdEXTX0VUXE8jbGtfDAfxagR5MMOUqV/OOJl/SwvPhzzVF0JI4RY+yrVESfdMGx+c3gOcbGx9Q6/0mljR4cPFaDga6MPIO+J5GokWxKMnZmlIFbA/sKhmAExv0Ig0FA9ixiHB29godDqIvLytyJa2vZ3ztViEeQSd6UK4i3SzrTTGjNUIIFm8W9I2czcArY6Yf7bT4/MMRdMVlYea8urQqQz/MSgyLtPIb18tGt7YOm7wca+OzREzs39ePeGokigq0c/zHFeYzYi1b0sfyHh806/zu13Y+UfMt9e8tAdmtdJz30pq5kUfvhxlRd/62Ov4zU95CCy208H/CX9AodVnaSMnXAAAAAElFTkSuQmCC"
-            style="width:42px;height:42px;object-fit:contain;display:block;"
-            draggable="false"
-        >
-    `;
-
-    Object.assign(button.style, {
-        width: "42px",
-        height: "42px",
-        padding: "0",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        border: "none",
-        outline: "none",
-        background: "transparent",
-        cursor: "pointer",
-        opacity: "0.9",
-        boxShadow: "none",
-        pointerEvents: "auto"
-    });
-
-    widget.appendChild(button);
-    document.body.appendChild(widget);
-
-    // POZYCJONOWANIE
-    function positionWidget() {
-        const bag = document.querySelector(
-            ".bags-navigation .item.bag-pos-0"
-        );
-
-        if (!moduleEnabled) {
-            widget.style.display = "none";
-            return;
-        }
-
-        // Na Riventii układ ekwipunku może nie mieć lupusowego selektora
-        // .bags-navigation .bag-pos-0. Wtedy pokaż ikonę w stałym miejscu,
-        // zamiast całkowicie ją ukrywać.
-        const rect = bag?.isConnected ? bag.getBoundingClientRect() : null;
-        if (rect && rect.width && rect.height) {
-            widget.style.left = Math.max(4, rect.left - 43) + "px";
-            widget.style.top = (rect.top + rect.height / 2 - 21) + "px";
-        } else {
-            widget.style.left = "12px";
-            widget.style.bottom = "110px";
-            widget.style.top = "auto";
-        }
-        widget.style.display = "block";
-    }
-
-    function schedulePosition() {
-        if (positionFrame !== null) return;
-
-        positionFrame = requestAnimationFrame(() => {
-            positionFrame = null;
-            positionWidget();
-        });
-    }
-
-    function observeBag() {
-        const nav = document.querySelector(".bags-navigation");
-
-        bagObserver?.disconnect();
-        resizeObserver?.disconnect();
-
-        if (!nav) return;
-
-        bagObserver = new MutationObserver(schedulePosition);
-        bagObserver.observe(nav, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ["style", "class"]
-        });
-
-        if (window.ResizeObserver) {
-            resizeObserver = new ResizeObserver(schedulePosition);
-            resizeObserver.observe(nav);
-
-            const bag = nav.querySelector(".item.bag-pos-0");
-            if (bag) resizeObserver.observe(bag);
-        }
-    }
-
-    function observeCurrentBag() {
-        const current = document.querySelector(
-            ".bags-navigation .item.bag-pos-0"
-        );
-
-        if (current !== observedBag) {
-            observedBag = current;
-            observeBag();
-        }
-    }
-
-    GAME_WINDOW.addEventListener("scroll", schedulePosition, true);
-    GAME_WINDOW.addEventListener("resize", schedulePosition);
-
-    if (GAME_WINDOW.visualViewport) {
-        GAME_WINDOW.visualViewport.addEventListener("scroll", schedulePosition);
-        GAME_WINDOW.visualViewport.addEventListener("resize", schedulePosition);
-    }
-
-    observeCurrentBag();
-    positionWidget();
-
-    positionTimer = setInterval(() => {
-        if (!moduleEnabled) return;
-        observeCurrentBag();
-        positionWidget();
-    }, 150);
-
     // STATUS PRZEDMIOTU
     function isInactive(item) {
-        if (!item || typeof item.getLoc !== "function" || item.getLoc() !== "g") return false;
+        if (!item || item.getLoc() !== "g") return false;
 
         const html = item.getTipContent() || "";
         const doc = new DOMParser().parseFromString(html, "text/html");
@@ -12198,8 +12029,8 @@ if (location.hostname === 'riventia.margonem.pl') {
         const seen = new Set();
 
         document.querySelectorAll(SELECTOR).forEach(el => {
-            const item = (GAME_WINDOW.jQuery || GAME_WINDOW.$)?.(el).data("item");
-            if (!moduleEnabled || !item) return;
+            const item = (unsafeWindow.jQuery || window.jQuery)?.(el).data("item");
+            if (!item) return;
 
             const id = String(item.id);
 
@@ -12235,7 +12066,7 @@ if (location.hostname === 'riventia.margonem.pl') {
         );
 
         document.querySelectorAll(SELECTOR).forEach(el => {
-            const item = (GAME_WINDOW.jQuery || GAME_WINDOW.$)?.(el).data("item");
+            const item = (unsafeWindow.jQuery || window.jQuery)?.(el).data("item");
 
             if (item && highlightedIds.has(String(item.id))) {
                 el.classList.add(HIGHLIGHT);
@@ -12485,7 +12316,7 @@ if (location.hostname === 'riventia.margonem.pl') {
             let item = null;
 
             document.querySelectorAll(SELECTOR).forEach(el => {
-                const current = (GAME_WINDOW.jQuery || GAME_WINDOW.$)?.(el).data("item");
+                const current = (unsafeWindow.jQuery || window.jQuery)?.(el).data("item");
 
                 if (current && String(current.id) === candidate.id) {
                     item = current;
@@ -12512,8 +12343,9 @@ if (location.hostname === 'riventia.margonem.pl') {
     }
 
     // KLIKNIĘCIE IKONY
-    button.addEventListener("click", () => {
-        if (!moduleEnabled) return;
+    const panelScanButton = root.querySelector("#vxNiszczarkaOpen");
+    panelScanButton?.addEventListener("click", () => {
+        if (!enabled.niszczarka) return;
         const found = scanBag();
 
         if (!found.length) {
@@ -12524,35 +12356,30 @@ if (location.hostname === 'riventia.margonem.pl') {
         showModal(found);
     });
 
-    // SPRZĄTANIE
-    window.__vicknessNiszczarkaCleanup = () => {
-        clearInterval(positionTimer);
-
-        if (positionFrame !== null) {
-            cancelAnimationFrame(positionFrame);
+    window.__vicknessNiszczarkaSetEnabled = (value) => {
+        enabled.niszczarka = !!value;
+        const state = root.querySelector("#vxNiszczarkaState");
+        const scan = root.querySelector("#vxNiszczarkaOpen");
+        if (state) state.textContent = enabled.niszczarka ? "WŁĄCZONA" : "WYŁĄCZONA";
+        if (scan) {
+            scan.disabled = !enabled.niszczarka;
+            scan.style.opacity = enabled.niszczarka ? "1" : ".45";
         }
-
-        bagObserver?.disconnect();
-        resizeObserver?.disconnect();
-        clearHighlights();
-
-        GAME_WINDOW.removeEventListener("scroll", schedulePosition, true);
-        GAME_WINDOW.removeEventListener("resize", schedulePosition);
-
-        GAME_WINDOW.visualViewport?.removeEventListener(
-            "scroll", schedulePosition
-        );
-
-        GAME_WINDOW.visualViewport?.removeEventListener(
-            "resize", schedulePosition
-        );
+        if (!enabled.niszczarka) clearHighlights();
     };
+    root.querySelector("#vxNiszczarkaSwitch")?.addEventListener("change", event => {
+        enabled.niszczarka = !!event.target.checked;
+        window.__vicknessNiszczarkaSetEnabled(enabled.niszczarka);
+    });
+    window.__vicknessNiszczarkaSetEnabled(!!enabled.niszczarka);
 
+})();
 
-    setEnabled(moduleEnabled);
-    GAME_WINDOW.addEventListener("pagehide", () => {
-        window.__vicknessNiszczarkaCleanup?.();
-        delete window.__vicknessNiszczarkaSetEnabled;
-    }, { once: true });
+  };
 
+  if (document.readyState === 'complete') {
+    startRemainingAddons();
+  } else {
+    window.addEventListener('load', startRemainingAddons, { once: true });
+  }
 })();
