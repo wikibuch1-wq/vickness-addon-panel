@@ -11936,7 +11936,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     let moduleEnabled = window.__vicknessAddonEnabled?.niszczarka !== false;
     const setEnabled = value => {
         moduleEnabled = !!value;
-        widget.style.display = moduleEnabled ? widget.style.display : "none";
+        widget.style.display = moduleEnabled ? "block" : "none";
         if (!moduleEnabled) closeModal();
         else { scanBag(); schedulePosition(); }
     };
@@ -12090,22 +12090,24 @@ if (location.hostname === 'riventia.margonem.pl') {
             ".bags-navigation .item.bag-pos-0"
         );
 
-        if (!bag || !bag.isConnected) {
+        if (!moduleEnabled) {
             widget.style.display = "none";
             return;
         }
 
-        const rect = bag.getBoundingClientRect();
-
-        if (!rect.width || !rect.height) {
-            widget.style.display = "none";
-            return;
+        // Na Riventii układ ekwipunku może nie mieć lupusowego selektora
+        // .bags-navigation .bag-pos-0. Wtedy pokaż ikonę w stałym miejscu,
+        // zamiast całkowicie ją ukrywać.
+        const rect = bag?.isConnected ? bag.getBoundingClientRect() : null;
+        if (rect && rect.width && rect.height) {
+            widget.style.left = Math.max(4, rect.left - 43) + "px";
+            widget.style.top = (rect.top + rect.height / 2 - 21) + "px";
+        } else {
+            widget.style.left = "12px";
+            widget.style.bottom = "110px";
+            widget.style.top = "auto";
         }
-
         widget.style.display = "block";
-        widget.style.left = (rect.left - 43) + "px";
-        widget.style.top =
-            (rect.top + rect.height / 2 - 21) + "px";
     }
 
     function schedulePosition() {
