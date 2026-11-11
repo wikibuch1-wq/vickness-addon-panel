@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Vickness Addon Panel - Standalone
 // @namespace    Vickness
-// @version      1.2.96
-// @description  Vickness Addon Panel 1.2.96 - dokładniejsze wykrywanie przyjaciół i sojuszników
+// @version      1.2.98
+// @description  Vickness Addon Panel 1.2.98 - Niszczarka dla Riventia
 // @match        https://riventia.margonem.pl/*
 // @match        http://riventia.margonem.pl/*
 // @match        https://www.margonem.pl/profile/view,*
@@ -4823,7 +4823,7 @@ if (location.hostname === 'riventia.margonem.pl') {
 
   const KEY = 'vickness_addon_panel_layout_v2';
   const FLAGS_KEY = 'vickness_addon_enabled_v1';
-  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true, freeRewards: true, itemChat: true, antiFriendlyFire: false, quickSplit: true });
+  const enabled = window.__vicknessAddonEnabled || (window.__vicknessAddonEnabled = { loot: true, dc: true, lootlog: true, titan: true, lootChance: true, crewOnline: true, profileFinder: true, wnm: true, rankChat: true, freeRewards: true, itemChat: true, antiFriendlyFire: false, quickSplit: true, niszczarka: true });
   if (typeof enabled.profileFinder !== 'boolean') enabled.profileFinder = true;
   try {
     const saved = JSON.parse(localStorage.getItem(FLAGS_KEY) || '{}');
@@ -6043,6 +6043,7 @@ if (location.hostname === 'riventia.margonem.pl') {
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">✧</span>Kolorowanie przedmiotów na czacie<button type="button" class="vxInfoBtn" data-vx-info="Kolorowanie przedmiotów na czacie" aria-label="Informacje: Kolorowanie przedmiotów na czacie" title="Informacje">?</button><button type="button" class="vxOpenSettings" id="vxItemChatOpen">⚙</button></span><span class="vxStandaloneDesc">Koloruje nazwy połączonych przedmiotów według rzadkości i dodaje delikatną poświatę</span><div class="vxStandaloneState" id="vxItemChatState"></div></div><label class="vxToggle"><input id="vxItemChatSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">🛡</span>Anti Friendly Fire<button type="button" class="vxInfoBtn" data-vx-info="Anti Friendly Fire" aria-label="Informacje: Anti Friendly Fire" title="Informacje">?</button><button type="button" class="vxInfoBtn" id="vxAntiFriendlyFireOpen" title="Ustawienia Anti Friendly Fire" aria-label="Ustawienia Anti Friendly Fire">⚙</button></span><span class="vxStandaloneDesc">Blokuje ataki na przyjaciół, własny i sojusznicze klany</span><div class="vxStandaloneState" id="vxAntiFriendlyFireState"></div></div><label class="vxToggle"><input id="vxAntiFriendlyFireSwitch" type="checkbox"><span></span></label></div>
       <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">✂</span>Riventia Quick Split<button type="button" class="vxInfoBtn" data-vx-info="Riventia Quick Split" aria-label="Informacje: Riventia Quick Split" title="Informacje">?</button></span><span class="vxStandaloneDesc">Szybki podział stacków ulepszeń i teleportów</span><div class="vxStandaloneState" id="vxQuickSplitState"></div></div><label class="vxToggle"><input id="vxQuickSplitSwitch" type="checkbox"><span></span></label></div>
+      <div class="vxStandaloneRow"><div><span class="vxStandaloneName"><span class="vxCardIcon">🗑</span>Niszczarka</span><span class="vxStandaloneDesc">Wykrywa i podświetla bezpowrotnie nieaktywne przedmioty; niszczenie po potwierdzeniu</span><div class="vxStandaloneState" id="vxNiszczarkaState"></div></div><label class="vxToggle"><input id="vxNiszczarkaSwitch" type="checkbox"><span></span></label></div>
 </div>
     </div>
     <div id="vxSettingsView">
@@ -6270,6 +6271,9 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxAntiFriendlyFireState').textContent = enabled.antiFriendlyFire ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxQuickSplitSwitch').checked = !!enabled.quickSplit;
     root.querySelector('#vxQuickSplitState').textContent = enabled.quickSplit ? 'WŁĄCZONY' : 'WYŁĄCZONY';
+    root.querySelector('#vxNiszczarkaSwitch').checked = !!enabled.niszczarka;
+    root.querySelector('#vxNiszczarkaState').textContent = enabled.niszczarka ? 'WŁĄCZONY' : 'WYŁĄCZONY';
+    if (typeof window.__vicknessNiszczarkaSetEnabled === 'function') window.__vicknessNiszczarkaSetEnabled(!!enabled.niszczarka);
     if (typeof window.__vicknessAntiFriendlyFireSetEnabled === 'function') window.__vicknessAntiFriendlyFireSetEnabled(!!enabled.antiFriendlyFire);
     if (typeof window.__vicknessQuickSplitSetEnabled === 'function') window.__vicknessQuickSplitSetEnabled(!!enabled.quickSplit);
     if (typeof window.__vicknessItemChatSetEnabled === 'function') window.__vicknessItemChatSetEnabled(!!enabled.itemChat);
@@ -6282,7 +6286,7 @@ if (location.hostname === 'riventia.margonem.pl') {
     root.querySelector('#vxLootState').textContent = enabled.loot ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxDcState').textContent = enabled.dc ? 'WŁĄCZONY' : 'WYŁĄCZONY';
     root.querySelector('#vxLootlogState').textContent = enabled.lootlog ? 'WŁĄCZONY' : 'WYŁĄCZONY';
-    const addonKeys = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat', 'freeRewards', 'itemChat', 'antiFriendlyFire', 'quickSplit'];
+    const addonKeys = ['loot', 'dc', 'lootlog', 'titan', 'lootChance', 'crewOnline', 'profileFinder', 'wnm', 'rankChat', 'freeRewards', 'itemChat', 'antiFriendlyFire', 'quickSplit', 'niszczarka'];
     const enabledCount = addonKeys.reduce((sum, key) => sum + (enabled[key] ? 1 : 0), 0);
     const countLabel = root.querySelector('#vxAddonCount');
     if (countLabel) countLabel.textContent = `${enabledCount} / ${addonKeys.length} dodatków`;
@@ -6714,6 +6718,9 @@ if (location.hostname === 'riventia.margonem.pl') {
     });
     root.querySelector('#vxQuickSplitSwitch').addEventListener('change', e => {
       enabled.quickSplit = e.target.checked; saveFlags(); applyToggles();
+    });
+    root.querySelector('#vxNiszczarkaSwitch').addEventListener('change', e => {
+      enabled.niszczarka = e.target.checked; saveFlags(); applyToggles();
     });
     root.querySelector('#vxAntiFriendlyFireOpen').addEventListener('click', () => {
       if (typeof window.__vicknessAntiFriendlyFireOpenSettings === 'function') {
@@ -11917,4 +11924,633 @@ if (location.hostname === 'riventia.margonem.pl') {
   } else {
     window.addEventListener('load', startRemainingAddons, { once: true });
   }
+})();
+
+
+// =============================================================
+// DODATEK: NISZCZARKA
+// =============================================================
+(() => {
+    "use strict";
+    const GAME_WINDOW = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
+    let moduleEnabled = window.__vicknessAddonEnabled?.niszczarka !== false;
+    const setEnabled = value => {
+        moduleEnabled = !!value;
+        widget.style.display = moduleEnabled ? widget.style.display : "none";
+        if (!moduleEnabled) closeModal();
+        else { scanBag(); schedulePosition(); }
+    };
+    window.__vicknessNiszczarkaSetEnabled = setEnabled;
+
+    const STATUS = "Bezpowrotnie nieaktywny";
+    const SELECTOR = ".item.inventory-item";
+    const WIDGET_ID = "margonem-trash-widget";
+    const HIGHLIGHT = "niszczarka-highlight";
+
+    window.__vicknessNiszczarkaCleanup?.();
+
+    [
+        WIDGET_ID,
+        "margonem-trash-modal",
+        "margonem-trash-notice",
+        "margonem-trash-style"
+    ].forEach(id => document.getElementById(id)?.remove());
+
+    let positionFrame = null;
+    let positionTimer = null;
+    let bagObserver = null;
+    let resizeObserver = null;
+    let observedBag = null;
+    let highlightedIds = new Set();
+
+    // STYLE
+    const style = document.createElement("style");
+    style.id = "margonem-trash-style";
+
+    style.textContent = `
+        .${HIGHLIGHT} {
+            outline: 2px solid rgba(255, 75, 75, 0.8) !important;
+            outline-offset: -2px !important;
+            background-color: rgba(255, 55, 55, 0.16) !important;
+            filter: saturate(0.8) brightness(0.92);
+            z-index: 999 !important;
+        }
+
+        .${HIGHLIGHT}::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(
+                135deg,
+                transparent 46%,
+                rgba(255, 55, 55, 0.85) 48%,
+                rgba(255, 55, 55, 0.85) 51%,
+                transparent 53%
+            );
+            z-index: 9999;
+        }
+
+        #${WIDGET_ID} button:hover {
+            filter: brightness(1.35);
+            opacity: 1 !important;
+        }
+
+        #margonem-trash-modal .trash-dialog {
+            animation: trashAppear .18s ease-out;
+        }
+
+        #margonem-trash-modal button {
+            cursor: pointer;
+        }
+
+        #margonem-trash-modal button:hover {
+            filter: brightness(1.25);
+        }
+
+        #margonem-trash-modal .trash-list {
+            scrollbar-width: thin;
+            scrollbar-color: #bd9852 #17130e;
+            overscroll-behavior: contain;
+        }
+
+        #margonem-trash-modal .trash-list::-webkit-scrollbar {
+            width: 9px;
+        }
+
+        #margonem-trash-modal .trash-list::-webkit-scrollbar-track {
+            background: #17130e;
+        }
+
+        #margonem-trash-modal .trash-list::-webkit-scrollbar-thumb {
+            background: #bd9852;
+            border-radius: 8px;
+        }
+
+        @keyframes trashAppear {
+            from { opacity: 0; transform: translateY(7px) scale(.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes trashNotice {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    `;
+
+    document.head.appendChild(style);
+
+    // IKONA
+    const widget = document.createElement("div");
+    widget.id = WIDGET_ID;
+
+    Object.assign(widget.style, {
+        position: "fixed",
+        zIndex: "999999",
+        display: "none",
+        width: "42px",
+        height: "42px",
+        pointerEvents: "none"
+    });
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.title = "Otwórz Niszczarkę";
+
+    button.innerHTML = `
+        <img
+            src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACMAAAAjCAYAAAAe2bNZAAADgUlEQVR42u2WT2hcVRTGf/e9NzPJxDiZyaRpGs2klLTpVKwmcRGVqKiLblxoU8EuSsGliAtxIbpRQXThxmXdudEEcSEUFyqUFkoriRHaUCdtk2mTpjNN6vx5M+/NvHfvddEpjGLbmTSNCPPBhft4cDnnO98554MWWmgOYhPeMOruuna2HvrfkzG2mhlRx8Cu2rcB5IHMP/4/UBjJJMFkkuCeXvOLL9/q8r75ZI/z7bHXq28cSGTaLJ6Zmpo0gUCzyYoN6EPV7gPvvtaXHh+2ODmH6t3R7T83Egoe+WhuemG1cugOLG56mZL7esWbpbKeGIrxuIcwjM4Oynmb4RicuUIhFOLEhSzTruI7oNJoQKIJRnR/hPfGHuHjXRECY7sFVntAORXJqwe2cep0gbmFMmO7LSO15HN+FU4t6l9Tqxx04Wpdt90RZhNiDT2dEFPvHww/HOiKuT2RChUzIh57Mk58sB/Lq5BzOtg2GFNBw5FD3bIabROJXy4yr2EWsOpKfM8ZcdcWHh1Fpa7r7PenfQa3Yx4/Iw3XkbRLi1A4ztDht3np2R0Ulgvi3B/S/Pok1k/nNGGT3GYL+LZwxxOd/DwUJ3SjCDu7oT8CY+Md2jWiYuHsMlkbrqwj1xwCSzmmeiRH0uABspnpeTeo2oA729nGUvwhYbywV6iOsKBvu8HM765YmV+mKE2sgGC4T4hoO1rAV2lwG0264Wl5aPIWO57icm+X4NF+U+dkmHc+PcrsguLFyQlGJ/ZS9bTeP2Sa1/K4MkDqdjKbGsz09C0h58rM2q7Gq6KjAUdnUjN0dwZ1OZvGX18kFBQqX1QiaHHBdVnRuvE50/QecSWFchVMqUApUbo0T7RdEXTX0VUXE8jbGtfDAfxagR5MMOUqV/OOJl/SwvPhzzVF0JI4RY+yrVESfdMGx+c3gOcbGx9Q6/0mljR4cPFaDga6MPIO+J5GokWxKMnZmlIFbA/sKhmAExv0Ig0FA9ixiHB29godDqIvLytyJa2vZ3ztViEeQSd6UK4i3SzrTTGjNUIIFm8W9I2czcArY6Yf7bT4/MMRdMVlYea8urQqQz/MSgyLtPIb18tGt7YOm7wca+OzREzs39ePeGokigq0c/zHFeYzYi1b0sfyHh806/zu13Y+UfMt9e8tAdmtdJz30pq5kUfvhxlRd/62Ov4zU95CCy208H/CX9AodVnaSMnXAAAAAElFTkSuQmCC"
+            style="width:42px;height:42px;object-fit:contain;display:block;"
+            draggable="false"
+        >
+    `;
+
+    Object.assign(button.style, {
+        width: "42px",
+        height: "42px",
+        padding: "0",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        border: "none",
+        outline: "none",
+        background: "transparent",
+        cursor: "pointer",
+        opacity: "0.9",
+        boxShadow: "none",
+        pointerEvents: "auto"
+    });
+
+    widget.appendChild(button);
+    document.body.appendChild(widget);
+
+    // POZYCJONOWANIE
+    function positionWidget() {
+        const bag = document.querySelector(
+            ".bags-navigation .item.bag-pos-0"
+        );
+
+        if (!bag || !bag.isConnected) {
+            widget.style.display = "none";
+            return;
+        }
+
+        const rect = bag.getBoundingClientRect();
+
+        if (!rect.width || !rect.height) {
+            widget.style.display = "none";
+            return;
+        }
+
+        widget.style.display = "block";
+        widget.style.left = (rect.left - 43) + "px";
+        widget.style.top =
+            (rect.top + rect.height / 2 - 21) + "px";
+    }
+
+    function schedulePosition() {
+        if (positionFrame !== null) return;
+
+        positionFrame = requestAnimationFrame(() => {
+            positionFrame = null;
+            positionWidget();
+        });
+    }
+
+    function observeBag() {
+        const nav = document.querySelector(".bags-navigation");
+
+        bagObserver?.disconnect();
+        resizeObserver?.disconnect();
+
+        if (!nav) return;
+
+        bagObserver = new MutationObserver(schedulePosition);
+        bagObserver.observe(nav, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ["style", "class"]
+        });
+
+        if (window.ResizeObserver) {
+            resizeObserver = new ResizeObserver(schedulePosition);
+            resizeObserver.observe(nav);
+
+            const bag = nav.querySelector(".item.bag-pos-0");
+            if (bag) resizeObserver.observe(bag);
+        }
+    }
+
+    function observeCurrentBag() {
+        const current = document.querySelector(
+            ".bags-navigation .item.bag-pos-0"
+        );
+
+        if (current !== observedBag) {
+            observedBag = current;
+            observeBag();
+        }
+    }
+
+    GAME_WINDOW.addEventListener("scroll", schedulePosition, true);
+    GAME_WINDOW.addEventListener("resize", schedulePosition);
+
+    if (GAME_WINDOW.visualViewport) {
+        GAME_WINDOW.visualViewport.addEventListener("scroll", schedulePosition);
+        GAME_WINDOW.visualViewport.addEventListener("resize", schedulePosition);
+    }
+
+    observeCurrentBag();
+    positionWidget();
+
+    positionTimer = setInterval(() => {
+        if (!moduleEnabled) return;
+        observeCurrentBag();
+        positionWidget();
+    }, 150);
+
+    // STATUS PRZEDMIOTU
+    function isInactive(item) {
+        if (!item || typeof item.getLoc !== "function" || item.getLoc() !== "g") return false;
+
+        const html = item.getTipContent() || "";
+        const doc = new DOMParser().parseFromString(html, "text/html");
+
+        const status = doc.querySelector(
+            ".tip-item-stat-expires.item-expired"
+        );
+
+        return status?.textContent.trim() === STATUS;
+    }
+
+    function getDestroyOption(item) {
+        const menu = [];
+        item.destroy(menu);
+        return menu.find(entry => entry[0] === "Zniszcz");
+    }
+
+    // SKANOWANIE
+    function scanBag() {
+        const found = [];
+        const seen = new Set();
+
+        document.querySelectorAll(SELECTOR).forEach(el => {
+            const item = (GAME_WINDOW.jQuery || GAME_WINDOW.$)?.(el).data("item");
+            if (!moduleEnabled || !item) return;
+
+            const id = String(item.id);
+
+            if (seen.has(id) || !isInactive(item)) return;
+
+            const option = getDestroyOption(item);
+            if (!option || typeof option[1] !== "function") return;
+
+            seen.add(id);
+            found.push({
+                id,
+                name: item.getName()
+            });
+        });
+
+        return found;
+    }
+
+    // PODŚWIETLANIE PRZEDMIOTÓW
+    function clearHighlights() {
+        document.querySelectorAll("." + HIGHLIGHT).forEach(el => {
+            el.classList.remove(HIGHLIGHT);
+        });
+
+        highlightedIds.clear();
+    }
+
+    function highlightItems(found) {
+        clearHighlights();
+
+        highlightedIds = new Set(
+            found.map(item => String(item.id))
+        );
+
+        document.querySelectorAll(SELECTOR).forEach(el => {
+            const item = (GAME_WINDOW.jQuery || GAME_WINDOW.$)?.(el).data("item");
+
+            if (item && highlightedIds.has(String(item.id))) {
+                el.classList.add(HIGHLIGHT);
+            }
+        });
+    }
+
+    // OKNO
+    const modal = document.createElement("div");
+    modal.id = "margonem-trash-modal";
+
+    Object.assign(modal.style, {
+        position: "fixed",
+        inset: "0",
+        zIndex: "1000000",
+        display: "none",
+        alignItems: "center",
+        justifyContent: "center",
+        pointerEvents: "none"
+    });
+
+    const dialog = document.createElement("div");
+    dialog.className = "trash-dialog";
+
+    Object.assign(dialog.style, {
+        width: "min(320px, calc(100vw - 30px))",
+        boxSizing: "border-box",
+        padding: "15px",
+        border: "1px solid #bd9852",
+        borderRadius: "8px",
+        background: "linear-gradient(145deg,#24211c,#11100e)",
+        color: "#eee4d0",
+        boxShadow: "0 8px 35px #000c",
+        fontFamily: "Arial,sans-serif",
+        pointerEvents: "auto"
+    });
+
+    modal.appendChild(dialog);
+    document.body.appendChild(modal);
+
+    function closeModal() {
+        modal.style.display = "none";
+        dialog.replaceChildren();
+        clearHighlights();
+    }
+
+    function makeButton(label, color, background) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = label;
+
+        Object.assign(btn.style, {
+            flex: "1",
+            padding: "8px",
+            border: `1px solid ${color}`,
+            borderRadius: "5px",
+            background,
+            color,
+            fontSize: "12px",
+            fontWeight: "bold"
+        });
+
+        return btn;
+    }
+
+    // LISTA
+    function createList(found) {
+        const list = document.createElement("div");
+        list.className = "trash-list";
+
+        Object.assign(list.style, {
+            maxHeight: "160px",
+            overflowY: "auto",
+            overflowX: "hidden",
+            overscrollBehavior: "contain",
+            touchAction: "pan-y",
+            pointerEvents: "auto",
+            padding: "7px 9px",
+            marginBottom: "12px",
+            border: "1px solid #51432b",
+            borderRadius: "5px",
+            background: "#100f0d"
+        });
+
+        found.forEach((item, index) => {
+            const row = document.createElement("div");
+            row.textContent = `${index + 1}. ${item.name}`;
+
+            Object.assign(row.style, {
+                padding: "5px 0",
+                color: "#e5d9c2",
+                fontSize: "12px",
+                borderBottom: index === found.length - 1
+                    ? "none"
+                    : "1px solid #332c20"
+            });
+
+            list.appendChild(row);
+        });
+
+        list.addEventListener("wheel", event => {
+            event.stopPropagation();
+        }, {
+            capture: true,
+            passive: true
+        });
+
+        return list;
+    }
+
+    function showModal(found) {
+        highlightItems(found);
+        dialog.replaceChildren();
+
+        const heading = document.createElement("div");
+        heading.textContent = "✦  NISZCZARKA  ✦";
+
+        Object.assign(heading.style, {
+            textAlign: "center",
+            color: "#e2c27b",
+            fontSize: "15px",
+            fontWeight: "bold",
+            letterSpacing: "2px",
+            marginBottom: "7px"
+        });
+
+        const subtitle = document.createElement("div");
+        subtitle.textContent =
+            `Znaleziono ${found.length} nieaktywnych przedmiotów`;
+
+        Object.assign(subtitle.style, {
+            textAlign: "center",
+            color: "#b9aa8c",
+            fontSize: "12px",
+            marginBottom: "12px"
+        });
+
+        const list = createList(found);
+
+        const warning = document.createElement("div");
+        warning.textContent =
+            "Tej operacji nie można cofnąć. Kontynuować?";
+
+        Object.assign(warning.style, {
+            color: "#c5a66b",
+            fontSize: "11px",
+            textAlign: "center",
+            marginBottom: "12px"
+        });
+
+        const actions = document.createElement("div");
+        Object.assign(actions.style, {
+            display: "flex",
+            gap: "8px"
+        });
+
+        const cancel = makeButton(
+            "Anuluj", "#c9b994", "#302b23"
+        );
+
+        const destroy = makeButton(
+            "Zniszcz",
+            "#17130c",
+            "linear-gradient(#d8b76e,#a77b35)"
+        );
+
+        cancel.addEventListener("click", closeModal);
+
+        destroy.addEventListener("click", () => {
+            destroy.disabled = true;
+            cancel.disabled = true;
+            destroy.textContent = "Przetwarzanie...";
+            destroyCandidates(found);
+        });
+
+        actions.append(cancel, destroy);
+        dialog.append(heading, subtitle, list, warning, actions);
+        modal.style.display = "flex";
+    }
+
+    function showEmptyModal() {
+        clearHighlights();
+        dialog.replaceChildren();
+
+        const heading = document.createElement("div");
+        heading.textContent = "✦  NISZCZARKA  ✦";
+
+        heading.style.cssText =
+            "text-align:center;color:#e2c27b;font-weight:bold;margin-bottom:12px";
+
+        const message = document.createElement("div");
+        message.textContent =
+            "Nie znaleziono bezpowrotnie nieaktywnych przedmiotów.";
+
+        message.style.cssText =
+            "text-align:center;color:#ddd;font-size:12px;margin-bottom:14px";
+
+        const close = makeButton(
+            "Zamknij", "#e2c27b", "#30271a"
+        );
+
+        close.addEventListener("click", closeModal);
+
+        dialog.append(heading, message, close);
+        modal.style.display = "flex";
+    }
+
+    // POWIADOMIENIE
+    function showResult(processed, skipped) {
+        closeModal();
+
+        document.getElementById(
+            "margonem-trash-notice"
+        )?.remove();
+
+        const notice = document.createElement("div");
+        notice.id = "margonem-trash-notice";
+        notice.textContent =
+            `✦ Zniszczono: ${processed} | Pominięto: ${skipped} ✦`;
+
+        Object.assign(notice.style, {
+            position: "fixed",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            zIndex: "1000001",
+            color: "#e4c477",
+            fontFamily: "Arial,sans-serif",
+            fontSize: "14px",
+            fontWeight: "bold",
+            textShadow: "0 2px 5px #000, 0 0 8px #000",
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+            animation: "trashNotice .25s ease"
+        });
+
+        document.body.appendChild(notice);
+        setTimeout(() => notice.remove(), 2200);
+    }
+
+    // NISZCZENIE
+    function destroyCandidates(found) {
+        let processed = 0;
+        let skipped = 0;
+
+        found.forEach(candidate => {
+            let item = null;
+
+            document.querySelectorAll(SELECTOR).forEach(el => {
+                const current = (GAME_WINDOW.jQuery || GAME_WINDOW.$)?.(el).data("item");
+
+                if (current && String(current.id) === candidate.id) {
+                    item = current;
+                }
+            });
+
+            if (!item || !isInactive(item)) {
+                skipped++;
+                return;
+            }
+
+            const option = getDestroyOption(item);
+
+            if (!option || typeof option[1] !== "function") {
+                skipped++;
+                return;
+            }
+
+            option[1]();
+            processed++;
+        });
+
+        showResult(processed, skipped);
+    }
+
+    // KLIKNIĘCIE IKONY
+    button.addEventListener("click", () => {
+        if (!moduleEnabled) return;
+        const found = scanBag();
+
+        if (!found.length) {
+            showEmptyModal();
+            return;
+        }
+
+        showModal(found);
+    });
+
+    // SPRZĄTANIE
+    window.__vicknessNiszczarkaCleanup = () => {
+        clearInterval(positionTimer);
+
+        if (positionFrame !== null) {
+            cancelAnimationFrame(positionFrame);
+        }
+
+        bagObserver?.disconnect();
+        resizeObserver?.disconnect();
+        clearHighlights();
+
+        GAME_WINDOW.removeEventListener("scroll", schedulePosition, true);
+        GAME_WINDOW.removeEventListener("resize", schedulePosition);
+
+        GAME_WINDOW.visualViewport?.removeEventListener(
+            "scroll", schedulePosition
+        );
+
+        GAME_WINDOW.visualViewport?.removeEventListener(
+            "resize", schedulePosition
+        );
+    };
+
+
+    setEnabled(moduleEnabled);
+    GAME_WINDOW.addEventListener("pagehide", () => {
+        window.__vicknessNiszczarkaCleanup?.();
+        delete window.__vicknessNiszczarkaSetEnabled;
+    }, { once: true });
+
 })();
